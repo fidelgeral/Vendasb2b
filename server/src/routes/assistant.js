@@ -4,7 +4,7 @@ import { z } from "zod";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-20b";
 
 async function askGroq(systemPrompt, history) {
   if (!process.env.GROQ_API_KEY) {
