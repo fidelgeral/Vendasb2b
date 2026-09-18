@@ -41,7 +41,6 @@ export default function LoginScreen({ onLogin }) {
 }
 
 function BusinessLoginForm({ onLogin }) {
-  const [slug, setSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -49,15 +48,15 @@ function BusinessLoginForm({ onLogin }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!slug.trim() || !email.trim() || !password) {
+    if (!email.trim() || !password) {
       setError("Preencha todos os campos.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const res = await auth.login(slug.trim(), email.trim(), password);
-      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role, slug: slug.trim() });
+      const res = await auth.login(email.trim(), password);
+      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role });
       onLogin();
     } catch (err) {
       setError(err.message || "Não foi possível entrar.");
@@ -67,10 +66,6 @@ function BusinessLoginForm({ onLogin }) {
 
   return (
     <form onSubmit={submit} className="space-y-2.5">
-      <div>
-        <label className="text-xs" style={{ color: MUTED }}>Código do negócio</label>
-        <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="ex: padaria-da-maria" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
-      </div>
       <div>
         <label className="text-xs" style={{ color: MUTED }}>Email</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />

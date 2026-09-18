@@ -59,8 +59,7 @@ const del = (path) => request("DELETE", path);
 
 export const auth = {
   superLogin: (email, password) => post("/api/super/login", { email, password }),
-  businessLookup: (slug) => post("/api/auth/business-lookup", { slug }),
-  login: (slug, email, password) => post("/api/auth/login", { slug, email, password }),
+  login: (email, password) => post("/api/auth/login", { email, password }),
 };
 
 export const superApi = {

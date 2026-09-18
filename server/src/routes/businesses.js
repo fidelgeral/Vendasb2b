@@ -50,6 +50,10 @@ businessesRouter.post("/", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Preencha nome do negócio, nome, email e senha do dono (mín. 6 caracteres)." });
   const { name, ownerName, ownerEmail, ownerPassword } = parsed.data;
 
+  // O email do dono é único em toda a plataforma (é ele que faz login, sem código de negócio).
+  const dup = (await query("SELECT 1 FROM employees WHERE lower(email) = lower($1)", [ownerEmail])).rows.length;
+  if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email noutro negócio." });
+
   const slug = await uniqueSlug(slugify(name));
   const passwordHash = await hashPassword(ownerPassword);
 

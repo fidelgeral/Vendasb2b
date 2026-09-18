@@ -24,40 +24,34 @@ authRouter.post("/super/login", loginLimiter, async (req, res) => {
   res.json({ token, admin: { id: admin.id, email: admin.email } });
 });
 
-const slugLookupSchema = z.object({ slug: z.string().min(1) });
-
-authRouter.post("/auth/business-lookup", loginLimiter, async (req, res) => {
-  const parsed = slugLookupSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Indique o código do negócio." });
-  const biz = (await query("SELECT id, name, active FROM businesses WHERE slug = $1", [parsed.data.slug.trim().toLowerCase()])).rows[0];
-  if (!biz || !biz.active) return res.status(404).json({ error: "Negócio não encontrado." });
-  res.json({ id: biz.id, name: biz.name });
-});
-
 const employeeLoginSchema = z.object({
-  slug: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(1),
 });
 
+// O email de cada funcionário é único em toda a plataforma (não só dentro do
+// seu negócio), por isso o login não precisa de pedir nenhum código de negócio.
 authRouter.post("/auth/login", loginLimiter, async (req, res) => {
   const parsed = employeeLoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados de login inválidos." });
-  const { slug, email, password } = parsed.data;
-
-  const biz = (await query("SELECT id, name, active FROM businesses WHERE slug = $1", [slug.trim().toLowerCase()])).rows[0];
-  if (!biz || !biz.active) return res.status(403).json({ error: "Conta de negócio inactiva ou inexistente." });
+  const { email, password } = parsed.data;
 
   const emp = (
-    await query("SELECT * FROM employees WHERE business_id = $1 AND lower(email) = lower($2) AND active = true", [biz.id, email])
+    await query(
+      `SELECT e.*, b.name AS business_name, b.active AS business_active
+       FROM employees e JOIN businesses b ON b.id = e.business_id
+       WHERE lower(e.email) = lower($1) AND e.active = true`,
+      [email]
+    )
   ).rows[0];
   const ok = emp && (await verifyPassword(password, emp.password_hash));
   if (!ok) return res.status(401).json({ error: "Email ou senha incorrectos." });
+  if (!emp.business_active) return res.status(403).json({ error: "Conta de negócio inactiva." });
 
-  const token = signToken({ type: "employee", businessId: biz.id, employeeId: emp.id, role: emp.role, name: emp.name });
+  const token = signToken({ type: "employee", businessId: emp.business_id, employeeId: emp.id, role: emp.role, name: emp.name });
   res.json({
     token,
-    business: { id: biz.id, name: biz.name },
+    business: { id: emp.business_id, name: emp.business_name },
     employee: { id: emp.id, name: emp.name, role: emp.role, email: emp.email },
   });
 });

@@ -303,7 +303,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
 
       {showUserSwitch && (
         <SwitchUserModal
-          slug={session?.slug}
+          businessId={businessId}
           onSwitched={() => {
             setShowUserSwitch(false);
             load();

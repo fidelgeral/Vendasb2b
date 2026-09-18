@@ -5,7 +5,7 @@ import { auth, setSession } from "../lib/api.js";
 // Troca rápida de utilizador: a pessoa introduz o seu próprio email/senha —
 // substitui o selector de nomes do protótipo original por segurança (evita
 // expor a lista de funcionários sem autenticação).
-export default function SwitchUserModal({ slug, onSwitched, onClose }) {
+export default function SwitchUserModal({ businessId, onSwitched, onClose }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -16,8 +16,13 @@ export default function SwitchUserModal({ slug, onSwitched, onClose }) {
     setLoading(true);
     setError("");
     try {
-      const res = await auth.login(slug, email.trim(), password);
-      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role, slug });
+      const res = await auth.login(email.trim(), password);
+      if (res.business.id !== businessId) {
+        setError("Essa conta pertence a outro negócio.");
+        setLoading(false);
+        return;
+      }
+      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role });
       onSwitched();
     } catch (err) {
       setError(err.message || "Não foi possível entrar.");

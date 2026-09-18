@@ -78,7 +78,7 @@ Quando pedir para autenticar, vai abrir uma janela do browser para confirmar a s
 1. Abra o URL da Vercel.
 2. Escolha "Administrador", entre com o `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD` que definiu no passo 1.
 3. Crie a primeira conta de negócio (nome do negócio + nome, email e senha do dono).
-4. Anote o **código do negócio** (slug) que aparece na lista — é o que os funcionários desse negócio vão usar para entrar em "Sou um negócio".
+4. Cada funcionário entra em "Sou um negócio" apenas com o seu email e senha — não é preciso nenhum código de negócio (o email é único em toda a plataforma).
 
 ## O que ficou fora desta fase
 

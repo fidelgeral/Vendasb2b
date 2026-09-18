@@ -25,8 +25,10 @@ employeesRouter.post("/employees", async (req, res) => {
   const f = parsed.data;
   const businessId = req.params.businessId;
 
-  const dup = (await query("SELECT 1 FROM employees WHERE business_id = $1 AND lower(email) = lower($2)", [businessId, f.email])).rows.length;
-  if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email." });
+  // O email é único em toda a plataforma (não só dentro deste negócio), pois é
+  // ele que identifica a conta no ecrã de login (sem precisar de código de negócio).
+  const dup = (await query("SELECT 1 FROM employees WHERE lower(email) = lower($1)", [f.email])).rows.length;
+  if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email noutro negócio ou nesta equipa." });
 
   const passwordHash = await hashPassword(f.password);
   await query(
@@ -55,9 +57,9 @@ employeesRouter.patch("/employees/:id", async (req, res) => {
 
   if (f.email) {
     const dup = (
-      await query("SELECT 1 FROM employees WHERE business_id = $1 AND lower(email) = lower($2) AND id <> $3", [businessId, f.email, id])
+      await query("SELECT 1 FROM employees WHERE lower(email) = lower($1) AND id <> $2", [f.email, id])
     ).rows.length;
-    if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email." });
+    if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email noutro negócio ou nesta equipa." });
   }
 
   const passwordHash = f.password ? await hashPassword(f.password) : existing.password_hash;
