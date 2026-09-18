@@ -23,7 +23,7 @@ export default function App() {
     if (viewingBusiness) {
       return <PdvApp businessId={viewingBusiness.id} isSuperAdmin onExitBusiness={() => setViewingBusiness(null)} onLoggedOut={onLoggedOut} />;
     }
-    return <SuperAdminApp onOpenBusiness={(b) => setViewingBusiness(b)} />;
+    return <SuperAdminApp onOpenBusiness={(b) => setViewingBusiness(b)} onLoggedOut={onLoggedOut} />;
   }
 
   return <PdvApp businessId={session.businessId} isSuperAdmin={false} onLoggedOut={onLoggedOut} />;

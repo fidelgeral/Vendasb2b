@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { BG, CARD, BORDER, INK, TEAL, MUTED, BRICK, GREEN } from "../lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "../lib/theme.js";
 import { BRAND_LOGO } from "../lib/logo.js";
-import { superApi } from "../lib/api.js";
+import { superApi, clearSession } from "../lib/api.js";
 import { StatCard } from "../components/Shared.jsx";
+import { LogOut } from "../lib/icons.jsx";
 
-export default function SuperAdminApp({ onOpenBusiness }) {
+export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
   const [businesses, setBusinesses] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -59,16 +60,28 @@ export default function SuperAdminApp({ onOpenBusiness }) {
   return (
     <div style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }} className="min-h-screen p-5">
       <div className="max-w-3xl mx-auto space-y-4">
-        <div className="flex items-center gap-3">
-          <img src={BRAND_LOGO} alt={BRAND_NAME} style={{ height: 52 }} />
-          <div>
-            <div className="text-xs" style={{ color: MUTED }}>
-              {BRAND_TAGLINE} · Painel do administrador
-            </div>
-            <div className="text-2xl font-semibold" style={{ color: TEAL }}>
-              Contas de negócio
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <img src={BRAND_LOGO} alt={BRAND_NAME} style={{ height: 52 }} />
+            <div>
+              <div className="text-xs" style={{ color: MUTED }}>
+                {BRAND_TAGLINE} · Painel do administrador
+              </div>
+              <div className="text-2xl font-semibold" style={{ color: TEAL }}>
+                Contas de negócio
+              </div>
             </div>
           </div>
+          <button
+            onClick={() => {
+              clearSession();
+              onLoggedOut();
+            }}
+            style={{ borderColor: BORDER, color: MUTED }}
+            className="border rounded px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"
+          >
+            <LogOut size={13} /> Sair
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
