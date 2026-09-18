@@ -80,6 +80,18 @@ Quando pedir para autenticar, vai abrir uma janela do browser para confirmar a s
 3. Crie a primeira conta de negócio (nome do negócio + nome, email e senha do dono).
 4. Cada funcionário entra em "Sou um negócio" apenas com o seu email e senha — não é preciso nenhum código de negócio (o email é único em toda a plataforma).
 
+## 6. Assistente de IA (opcional, gratuito)
+
+O sistema tem um assistente de IA (Groq, gratuito, sem cartão de crédito) em dois sítios:
+- Um botão de ajuda ("?") dentro do sistema, que explica como usar cada função.
+- Uma página pública de atendimento por loja (`/loja/<código-do-negócio>`), onde os clientes finais tiram dúvidas sobre produtos e preços.
+
+Para activar:
+1. Vá a [console.groq.com](https://console.groq.com/keys) → entre com Google ou GitHub → **Create API Key** → copie a chave (começa por `gsk_...`).
+2. Cole-a em `GROQ_API_KEY` no `server/.env` (local) e na mesma variável nas Environment Variables do Render (produção).
+
+Sem esta chave, o resto do sistema funciona normalmente — só o assistente de IA fica indisponível.
+
 ## O que ficou fora desta fase
 
 Conforme a especificação original: multi-loja dentro do mesmo negócio, catálogo online público, notificações push, sincronização offline avançada, dashboard móvel dedicado, pagamentos automáticos M-Pesa/e-Mola e domínio próprio. Nenhuma destas depende de código adicional imediato — podem ser feitas mais tarde.

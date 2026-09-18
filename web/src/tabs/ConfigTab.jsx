@@ -31,6 +31,7 @@ export default function ConfigTab({ store, setStore, api }) {
           );
         })}
       </div>
+      <AtendimentoLink store={store} />
       {cat === "impressao" && <ImpressaoConfig store={store} setStore={setStore} api={api} />}
       {cat === "iva" && <IvaConfig store={store} setStore={setStore} api={api} />}
       {cat === "contas" && <ContasConfig store={store} setStore={setStore} api={api} />}
@@ -39,6 +40,36 @@ export default function ConfigTab({ store, setStore, api }) {
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 mt-4">
         <div className="text-sm font-semibold mb-2">Áreas activas do negócio</div>
         <ModulosConfig store={store} setStore={setStore} api={api} />
+      </div>
+    </div>
+  );
+}
+
+function AtendimentoLink({ store }) {
+  const [copied, setCopied] = useState(false);
+  const link = `${window.location.origin}/loja/${store.slug}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      // ignora
+    }
+  };
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 mb-4">
+      <div className="text-sm font-semibold mb-1">Assistente de atendimento para os seus clientes</div>
+      <div className="text-xs mb-2" style={{ color: MUTED }}>
+        Partilhe este link — os seus clientes podem tirar dúvidas sobre produtos, preços e contacto, respondidas automaticamente por IA.
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <code style={{ background: "#EFF3F1", borderColor: BORDER }} className="border rounded px-2 py-1.5 text-xs break-all">
+          {link}
+        </code>
+        <button onClick={copy} style={{ background: TEAL, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+          {copied ? "Copiado!" : "Copiar link"}
+        </button>
       </div>
     </div>
   );

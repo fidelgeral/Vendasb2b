@@ -5,6 +5,7 @@ import { BRAND_LOGO } from "./lib/logo.js";
 import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
 import { FloatingChart } from "./lib/charts.jsx";
+import HelpAssistant from "./components/HelpAssistant.jsx";
 import { NotificationBell } from "./components/Shared.jsx";
 import SwitchUserModal from "./auth/SwitchUserModal.jsx";
 import {
@@ -300,6 +301,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       )}
 
       {showChart && <FloatingChart sales={store.sales} onClose={() => setShowChart(false)} />}
+      <HelpAssistant api={api} />
 
       {showUserSwitch && (
         <SwitchUserModal

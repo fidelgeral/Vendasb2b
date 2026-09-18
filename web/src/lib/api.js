@@ -121,7 +121,15 @@ export function businessApi(businessId) {
     resumeSale: (id) => s(del(`${base}/parked/${id}`)),
 
     patchConfig: (payload) => s(patch(`${base}/config`, payload)),
+
+    assistantChat: (history) => post(`${base}/assistant/chat`, { history }).then((d) => d.reply),
   };
 }
+
+// API pública (sem autenticação) — página de atendimento de cada loja.
+export const publicApi = {
+  getInfo: (slug) => get(`/api/public/${slug}/info`),
+  chat: (slug, history) => post(`/api/public/${slug}/assistant/chat`, { history }).then((d) => d.reply),
+};
 
 export { ApiError };

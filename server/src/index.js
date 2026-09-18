@@ -13,6 +13,7 @@ import { employeesRouter } from "./routes/employees.js";
 import { caixaRouter } from "./routes/caixa.js";
 import { salesRouter } from "./routes/sales.js";
 import { configRouter } from "./routes/config.js";
+import { assistantRouter, publicRouter } from "./routes/assistant.js";
 
 const app = express();
 
@@ -41,6 +42,8 @@ app.use("/api/businesses/:businessId", employeesRouter);
 app.use("/api/businesses/:businessId", caixaRouter);
 app.use("/api/businesses/:businessId", salesRouter);
 app.use("/api/businesses/:businessId", configRouter);
+app.use("/api/businesses/:businessId", assistantRouter);
+app.use("/api/public", publicRouter);
 
 app.use((req, res) => res.status(404).json({ error: "Rota não encontrada." }));
 
