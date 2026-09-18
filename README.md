@@ -21,7 +21,7 @@ Todos os serviços abaixo são gratuitos e não pedem cartão de crédito.
 4. No seu computador, copie `server/.env.example` para `server/.env` e cole o connection string em `DATABASE_URL`.
 5. Preencha também:
    - `JWT_SECRET`: um texto longo e aleatório (ex: 40 caracteres à sua escolha).
-   - `SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`: o email e a senha que o Dino vai usar para entrar como administrador da plataforma.
+   - `SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`: o email e a senha que o Fidel vai usar para entrar como administrador da plataforma.
 6. No terminal, dentro da pasta `server/`, corra:
 
 ```bash
