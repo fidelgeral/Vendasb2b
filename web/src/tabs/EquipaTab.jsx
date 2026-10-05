@@ -57,23 +57,23 @@ export default function EquipaTab({ store, setStore, api }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="sm:col-span-2">
             <label className="text-xs" style={{ color: MUTED }}>Nome completo *</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Maria João Cossa" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Maria João Cossa" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
           </div>
           <div>
             <label className="text-xs" style={{ color: MUTED }}>Email *</label>
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nome@empresa.co.mz" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nome@empresa.co.mz" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
           </div>
           <div>
             <label className="text-xs" style={{ color: MUTED }}>Telefone</label>
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+258 84 000 0000" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+258 84 000 0000" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
           </div>
           <div>
             <label className="text-xs" style={{ color: MUTED }}>Nº de documento</label>
-            <input value={form.docId} onChange={(e) => setForm({ ...form, docId: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+            <input value={form.docId} onChange={(e) => setForm({ ...form, docId: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
           </div>
           <div>
             <label className="text-xs" style={{ color: MUTED }}>Função</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1">
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
               <option value="dono">Administrador</option>
               <option value="gerente">Gerente</option>
               <option value="caixa">Operador de Caixa</option>
@@ -88,9 +88,9 @@ export default function EquipaTab({ store, setStore, api }) {
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 style={{ borderColor: BORDER }}
-                className="flex-1 border rounded px-2.5 py-2 text-sm"
+                className="flex-1 border rounded-lg px-2.5 py-2 text-sm"
               />
-              <button type="button" onClick={() => setShowPw((s) => !s)} style={{ borderColor: BORDER, color: MUTED }} className="border rounded px-2 text-xs">
+              <button type="button" onClick={() => setShowPw((s) => !s)} style={{ borderColor: BORDER, color: MUTED }} className="border rounded-lg px-2 text-xs">
                 {showPw ? "Ocultar" : "Ver"}
               </button>
             </div>
@@ -102,11 +102,11 @@ export default function EquipaTab({ store, setStore, api }) {
           </div>
         )}
         <div className="flex gap-2 mt-3">
-          <button onClick={submit} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded text-sm font-medium">
+          <button onClick={submit} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded-lg text-sm font-medium">
             {editingId ? "Guardar" : "Adicionar"}
           </button>
           {editingId && (
-            <button onClick={() => { setEditingId(null); setForm(blank); setError(""); }} style={{ borderColor: BORDER }} className="border rounded px-3 py-2 text-sm">
+            <button onClick={() => { setEditingId(null); setForm(blank); setError(""); }} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-sm">
               Cancelar
             </button>
           )}

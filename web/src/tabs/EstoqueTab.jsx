@@ -36,7 +36,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const stats = [
     { label: "Stock baixo", value: lowCount, color: lowCount > 0 ? BRICK : TEAL },
     { label: "Esgotados", value: outOfStockCount, color: outOfStockCount > 0 ? BRICK : TEAL },
-    { label: "A vencer em breve", value: expiringCount, color: expiringCount > 0 ? "#C9973B" : TEAL },
+    { label: "A vencer em breve", value: expiringCount, color: expiringCount > 0 ? "#F59E0B" : TEAL },
     { label: "Unidades expiradas", value: expiredUnits, color: expiredUnits > 0 ? BRICK : TEAL },
     { label: "Valor em stock", value: fmtMT(valorStock), color: TEAL },
     { label: "Valor potencial (venda)", value: fmtMT(valorPotencial), color: TEAL },
@@ -46,25 +46,25 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <div style={{ background: "#4338CA", color: "#fff" }} className="w-7 h-7 rounded-full flex items-center justify-center">
+          <div style={{ background: "#4F46E5", color: "#fff" }} className="w-7 h-7 rounded-full flex items-center justify-center">
             <Boxes size={14} />
           </div>
           <div className="text-base font-semibold">Gestão de Stock</div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowSaida(true)} style={{ background: BRICK, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+          <button onClick={() => setShowSaida(true)} style={{ background: BRICK, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             − Saída Estoque
           </button>
-          <button onClick={() => setShowNovoLote(true)} style={{ background: GREEN, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+          <button onClick={() => setShowNovoLote(true)} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             + Novo Lote
           </button>
-          <button onClick={onGoCompras} style={{ background: "#2E5AAC", color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+          <button onClick={onGoCompras} style={{ background: "#2563EB", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             Fornecedores
           </button>
           <button
             onClick={() => imprimirEtiquetas(filteredProducts, store.config.businessName)}
-            style={{ borderColor: BORDER, color: "#16241F" }}
-            className="border rounded px-3 py-1.5 text-xs font-medium"
+            style={{ borderColor: BORDER, color: "#0F172A" }}
+            className="border rounded-lg px-3 py-1.5 text-xs font-medium"
           >
             Imprimir etiquetas
           </button>
@@ -92,9 +92,9 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar Produto ou Nome do Lote…"
           style={{ borderColor: BORDER, background: CARD }}
-          className="flex-1 border rounded px-3 py-2 text-sm"
+          className="flex-1 border rounded-lg px-3 py-2 text-sm"
         />
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ borderColor: BORDER, background: CARD }} className="border rounded px-2 py-2 text-sm">
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2 py-2 text-sm">
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -147,7 +147,7 @@ function EstoqueRow({ p, onAdjustStock, onAddVariant, onAdjustVariant, onAddBatc
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-2.5">
       <div className="flex items-center gap-3">
-        <div style={{ background: "#EFF3F1" }} className="w-10 h-10 rounded overflow-hidden flex items-center justify-center shrink-0">
+        <div style={{ background: "#F1F5F9" }} className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
           {p.foto ? <img src={p.foto} alt="" className="w-full h-full object-cover" /> : <Package size={16} style={{ color: MUTED }} />}
         </div>
         <button className="min-w-0 text-left flex-1" onClick={() => setExpanded((e) => !e)}>
@@ -163,19 +163,19 @@ function EstoqueRow({ p, onAdjustStock, onAddVariant, onAdjustVariant, onAddBatc
         <div className="flex items-center gap-2 shrink-0">
           {!p.variants && !p.batches && (
             <>
-              <button onClick={() => onAdjustStock(-1)} style={{ borderColor: BORDER }} className="border rounded p-1">
+              <button onClick={() => onAdjustStock(-1)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                 <Minus size={12} />
               </button>
-              <span style={{ color: stock <= p.minStock ? BRICK : "#16241F" }} className="w-8 text-center text-sm font-medium">
+              <span style={{ color: stock <= p.minStock ? BRICK : "#0F172A" }} className="w-8 text-center text-sm font-medium">
                 {stock}
               </span>
-              <button onClick={() => onAdjustStock(1)} style={{ borderColor: BORDER }} className="border rounded p-1">
+              <button onClick={() => onAdjustStock(1)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                 <Plus size={12} />
               </button>
             </>
           )}
           {(p.variants || p.batches) && (
-            <span style={{ color: stock <= p.minStock ? BRICK : "#16241F" }} className="text-sm font-medium">
+            <span style={{ color: stock <= p.minStock ? BRICK : "#0F172A" }} className="text-sm font-medium">
               {stock}
             </span>
           )}
@@ -194,18 +194,18 @@ function EstoqueRow({ p, onAdjustStock, onAddVariant, onAdjustVariant, onAddBatc
             <div key={v.id} className="flex items-center justify-between text-xs">
               <span>{v.label}</span>
               <div className="flex items-center gap-1">
-                <button onClick={() => onAdjustVariant(v.id, -1)} style={{ borderColor: BORDER }} className="border rounded p-0.5">
+                <button onClick={() => onAdjustVariant(v.id, -1)} style={{ borderColor: BORDER }} className="border rounded-lg p-0.5">
                   <Minus size={10} />
                 </button>
                 <span className="w-6 text-center">{v.stock}</span>
-                <button onClick={() => onAdjustVariant(v.id, 1)} style={{ borderColor: BORDER }} className="border rounded p-0.5">
+                <button onClick={() => onAdjustVariant(v.id, 1)} style={{ borderColor: BORDER }} className="border rounded-lg p-0.5">
                   <Plus size={10} />
                 </button>
               </div>
             </div>
           ))}
           <div className="flex items-center gap-1.5 mt-1">
-            <input value={newVariant} onChange={(e) => setNewVariant(e.target.value)} placeholder="Nova variante (ex: GG)" style={{ borderColor: BORDER }} className="border rounded px-2 py-1 text-xs flex-1" />
+            <input value={newVariant} onChange={(e) => setNewVariant(e.target.value)} placeholder="Nova variante (ex: GG)" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1 text-xs flex-1" />
             <button
               onClick={() => {
                 if (newVariant) {
@@ -234,8 +234,8 @@ function EstoqueRow({ p, onAdjustStock, onAddVariant, onAdjustVariant, onAddBatc
             </div>
           ))}
           <div className="flex items-center gap-1.5 mt-1">
-            <input type="number" value={newBatchQty} onChange={(e) => setNewBatchQty(e.target.value)} placeholder="Qtd" style={{ borderColor: BORDER }} className="border rounded px-2 py-1 text-xs w-16" />
-            <input type="date" value={newBatchExp} onChange={(e) => setNewBatchExp(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1 text-xs flex-1" />
+            <input type="number" value={newBatchQty} onChange={(e) => setNewBatchQty(e.target.value)} placeholder="Qtd" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1 text-xs w-16" />
+            <input type="date" value={newBatchExp} onChange={(e) => setNewBatchExp(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1 text-xs flex-1" />
             <button
               onClick={() => {
                 if (newBatchQty) {
@@ -300,13 +300,13 @@ function BulkImportExport({ products, onImport }) {
         senão, cria um produto novo. Não se aplica a produtos com variantes ou validade.
       </div>
       <div className="flex flex-wrap gap-2">
-        <button onClick={downloadTemplate} style={{ borderColor: BORDER, color: TEAL }} className="border rounded px-3 py-1.5 text-xs font-medium">
+        <button onClick={downloadTemplate} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-3 py-1.5 text-xs font-medium">
           Descarregar modelo
         </button>
-        <button onClick={exportCurrent} style={{ borderColor: BORDER, color: TEAL }} className="border rounded px-3 py-1.5 text-xs font-medium">
+        <button onClick={exportCurrent} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-3 py-1.5 text-xs font-medium">
           Exportar estoque actual
         </button>
-        <label style={{ background: TEAL, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium cursor-pointer">
+        <label style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer">
           Escolher ficheiro Excel
           <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
         </label>
@@ -318,7 +318,7 @@ function BulkImportExport({ products, onImport }) {
       </div>
 
       {preview && (
-        <div style={{ borderColor: BORDER }} className="border rounded p-2 mt-2">
+        <div style={{ borderColor: BORDER }} className="border rounded-lg p-2 mt-2">
           {preview.length === 0 ? (
             <div className="text-xs" style={{ color: BRICK }}>
               Não foi possível ler linhas válidas deste ficheiro. Verifique as colunas e tente novamente.
@@ -330,13 +330,13 @@ function BulkImportExport({ products, onImport }) {
               </div>
               <div className="max-h-32 overflow-auto text-xs space-y-0.5 mb-2">
                 {preview.slice(0, 15).map((r, i) => (
-                  <div key={i} style={{ color: "#16241F" }}>
+                  <div key={i} style={{ color: "#0F172A" }}>
                     {r.name} — {r.category || "Geral"} — {fmtMT(Number(r.price) || 0)} — stock: {r.stock || 0}
                   </div>
                 ))}
                 {preview.length > 15 && <div style={{ color: MUTED }}>… e mais {preview.length - 15}</div>}
               </div>
-              <button onClick={confirmImport} style={{ background: GREEN, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+              <button onClick={confirmImport} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
                 Confirmar importação
               </button>
             </>
@@ -362,15 +362,15 @@ function NovoLoteModal({ products, onAdd, onClose }) {
           </div>
         ) : (
           <>
-            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm mb-2">
+            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mb-2">
               {batchProducts.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
             </select>
-            <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm mb-2" />
-            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm mb-3" />
+            <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mb-2" />
+            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mb-3" />
             <button
               onClick={() => {
                 if (qty) {
@@ -379,7 +379,7 @@ function NovoLoteModal({ products, onAdd, onClose }) {
                 }
               }}
               style={{ background: GREEN, color: "#fff" }}
-              className="w-full rounded py-2 text-sm font-medium"
+              className="w-full rounded-lg py-2 text-sm font-medium"
             >
               Adicionar lote
             </button>
@@ -415,7 +415,7 @@ function SaidaEstoqueModal({ store, onSubmit, onClose }) {
               setVariantId("");
             }}
             style={{ borderColor: BORDER }}
-            className="w-full border rounded px-2 py-1.5 text-sm"
+            className="w-full border rounded-lg px-2 py-1.5 text-sm"
           >
             <option value="">Produto</option>
             {store.products.map((p) => (
@@ -425,7 +425,7 @@ function SaidaEstoqueModal({ store, onSubmit, onClose }) {
             ))}
           </select>
           {product?.variants && (
-            <select value={variantId} onChange={(e) => setVariantId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm">
+            <select value={variantId} onChange={(e) => setVariantId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
               <option value="">Variante</option>
               {product.variants.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -435,8 +435,8 @@ function SaidaEstoqueModal({ store, onSubmit, onClose }) {
             </select>
           )}
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm" />
-            <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm">
+            <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
+            <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
               <option>Danificado</option>
               <option>Vencido</option>
               <option>Roubo/Perda</option>
@@ -444,7 +444,7 @@ function SaidaEstoqueModal({ store, onSubmit, onClose }) {
               <option>Outro</option>
             </select>
           </div>
-          <button onClick={submit} style={{ background: BRICK, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+          <button onClick={submit} style={{ background: BRICK, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
             Registar
           </button>
         </div>

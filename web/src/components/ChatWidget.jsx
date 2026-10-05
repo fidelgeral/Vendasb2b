@@ -29,8 +29,8 @@ export default function ChatWidget({ messages, onSend, loading, placeholder, emp
         {messages.map((m, i) => (
           <div key={i} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
             <div
-              style={{ background: m.role === "user" ? TEAL : "#EFF3F1", color: m.role === "user" ? "#fff" : "#16241F" }}
-              className="rounded-lg px-3 py-2 text-sm max-w-[85%] whitespace-pre-wrap"
+              style={{ background: m.role === "user" ? "linear-gradient(135deg,#4F46E5,#7C3AED)" : "#F1F5F9", color: m.role === "user" ? "#fff" : "#0F172A" }}
+              className={"px-3.5 py-2 text-sm max-w-[85%] whitespace-pre-wrap shadow-sm " + (m.role === "user" ? "rounded-2xl rounded-br-md" : "rounded-2xl rounded-bl-md")}
             >
               {m.content}
             </div>
@@ -38,7 +38,7 @@ export default function ChatWidget({ messages, onSend, loading, placeholder, emp
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div style={{ background: "#EFF3F1", color: MUTED }} className="rounded-lg px-3 py-2 text-sm">
+            <div style={{ background: "#F1F5F9", color: MUTED }} className="rounded-lg px-3 py-2 text-sm">
               A escrever…
             </div>
           </div>
@@ -51,9 +51,9 @@ export default function ChatWidget({ messages, onSend, loading, placeholder, emp
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder={placeholder}
           style={{ borderColor: BORDER }}
-          className="flex-1 border rounded px-2.5 py-2 text-sm"
+          className="flex-1 border rounded-lg px-2.5 py-2 text-sm"
         />
-        <button onClick={send} disabled={loading || !text.trim()} style={{ background: TEAL, color: "#fff" }} className="rounded px-3 py-2 text-sm font-medium disabled:opacity-40">
+        <button onClick={send} disabled={loading || !text.trim()} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-40">
           Enviar
         </button>
       </div>

@@ -28,7 +28,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
   return (
     <div>
       <div
-        style={{ background: shiftOpen ? "#E4F4EA" : "#FBE9E7", borderColor: shiftOpen ? "#8FCBA6" : "#F0C6C0" }}
+        style={{ background: shiftOpen ? "#D1FAE5" : "#FEE2E2", borderColor: shiftOpen ? "#6EE7B7" : "#FCA5A5" }}
         className="border rounded-lg p-4 mb-4 flex items-center justify-between flex-wrap gap-2"
       >
         <div className="flex items-center gap-2">
@@ -47,7 +47,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
         <button
           onClick={() => setShowShiftModal(shiftOpen ? "close" : "open")}
           style={{ background: shiftOpen ? BRICK : GREEN, color: "#fff" }}
-          className="text-xs px-3 py-1.5 rounded font-medium"
+          className="text-xs px-3 py-1.5 rounded-lg font-medium"
         >
           {shiftOpen ? "Fechar caixa" : "Abrir caixa"}
         </button>
@@ -113,7 +113,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
             ))}
           </div>
           {quebrasCusto > 0 && (
-            <div style={{ background: "#FBE9E7", borderColor: "#F0C6C0", color: BRICK }} className="border rounded-lg p-3 text-sm">
+            <div style={{ background: "#FEE2E2", borderColor: "#FCA5A5", color: BRICK }} className="border rounded-lg p-3 text-sm">
               Perdas por quebra neste turno: {fmtMT(quebrasCusto)}
             </div>
           )}
@@ -165,7 +165,7 @@ function QuebrasForm({ store, onSubmit }) {
           setVariantId("");
         }}
         style={{ borderColor: BORDER }}
-        className="w-full border rounded px-2 py-1.5 text-sm"
+        className="w-full border rounded-lg px-2 py-1.5 text-sm"
       >
         <option value="">Produto</option>
         {store.products.map((p) => (
@@ -175,7 +175,7 @@ function QuebrasForm({ store, onSubmit }) {
         ))}
       </select>
       {product?.variants && (
-        <select value={variantId} onChange={(e) => setVariantId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm">
+        <select value={variantId} onChange={(e) => setVariantId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
           <option value="">Variante</option>
           {product.variants.map((v) => (
             <option key={v.id} value={v.id}>
@@ -185,8 +185,8 @@ function QuebrasForm({ store, onSubmit }) {
         </select>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm" />
-        <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm">
+        <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
+        <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
           <option>Danificado</option>
           <option>Vencido</option>
           <option>Roubo/Perda</option>
@@ -194,7 +194,7 @@ function QuebrasForm({ store, onSubmit }) {
           <option>Outro</option>
         </select>
       </div>
-      <button onClick={submit} style={{ background: BRICK, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+      <button onClick={submit} style={{ background: BRICK, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
         Registar
       </button>
       <div className="text-xs" style={{ color: MUTED }}>
@@ -224,8 +224,8 @@ function MovimentoForm({ type, shiftOpen, onSubmit }) {
           Abra o caixa para registar movimentos.
         </div>
       )}
-      <input type="number" placeholder="Valor (MT)" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm" />
-      <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm">
+      <input type="number" placeholder="Valor (MT)" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+      <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
         {cats.map((c) => (
           <option key={c} value={c}>
             {c}
@@ -237,9 +237,9 @@ function MovimentoForm({ type, shiftOpen, onSubmit }) {
         value={motivo}
         onChange={(e) => setMotivo(e.target.value)}
         style={{ borderColor: BORDER }}
-        className="w-full border rounded px-2 py-1.5 text-sm"
+        className="w-full border rounded-lg px-2 py-1.5 text-sm"
       />
-      <button onClick={submit} disabled={!shiftOpen} style={{ background: isEntrada ? GREEN : BRICK, color: "#fff" }} className="px-3 py-1.5 rounded text-sm disabled:opacity-40">
+      <button onClick={submit} disabled={!shiftOpen} style={{ background: isEntrada ? GREEN : BRICK, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-40">
         Registar {isEntrada ? "entrada" : "saída"}
       </button>
     </div>
@@ -260,13 +260,13 @@ function ShiftModal({ mode, onConfirmOpen, onConfirmClose, onClose }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           style={{ borderColor: BORDER }}
-          className="w-full border rounded px-2 py-1.5 text-sm mt-1 mb-3"
+          className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1 mb-3"
           placeholder="0"
         />
         <button
           onClick={() => (mode === "open" ? onConfirmOpen(Number(value) || 0) : onConfirmClose(Number(value) || 0))}
           style={{ background: TEAL, color: "#fff" }}
-          className="w-full rounded py-2 text-sm font-medium"
+          className="w-full rounded-lg py-2 text-sm font-medium"
         >
           Confirmar
         </button>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD } from "./lib/theme.js";
+import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT } from "./lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./lib/theme.js";
 import { BRAND_LOGO } from "./lib/logo.js";
 import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
@@ -97,7 +97,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
 
   const alerts = [
     ...store.products.filter((p) => isLowStock(p, store.products)).map((p) => ({ text: `${p.name} — stock baixo (${getStock(p, store.products)})`, color: BRICK, tab: "estoque" })),
-    ...store.products.filter((p) => nearExpiry(p).length > 0).map((p) => ({ text: `${p.name} — lote a vencer em breve`, color: "#C9973B", tab: "estoque" })),
+    ...store.products.filter((p) => nearExpiry(p).length > 0).map((p) => ({ text: `${p.name} — lote a vencer em breve`, color: "#F59E0B", tab: "estoque" })),
     ...store.clients
       .filter((c) => c.creditLimit > 0 && c.debts.reduce((s, d) => s + d.amount, 0) > c.creditLimit)
       .map((c) => ({ text: `${c.name} passou o limite de fiado`, color: BRICK, tab: "clientes" })),
@@ -162,37 +162,37 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   return (
     <div
       style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }}
-      className="w-full min-h-[620px] rounded-lg overflow-hidden flex flex-col relative"
+      className="w-full min-h-screen overflow-hidden flex flex-col relative"
     >
-      <div style={{ background: TEAL, color: "#fff" }} className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap">
+      <div style={{ background: GRADIENT, color: "#fff" }} className="flex items-center justify-between px-4 py-3.5 gap-2 flex-wrap shadow-md">
         <div className="flex items-center gap-3 min-w-0">
-          <div style={{ background: "#fff" }} className="rounded-md p-1 shrink-0">
+          <div style={{ background: "#fff" }} className="rounded-xl p-1.5 shrink-0 shadow">
             <img src={BRAND_LOGO} alt={BRAND_NAME} style={{ height: 30 }} className="block" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] tracking-wide opacity-70 truncate">{BRAND_NAME} · {BRAND_TAGLINE}</div>
-            <div className="text-lg font-semibold leading-tight truncate">{store.config.businessName}</div>
+            <div className="text-[11px] tracking-wide opacity-80 truncate">{BRAND_NAME} · {BRAND_TAGLINE}</div>
+            <div className="text-xl font-bold leading-tight truncate">{store.config.businessName}</div>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setShowChart((v) => !v)} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded flex items-center gap-1">
+          <button onClick={() => setShowChart((v) => !v)} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1">
             <Scale size={12} /> Gráfico
           </button>
           {saveError && (
-            <span style={{ background: "rgba(178,58,46,0.35)" }} className="text-xs px-2.5 py-1.5 rounded font-medium">
+            <span style={{ background: "rgba(239,68,68,0.45)" }} className="text-xs px-2.5 py-1.5 rounded-lg font-medium">
               Offline
             </span>
           )}
           {isSuperAdmin && (
-            <button onClick={onExitBusiness} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded flex items-center gap-1">
+            <button onClick={onExitBusiness} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1">
               <ChevronLeft size={12} /> Contas
             </button>
           )}
           <NotificationBell alerts={alerts} onGo={(t) => setTab(t)} />
           <button
             onClick={() => setTab("caixa")}
-            style={{ background: shiftOpen ? "rgba(46,110,78,0.35)" : "rgba(178,58,46,0.35)" }}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded font-medium"
+            style={{ background: shiftOpen ? "rgba(16,185,129,0.45)" : "rgba(239,68,68,0.45)" }}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium"
           >
             <span style={{ background: shiftOpen ? GREEN : BRICK }} className="w-2 h-2 rounded-full" />
             {shiftOpen ? "Caixa aberto" : "Caixa fechado"}
@@ -201,18 +201,18 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             <button
               onClick={() => setShowUserSwitch(true)}
               style={{ background: "rgba(255,255,255,0.15)" }}
-              className="text-xs px-2.5 py-1.5 rounded flex items-center gap-1"
+              className="text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1"
             >
               <Lock size={12} /> {employeeName}
             </button>
           )}
-          <button onClick={logout} style={{ background: "rgba(255,255,255,0.15)" }} className="p-1.5 rounded">
+          <button onClick={logout} style={{ background: "rgba(255,255,255,0.15)" }} className="p-1.5 rounded-lg">
             <LogOut size={14} />
           </button>
         </div>
       </div>
 
-      <div style={{ borderBottom: `1px solid ${BORDER}`, background: CARD }} className="flex overflow-x-auto">
+      <div style={{ borderBottom: `1px solid ${BORDER}`, background: CARD }} className="flex gap-1 overflow-x-auto px-3 py-2 shadow-sm">
         {tabDefs.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -220,8 +220,8 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              style={{ color: active ? TEAL : MUTED, borderBottom: active ? "2px solid #C9973B" : "2px solid transparent" }}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap"
+              style={{ color: active ? "#fff" : MUTED, background: active ? GRADIENT : "transparent", boxShadow: active ? "0 4px 12px rgba(79,70,229,0.3)" : "none" }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap hover:bg-indigo-50"
             >
               <Icon size={15} />
               {t.label}
@@ -230,9 +230,9 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
         })}
       </div>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 md:p-6">
         {!shiftOpen && tab === "vender" && (
-          <div style={{ background: SOFTGOLD, borderColor: "#C9973B" }} className="border rounded-lg p-4 text-sm mb-4">
+          <div style={{ background: SOFTGOLD, borderColor: "#F59E0B" }} className="border rounded-lg p-4 text-sm mb-4">
             O caixa está fechado. Abra o caixa na aba Caixa para começar a registar vendas.
           </div>
         )}
@@ -286,14 +286,14 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       </div>
 
       {saveError && (
-        <div style={{ background: "#FBE9E7", color: BRICK }} className="text-xs px-4 py-2">
+        <div style={{ background: "#FEE2E2", color: BRICK }} className="text-xs px-4 py-2">
           {saveError}
         </div>
       )}
       {toast && (
         <div
           style={{ background: toast.tone === "warn" ? BRICK : TEAL, color: "#fff" }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded shadow-lg text-sm flex items-center gap-2 z-50"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-2 z-50"
         >
           <CheckCircle2 size={15} />
           {toast.msg}

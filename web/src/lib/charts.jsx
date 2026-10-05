@@ -3,7 +3,7 @@ import { INK, TEAL, MUTED, BORDER, CARD } from "./theme.js";
 import { fmtMT } from "./utils.js";
 import { X } from "./icons.jsx";
 
-export function AreaChart({ points, height = 70, color = TEAL, fill = "rgba(18,60,60,0.12)", labels }) {
+export function AreaChart({ points, height = 70, color = TEAL, fill = "rgba(79,70,229,0.14)", labels }) {
   const [hover, setHover] = useState(null);
   if (!points || points.length === 0) return null;
   const max = Math.max(...points, 1);
@@ -27,7 +27,7 @@ export function AreaChart({ points, height = 70, color = TEAL, fill = "rgba(18,6
       {hover !== null && (
         <div
           style={{ background: INK, color: "#fff", left: Math.min(88, Math.max(2, (hover / Math.max(1, points.length - 1)) * 100)) + "%" }}
-          className="absolute -top-1 text-[10px] px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap -translate-x-1/2"
+          className="absolute -top-1 text-[10px] px-1.5 py-0.5 rounded-lg pointer-events-none whitespace-nowrap -translate-x-1/2"
         >
           {labels && labels[hover] ? labels[hover] + ": " : ""}
           {fmtMT(points[hover])}
@@ -44,7 +44,7 @@ export function DonutChart({ data, size = 120 }) {
   const r = size / 2 - 10;
   const c = size / 2;
   let acc = 0;
-  const cores = ["#123C3C", "#2E6E4E", "#C9973B", "#5B4FE0", "#B23A2E", "#2E5AAC", "#7C3AED"];
+  const cores = ["#4F46E5", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#8B5CF6", "#EF4444"];
   return (
     <div className="flex items-center gap-3">
       <svg width={size} height={size} onMouseLeave={() => setHover(null)}>
@@ -54,6 +54,15 @@ export function DonutChart({ data, size = 120 }) {
           acc += frac;
           const a1 = acc * 2 * Math.PI - Math.PI / 2;
           const large = frac > 0.5 ? 1 : 0;
+          const common = {
+            fill: "none",
+            stroke: cores[i % cores.length],
+            strokeWidth: hover === i ? 20 : 15,
+            onMouseEnter: () => setHover(i),
+            style: { cursor: "pointer", transition: "stroke-width .12s" },
+          };
+          // Um arco SVG com início = fim não desenha nada: a fatia de 100% é um círculo.
+          if (frac >= 0.9999) return <circle key={i} cx={c} cy={c} r={r} {...common} />;
           const path = [
             "M", c + r * Math.cos(a0), c + r * Math.sin(a0),
             "A", r, r, 0, large, 1, c + r * Math.cos(a1), c + r * Math.sin(a1),
@@ -92,11 +101,12 @@ export function DonutChart({ data, size = 120 }) {
 
 export function StatCardChart({ label, value, sub, points, labels, color }) {
   return (
-    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 overflow-hidden">
-      <div className="text-xs" style={{ color: MUTED }}>
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3.5 overflow-hidden relative">
+      <div style={{ background: "linear-gradient(90deg,#4F46E5,#7C3AED,#DB2777)" }} className="absolute top-0 left-0 right-0 h-1" />
+      <div className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
         {label}
       </div>
-      <div style={{ color: color || TEAL }} className="text-xl font-semibold mt-1">
+      <div style={{ color: color || TEAL }} className="text-2xl font-bold mt-1">
         {value}
       </div>
       {sub && (

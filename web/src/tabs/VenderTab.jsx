@@ -168,13 +168,13 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Procurar produto ou ler código de barras… (F3)"
             style={{ borderColor: BORDER, background: CARD }}
-            className="flex-1 border rounded px-3 py-2 text-sm outline-none"
+            className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none"
           />
-          <button onClick={() => setVendaRapida((v) => !v)} style={{ borderColor: vendaRapida ? GOLD : BORDER, color: vendaRapida ? GOLD : MUTED, background: vendaRapida ? SOFTGOLD : CARD }} className="border rounded px-2.5 py-2 text-xs font-medium whitespace-nowrap">
+          <button onClick={() => setVendaRapida((v) => !v)} style={{ borderColor: vendaRapida ? GOLD : BORDER, color: vendaRapida ? GOLD : MUTED, background: vendaRapida ? SOFTGOLD : CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap">
             Venda rápida
           </button>
           {store.parkedSales.length > 0 && (
-            <button onClick={() => setShowParked(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded px-2.5 py-2 text-xs flex items-center gap-1">
+            <button onClick={() => setShowParked(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-2.5 py-2 text-xs flex items-center gap-1">
               <PlayCircle size={13} /> {store.parkedSales.length} em espera
             </button>
           )}
@@ -219,7 +219,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
                 <div
                   key={s.id}
                   style={{ background: CARD, borderColor: BORDER, opacity: s.status === "void" ? 0.5 : 1 }}
-                  className="border rounded px-2.5 py-1.5 flex items-center justify-between text-xs"
+                  className="border rounded-lg px-2.5 py-1.5 flex items-center justify-between text-xs"
                 >
                   <span>
                     {s.numero ? s.numero + " · " : ""}
@@ -271,11 +271,11 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => updateQty(l.lineId, l.qty - (l.unit === "un" ? 1 : 0.5))} style={{ borderColor: BORDER }} className="border rounded p-1">
+                  <button onClick={() => updateQty(l.lineId, l.qty - (l.unit === "un" ? 1 : 0.5))} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                     <Minus size={12} />
                   </button>
                   <span className="w-8 text-center text-xs">{l.qty}</span>
-                  <button onClick={() => updateQty(l.lineId, l.qty + (l.unit === "un" ? 1 : 0.5))} style={{ borderColor: BORDER }} className="border rounded p-1">
+                  <button onClick={() => updateQty(l.lineId, l.qty + (l.unit === "un" ? 1 : 0.5))} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                     <Plus size={12} />
                   </button>
                   <button onClick={() => removeLine(l.lineId)} className="ml-1">
@@ -302,7 +302,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
                   disabled={v.stock <= 0}
                   onClick={() => addToCart(variantPicker, v)}
                   style={{ borderColor: BORDER, opacity: v.stock <= 0 ? 0.4 : 1 }}
-                  className="border rounded p-2 text-xs text-center"
+                  className="border rounded-lg p-2 text-xs text-center"
                 >
                   <div className="font-medium">{v.label}</div>
                   <div style={{ color: MUTED }}>{v.stock} un</div>
@@ -319,7 +319,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             <div className="text-sm font-semibold mb-3">Vendas em espera</div>
             <div className="space-y-1.5">
               {store.parkedSales.map((p) => (
-                <button key={p.id} onClick={() => resumeSale(p)} style={{ borderColor: BORDER }} className="w-full border rounded px-3 py-2 text-sm text-left flex justify-between">
+                <button key={p.id} onClick={() => resumeSale(p)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-3 py-2 text-sm text-left flex justify-between">
                   <span>{p.cart.length} item(ns)</span>
                   <span style={{ color: MUTED }} className="text-xs">
                     {new Date(p.date).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}

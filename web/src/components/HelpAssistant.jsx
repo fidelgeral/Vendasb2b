@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CARD, BORDER, TEAL } from "../lib/theme.js";
+import { CARD, BORDER, GRADIENT } from "../lib/theme.js";
 import ChatWidget from "./ChatWidget.jsx";
 
 export default function HelpAssistant({ api }) {
@@ -24,15 +24,15 @@ export default function HelpAssistant({ api }) {
     <>
       <button
         onClick={() => setOpen((o) => !o)}
-        style={{ background: TEAL, color: "#fff" }}
-        className="fixed bottom-4 right-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-lg font-bold"
+        style={{ background: GRADIENT, color: "#fff", boxShadow: "0 8px 24px rgba(124,58,237,0.45)" }}
+        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold"
         title="Precisa de ajuda?"
       >
         ?
       </button>
       {open && (
-        <div style={{ background: CARD, borderColor: BORDER }} className="fixed bottom-20 right-4 z-40 border rounded-xl shadow-2xl w-[320px] max-w-[92vw] h-[420px] flex flex-col overflow-hidden">
-          <div style={{ background: TEAL, color: "#fff" }} className="px-3 py-2 text-sm font-semibold flex items-center justify-between">
+        <div style={{ background: CARD, borderColor: BORDER }} className="fixed bottom-24 right-5 z-40 border rounded-2xl shadow-2xl w-[340px] max-w-[92vw] h-[440px] flex flex-col overflow-hidden">
+          <div style={{ background: GRADIENT, color: "#fff" }} className="px-4 py-3 text-sm font-bold flex items-center justify-between">
             Assistente de ajuda
             <button onClick={() => setOpen(false)} className="opacity-80 hover:opacity-100">
               ✕

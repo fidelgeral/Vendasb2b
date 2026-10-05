@@ -3,13 +3,16 @@ import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, BG, PRICE_GREEN, GREEN, SO
 import { fmtMT, getStock, isLowStock, compressImageFile } from "../lib/utils.js";
 import { Bell, AlertTriangle, ImageOff, Link2, Package, Percent, Split, X } from "../lib/icons.jsx";
 
+const PAYMENT_COLORS = { dinheiro: "#10B981", mpesa: "#DC2626", emola: "#EA580C", fiado: "#7C3AED" };
+
 export function StatCard({ label, value, sub }) {
   return (
-    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
-      <div className="text-xs" style={{ color: MUTED }}>
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3.5 relative overflow-hidden">
+      <div style={{ background: "linear-gradient(90deg,#4F46E5,#7C3AED,#DB2777)" }} className="absolute top-0 left-0 right-0 h-1" />
+      <div className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
         {label}
       </div>
-      <div style={{ color: TEAL }} className="text-xl font-semibold mt-1">
+      <div style={{ color: INK }} className="text-2xl font-bold mt-1">
         {value}
       </div>
       {sub && (
@@ -42,8 +45,8 @@ export function BarRow({ label, value, max }) {
   return (
     <div className="flex items-center gap-2 text-sm py-0.5">
       <div className="w-32 truncate">{label}</div>
-      <div style={{ background: BORDER }} className="flex-1 h-2 rounded">
-        <div style={{ background: GOLD, width: `${(value / max) * 100}%` }} className="h-2 rounded" />
+      <div style={{ background: BORDER }} className="flex-1 h-2 rounded-lg">
+        <div style={{ background: GOLD, width: `${(value / max) * 100}%` }} className="h-2 rounded-lg" />
       </div>
       <div className="w-8 text-right text-xs" style={{ color: MUTED }}>
         {value}
@@ -56,7 +59,7 @@ export function NotificationBell({ alerts, onGo }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} style={{ background: "rgba(255,255,255,0.15)" }} className="relative p-2 rounded">
+      <button onClick={() => setOpen((o) => !o)} style={{ background: "rgba(255,255,255,0.15)" }} className="relative p-2 rounded-lg">
         <Bell size={16} color="#fff" />
         {alerts.length > 0 && (
           <span style={{ background: BRICK }} className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] text-white flex items-center justify-center">
@@ -116,9 +119,9 @@ export function PhotoPicker({ value, onChange }) {
   return (
     <div className="flex items-center gap-2">
       {value ? (
-        <img src={value} alt="" style={{ borderColor: BORDER }} className="w-12 h-12 rounded object-cover border" />
+        <img src={value} alt="" style={{ borderColor: BORDER }} className="w-12 h-12 rounded-lg object-cover border" />
       ) : (
-        <div style={{ background: BG, borderColor: BORDER }} className="w-12 h-12 rounded border flex items-center justify-center">
+        <div style={{ background: BG, borderColor: BORDER }} className="w-12 h-12 rounded-lg border flex items-center justify-center">
           <ImageOff size={16} style={{ color: MUTED }} />
         </div>
       )}
@@ -150,7 +153,7 @@ export function PhotoPicker({ value, onChange }) {
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="https://…"
               style={{ borderColor: BORDER }}
-              className="border rounded px-2 py-1 text-xs flex-1"
+              className="border rounded-lg px-2 py-1 text-xs flex-1"
             />
             <button type="button" onClick={() => onChange(urlInput)} style={{ color: TEAL }} className="text-xs font-medium">
               Usar
@@ -169,16 +172,19 @@ export function ProductCard({ p, onClick, disabled, produtos, compact }) {
       onClick={onClick}
       disabled={disabled}
       style={{ background: CARD, borderColor: BORDER, opacity: disabled ? 0.45 : 1 }}
-      className="border rounded-xl overflow-hidden text-left hover:shadow-md transition disabled:cursor-not-allowed flex flex-col"
+      className="border rounded-2xl overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 transition disabled:cursor-not-allowed flex flex-col"
     >
-      <div style={{ background: BG }} className={"w-full flex items-center justify-center overflow-hidden " + (compact ? "aspect-[5/3]" : "aspect-[4/3]")}>
-        {p.foto ? <img src={p.foto} alt={p.name} className="w-full h-full object-cover" /> : <Package size={compact ? 20 : 26} style={{ color: MUTED }} />}
+      <div style={{ background: "linear-gradient(135deg,#EEF2FF,#FCE7F3)" }} className={"w-full flex items-center justify-center overflow-hidden relative " + (compact ? "aspect-[5/3]" : "aspect-[4/3]")}>
+        {p.foto ? <img src={p.foto} alt={p.name} className="w-full h-full object-cover" /> : <Package size={compact ? 22 : 28} style={{ color: "#818CF8" }} />}
+        <span
+          style={{ background: stock <= 0 ? BRICK : isLowStock(p, produtos) ? GOLD : GREEN, color: "#fff" }}
+          className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow"
+        >
+          {stock <= 0 ? "Esgotado" : `${stock}${p.unit !== "un" ? p.unit : ""}`}
+        </span>
       </div>
-      <div className={compact ? "p-1.5" : "p-2.5"}>
-        <div className={"font-medium leading-snug truncate " + (compact ? "text-xs" : "text-sm")}>{p.name}</div>
-        <div style={{ color: isLowStock(p, produtos) ? BRICK : MUTED }} className="text-[10px] mt-0.5">
-          {stock <= 0 ? "Sem stock" : `${stock}${p.unit !== "un" ? p.unit : " un"}`}
-        </div>
+      <div className={compact ? "p-2" : "p-2.5"}>
+        <div className={"font-semibold leading-snug truncate " + (compact ? "text-xs" : "text-sm")}>{p.name}</div>
         <div style={{ color: PRICE_GREEN }} className={"font-bold " + (compact ? "text-sm" : "text-base mt-1")}>
           {fmtMT(p.price)}
         </div>
@@ -198,9 +204,9 @@ export function VoidModal({ onConfirm, onClose }) {
           onChange={(e) => setReason(e.target.value)}
           placeholder="Motivo do cancelamento"
           style={{ borderColor: BORDER }}
-          className="w-full border rounded px-2 py-1.5 text-sm mb-3"
+          className="w-full border rounded-lg px-2 py-1.5 text-sm mb-3"
         />
-        <button onClick={() => onConfirm(reason)} style={{ background: BRICK, color: "#fff" }} className="w-full rounded py-2 text-sm font-medium">
+        <button onClick={() => onConfirm(reason)} style={{ background: BRICK, color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-medium">
           Confirmar cancelamento
         </button>
       </div>
@@ -220,7 +226,7 @@ export function CategoriasModal({ categories, onAdd, onRemove, onClose }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Nova categoria"
             style={{ borderColor: BORDER }}
-            className="flex-1 border rounded px-2 py-1.5 text-sm"
+            className="flex-1 border rounded-lg px-2 py-1.5 text-sm"
           />
           <button
             onClick={() => {
@@ -230,14 +236,14 @@ export function CategoriasModal({ categories, onAdd, onRemove, onClose }) {
               }
             }}
             style={{ background: TEAL, color: "#fff" }}
-            className="rounded px-3 py-1.5 text-sm"
+            className="rounded-lg px-3 py-1.5 text-sm"
           >
             Adicionar
           </button>
         </div>
         <div className="space-y-1 max-h-56 overflow-auto">
           {categories.map((c) => (
-            <div key={c} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-1.5 text-sm flex items-center justify-between">
+            <div key={c} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-1.5 text-sm flex items-center justify-between">
               <span>{c}</span>
               <button onClick={() => onRemove(c)}>
                 <X size={14} style={{ color: BRICK }} />
@@ -323,7 +329,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
             onChange={(e) => setDiscount(e.target.value)}
             placeholder="Desconto (MT)"
             style={{ borderColor: BORDER }}
-            className="border rounded px-2 py-1 text-xs flex-1"
+            className="border rounded-lg px-2 py-1 text-xs flex-1"
           />
         </div>
       )}
@@ -343,7 +349,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         <span style={{ color: TEAL }}>{fmtMT(total)}</span>
       </div>
 
-      <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm mb-2">
+      <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mb-2">
         <option value="">Cliente (necessário para fiado / pontos)</option>
         {clients.map((c) => (
           <option key={c.id} value={c.id}>
@@ -365,7 +371,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         </div>
       )}
       {fiadoBloqueado && (
-        <div style={{ background: "#FBE9E7", color: BRICK }} className="rounded p-2 text-xs mb-2">
+        <div style={{ background: "#FEE2E2", color: BRICK }} className="rounded-lg p-2 text-xs mb-2">
           Limite de crédito excedido: {fmtMT(dividaActual)} em dívida + {fmtMT(total)} ultrapassa o limite de {fmtMT(limite)}. O fiado está bloqueado para este cliente.
         </div>
       )}
@@ -377,7 +383,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
           onChange={(e) => setRecebido(e.target.value)}
           placeholder="Valor recebido (MT)"
           style={{ borderColor: BORDER }}
-          className="border rounded px-2 py-1.5 text-sm flex-1"
+          className="border rounded-lg px-2 py-1.5 text-sm flex-1"
         />
         {recebido !== "" && (
           <div className="text-right shrink-0">
@@ -411,8 +417,8 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
                 onClick={() => confirmSingle(p.id)}
                 disabled={disabled}
                 id={p.id === "dinheiro" ? "pdv-finalizar-dinheiro" : undefined}
-                style={{ background: p.id === "fiado" ? GOLD : TEAL, color: "#fff" }}
-                className="flex items-center justify-center gap-1.5 rounded py-2 text-xs font-medium disabled:opacity-40"
+                style={{ background: PAYMENT_COLORS[p.id] || TEAL, color: "#fff", boxShadow: disabled ? "none" : "0 4px 10px rgba(15,23,42,0.15)" }}
+                className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40"
               >
                 <Icon size={13} />
                 {p.label}
@@ -426,7 +432,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         <div className="space-y-1.5">
           {splitLines.map((l, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <select value={l.method} onChange={(e) => updateSplitLine(i, "method", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-1.5 py-1 text-xs">
+              <select value={l.method} onChange={(e) => updateSplitLine(i, "method", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-1.5 py-1 text-xs">
                 {paymentMethods.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
@@ -439,7 +445,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
                 onChange={(e) => updateSplitLine(i, "amount", e.target.value)}
                 placeholder="Valor"
                 style={{ borderColor: BORDER }}
-                className="border rounded px-2 py-1 text-xs flex-1"
+                className="border rounded-lg px-2 py-1 text-xs flex-1"
               />
               <button onClick={() => removeSplitLine(i)}>
                 <X size={13} style={{ color: BRICK }} />
@@ -456,7 +462,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
             onClick={confirmSplit}
             disabled={Math.round(splitSum) !== Math.round(total) || (needsClient && !clientId)}
             style={{ background: TEAL, color: "#fff" }}
-            className="w-full rounded py-2 text-xs font-medium disabled:opacity-40"
+            className="w-full rounded-lg py-2 text-xs font-medium disabled:opacity-40"
           >
             Confirmar pagamento dividido
           </button>

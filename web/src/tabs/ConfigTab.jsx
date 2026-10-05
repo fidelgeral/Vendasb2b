@@ -22,7 +22,7 @@ export default function ConfigTab({ store, setStore, api }) {
             <button
               key={c.id}
               onClick={() => setCat(c.id)}
-              style={{ background: active ? TEAL : CARD, color: active ? "#fff" : "#16241F", borderColor: BORDER }}
+              style={{ background: active ? TEAL : CARD, color: active ? "#fff" : "#0F172A", borderColor: BORDER }}
               className="border rounded-full px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 whitespace-nowrap"
             >
               <Icon size={13} />
@@ -64,10 +64,10 @@ function AtendimentoLink({ store }) {
         Partilhe este link — os seus clientes podem tirar dúvidas sobre produtos, preços e contacto, respondidas automaticamente por IA.
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        <code style={{ background: "#EFF3F1", borderColor: BORDER }} className="border rounded px-2 py-1.5 text-xs break-all">
+        <code style={{ background: "#F1F5F9", borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-xs break-all">
           {link}
         </code>
-        <button onClick={copy} style={{ background: TEAL, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+        <button onClick={copy} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
           {copied ? "Copiado!" : "Copiar link"}
         </button>
       </div>
@@ -96,7 +96,7 @@ function ImpressaoConfig({ store, setStore, api }) {
       <label className="text-xs" style={{ color: MUTED }}>
         Largura do papel do recibo
       </label>
-      <select value={papel} onChange={(e) => setPapel(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm">
+      <select value={papel} onChange={(e) => setPapel(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
         <option value="58mm">58mm</option>
         <option value="80mm">80mm</option>
       </select>
@@ -107,8 +107,8 @@ function ImpressaoConfig({ store, setStore, api }) {
         Série de documentos (facturas/recibos)
       </label>
       <div className="flex gap-2">
-        <input value={prefixo} onChange={(e) => setPrefixo(e.target.value.toUpperCase())} placeholder="FT" style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm w-20" />
-        <input type="number" value={proximo} onChange={(e) => setProximo(e.target.value)} placeholder="1" style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm flex-1" />
+        <input value={prefixo} onChange={(e) => setPrefixo(e.target.value.toUpperCase())} placeholder="FT" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm w-20" />
+        <input type="number" value={proximo} onChange={(e) => setProximo(e.target.value)} placeholder="1" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm flex-1" />
       </div>
       <div className="text-xs" style={{ color: MUTED }}>
         Próximo documento: {(prefixo || "FT") + new Date().getFullYear() + "/" + String(Number(proximo) || 1).padStart(4, "0")}
@@ -116,8 +116,8 @@ function ImpressaoConfig({ store, setStore, api }) {
       <label className="text-xs" style={{ color: MUTED }}>
         Mensagem no recibo
       </label>
-      <input value={mensagem} onChange={(e) => setMensagem(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm" />
-      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+      <input value={mensagem} onChange={(e) => setMensagem(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
         Guardar
       </button>
     </div>
@@ -140,13 +140,13 @@ function IvaConfig({ store, setStore, api }) {
           <label className="text-xs" style={{ color: MUTED }}>
             Taxa de IVA (%)
           </label>
-          <input type="number" value={taxa} onChange={(e) => setTaxa(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm" />
+          <input type="number" value={taxa} onChange={(e) => setTaxa(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={precosIncluemIva} onChange={(e) => setPrecosIncluemIva(e.target.checked)} /> Os preços já incluem IVA
           </label>
         </>
       )}
-      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
         Guardar
       </button>
       <div className="text-xs" style={{ color: MUTED }}>
@@ -166,29 +166,29 @@ function ContasConfig({ store, setStore, api }) {
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={contas.dinheiro.activo} onChange={(e) => update("dinheiro", "activo", e.target.checked)} /> Dinheiro
       </label>
-      <div style={{ borderColor: BORDER }} className="border rounded p-2 space-y-1.5">
+      <div style={{ borderColor: BORDER }} className="border rounded-lg p-2 space-y-1.5">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={contas.mpesa.activo} onChange={(e) => update("mpesa", "activo", e.target.checked)} /> M-Pesa
         </label>
         {contas.mpesa.activo && (
           <>
-            <input placeholder="Número/agente M-Pesa" value={contas.mpesa.numero} onChange={(e) => update("mpesa", "numero", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1 text-xs" />
-            <input placeholder="Titular da conta" value={contas.mpesa.titular} onChange={(e) => update("mpesa", "titular", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1 text-xs" />
+            <input placeholder="Número/agente M-Pesa" value={contas.mpesa.numero} onChange={(e) => update("mpesa", "numero", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1 text-xs" />
+            <input placeholder="Titular da conta" value={contas.mpesa.titular} onChange={(e) => update("mpesa", "titular", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1 text-xs" />
           </>
         )}
       </div>
-      <div style={{ borderColor: BORDER }} className="border rounded p-2 space-y-1.5">
+      <div style={{ borderColor: BORDER }} className="border rounded-lg p-2 space-y-1.5">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={contas.emola.activo} onChange={(e) => update("emola", "activo", e.target.checked)} /> e-Mola
         </label>
         {contas.emola.activo && (
           <>
-            <input placeholder="Número/agente e-Mola" value={contas.emola.numero} onChange={(e) => update("emola", "numero", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1 text-xs" />
-            <input placeholder="Titular da conta" value={contas.emola.titular} onChange={(e) => update("emola", "titular", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1 text-xs" />
+            <input placeholder="Número/agente e-Mola" value={contas.emola.numero} onChange={(e) => update("emola", "numero", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1 text-xs" />
+            <input placeholder="Titular da conta" value={contas.emola.titular} onChange={(e) => update("emola", "titular", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1 text-xs" />
           </>
         )}
       </div>
-      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
         Guardar
       </button>
       <div className="text-xs" style={{ color: MUTED }}>
@@ -206,30 +206,30 @@ function EmpresaConfig({ store, setStore, api }) {
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-semibold">Dados da empresa</div>
-      <input placeholder="Nome do negócio (mostrado no sistema)" value={businessName} onChange={(e) => setBusinessName(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm" />
-      <input placeholder="Nome legal/completo" value={empresa.nome} onChange={(e) => update("nome", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm" />
-      <input placeholder="NUIT" value={empresa.nuit} onChange={(e) => update("nuit", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm" />
+      <input placeholder="Nome do negócio (mostrado no sistema)" value={businessName} onChange={(e) => setBusinessName(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+      <input placeholder="Nome legal/completo" value={empresa.nome} onChange={(e) => update("nome", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+      <input placeholder="NUIT" value={empresa.nuit} onChange={(e) => update("nuit", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <input placeholder="Endereço (rua, nº)" value={empresa.endereco} onChange={(e) => update("endereco", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm sm:col-span-2" />
-        <input placeholder="Bairro" value={empresa.bairro || ""} onChange={(e) => update("bairro", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input placeholder="Cidade" value={empresa.cidade} onChange={(e) => update("cidade", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <select value={empresa.provincia || ""} onChange={(e) => update("provincia", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm">
+        <input placeholder="Endereço (rua, nº)" value={empresa.endereco} onChange={(e) => update("endereco", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm sm:col-span-2" />
+        <input placeholder="Bairro" value={empresa.bairro || ""} onChange={(e) => update("bairro", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input placeholder="Cidade" value={empresa.cidade} onChange={(e) => update("cidade", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <select value={empresa.provincia || ""} onChange={(e) => update("provincia", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm">
           <option value="">Província…</option>
           {["Maputo Cidade", "Maputo Província", "Gaza", "Inhambane", "Sofala", "Manica", "Tete", "Zambézia", "Nampula", "Cabo Delgado", "Niassa"].map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
-        <input placeholder="Telefone principal" value={empresa.contacto} onChange={(e) => update("contacto", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input placeholder="Telefone alternativo" value={empresa.contacto2 || ""} onChange={(e) => update("contacto2", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input placeholder="Email" value={empresa.email} onChange={(e) => update("email", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input placeholder="Nº de Alvará / Licença" value={empresa.alvara || ""} onChange={(e) => update("alvara", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input placeholder="Ramo de actividade (CAE)" value={empresa.actividade || ""} onChange={(e) => update("actividade", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
+        <input placeholder="Telefone principal" value={empresa.contacto} onChange={(e) => update("contacto", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input placeholder="Telefone alternativo" value={empresa.contacto2 || ""} onChange={(e) => update("contacto2", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input placeholder="Email" value={empresa.email} onChange={(e) => update("email", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input placeholder="Nº de Alvará / Licença" value={empresa.alvara || ""} onChange={(e) => update("alvara", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input placeholder="Ramo de actividade (CAE)" value={empresa.actividade || ""} onChange={(e) => update("actividade", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
       </div>
-      <select value={empresa.regime} onChange={(e) => update("regime", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-sm">
+      <select value={empresa.regime} onChange={(e) => update("regime", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
         <option>Geral</option>
         <option>Simplificado (ISPC)</option>
       </select>
-      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
         Guardar
       </button>
     </div>
@@ -260,13 +260,13 @@ function SegurancaConfig({ store }) {
         <div className="text-xs" style={{ color: MUTED }}>
           Os seus dados já ficam guardados de forma segura na base de dados do sistema. Esta exportação é apenas uma cópia extra, para guardar no seu computador.
         </div>
-        <button onClick={generateExport} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded text-sm">
+        <button onClick={generateExport} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
           Gerar cópia
         </button>
         {exportText && (
           <>
-            <textarea readOnly value={exportText} style={{ borderColor: BORDER }} className="w-full border rounded px-2 py-1.5 text-xs h-32" />
-            <button onClick={copyExport} style={{ borderColor: BORDER, color: TEAL }} className="border rounded px-3 py-1 text-xs">
+            <textarea readOnly value={exportText} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-xs h-32" />
+            <button onClick={copyExport} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-3 py-1 text-xs">
               Copiar
             </button>
           </>

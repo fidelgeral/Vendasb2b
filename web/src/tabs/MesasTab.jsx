@@ -72,7 +72,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Procurar produto…"
               style={{ borderColor: BORDER, background: CARD }}
-              className="w-full border rounded px-3 py-2 text-sm mb-3"
+              className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
             />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {filtered.map((p) => (
@@ -93,11 +93,11 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
                   <div key={it.productId} className="flex items-center justify-between text-sm">
                     <div className="flex-1 min-w-0 truncate">{it.name}</div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => changeItemQty(openTableId, it.productId, -1)} style={{ borderColor: BORDER }} className="border rounded p-1">
+                      <button onClick={() => changeItemQty(openTableId, it.productId, -1)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                         <Minus size={12} />
                       </button>
                       <span className="w-5 text-center text-xs">{it.qty}</span>
-                      <button onClick={() => changeItemQty(openTableId, it.productId, 1)} style={{ borderColor: BORDER }} className="border rounded p-1">
+                      <button onClick={() => changeItemQty(openTableId, it.productId, 1)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                         <Plus size={12} />
                       </button>
                     </div>
@@ -149,7 +149,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
           Mesas <span className="text-xs font-normal" style={{ color: MUTED }}>({ocupadas} ocupadas de {store.tables.length})</span>
         </div>
         <div className="flex gap-2">
-          <button onClick={addMesa} style={{ background: GREEN, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium flex items-center gap-1">
+          <button onClick={addMesa} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1">
             <Plus size={13} /> Adicionar mesa
           </button>
           <button
@@ -159,7 +159,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
             }}
             disabled={store.tables.every((t) => comandaOf(t.id))}
             style={{ background: BRICK, color: "#fff" }}
-            className="rounded px-3 py-1.5 text-xs font-medium flex items-center gap-1 disabled:opacity-40"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1 disabled:opacity-40"
           >
             <Minus size={13} /> Remover mesa livre
           </button>

@@ -66,7 +66,7 @@ export async function gerarReciboPDF(sale, store, clientes) {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     let y = 42;
     doc.setFontSize(16);
-    doc.setTextColor(18, 60, 60);
+    doc.setTextColor(79, 70, 229);
     doc.text(emp.nome || store.config.businessName || "", 40, y);
     y += 15;
     doc.setFontSize(9);
@@ -93,7 +93,7 @@ export async function gerarReciboPDF(sale, store, clientes) {
       body: linhas,
       startY: y,
       styles: { fontSize: 9, cellPadding: 5 },
-      headStyles: { fillColor: [18, 60, 60], textColor: 255 },
+      headStyles: { fillColor: [79, 70, 229], textColor: 255 },
       columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
       margin: { left: 40, right: 40 },
     });
@@ -147,12 +147,12 @@ export function imprimirEtiquetas(produtos, empresaNome) {
     .join("");
   w.document.write(
     '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquetas</title><style>' +
-      "body{font-family:system-ui,sans-serif;margin:12mm;} h1{font-size:12pt;color:#123C3C;margin:0 0 6mm;}" +
+      "body{font-family:system-ui,sans-serif;margin:12mm;} h1{font-size:12pt;color:#4F46E5;margin:0 0 6mm;}" +
       ".grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;}" +
       ".et{border:1px solid #bbb;border-radius:3mm;padding:3mm;text-align:center;page-break-inside:avoid;}" +
       ".nome{font-size:9pt;font-weight:600;min-height:9mm;}" +
       ".cod{font-size:7pt;color:#666;font-family:monospace;margin:1mm 0;}" +
-      ".preco{font-size:15pt;font-weight:800;color:#1B8A4B;}" +
+      ".preco{font-size:15pt;font-weight:800;color:#059669;}" +
       "@media print{ @page{margin:8mm;} }" +
       "</style></head><body><h1>" + String(empresaNome || "").replace(/</g, "&lt;") + " — etiquetas de preço</h1><div class=\"grid\">" + cells + "</div>" +
       "<script>window.onload=function(){window.print();}<\/script></body></html>"
@@ -188,7 +188,7 @@ export function exportReportPDF(title, columns, rows, meta) {
     const doc = new jsPDF({ orientation: columns.length > 6 ? "landscape" : "portrait", unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     doc.setFontSize(15);
-    doc.setTextColor(18, 60, 60);
+    doc.setTextColor(79, 70, 229);
     doc.text(BRAND_NAME, 40, 40);
     doc.setFontSize(9);
     doc.setTextColor(120, 120, 120);
@@ -205,7 +205,7 @@ export function exportReportPDF(title, columns, rows, meta) {
       body: rows.map((r) => r.map((v) => (v === null || v === undefined ? "" : String(v)))),
       startY: 112,
       styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [18, 60, 60], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [244, 248, 246] },
       margin: { left: 40, right: 40 },
     });

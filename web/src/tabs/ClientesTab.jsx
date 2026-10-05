@@ -60,7 +60,7 @@ export default function ClientesTab({ store, setStore, api }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-base font-semibold">Gestão de Clientes</div>
-        <button onClick={() => { setShowForm((s) => !s); setEditingId(null); setForm(blank); }} style={{ background: TEAL, color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
+        <button onClick={() => { setShowForm((s) => !s); setEditingId(null); setForm(blank); }} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
           <Plus size={13} /> Novo cliente
         </button>
       </div>
@@ -78,11 +78,11 @@ export default function ClientesTab({ store, setStore, api }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="sm:col-span-2">
               <label className="text-xs" style={{ color: MUTED }}>Nome / Razão social *</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Tipo</label>
-              <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1">
+              <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
                 <option>Particular</option>
                 <option>Empresa</option>
                 <option>Revendedor</option>
@@ -91,45 +91,45 @@ export default function ClientesTab({ store, setStore, api }) {
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Telefone</label>
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+258 84 000 0000" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+258 84 000 0000" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Email</label>
-              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>NUIT</label>
-              <input value={form.nuit} onChange={(e) => setForm({ ...form, nuit: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.nuit} onChange={(e) => setForm({ ...form, nuit: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div className="sm:col-span-2">
               <label className="text-xs" style={{ color: MUTED }}>Endereço</label>
-              <input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Cidade / Província</label>
-              <input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Limite de crédito (fiado)</label>
-              <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div className="sm:col-span-2">
               <label className="text-xs" style={{ color: MUTED }}>Notas internas</label>
-              <input value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <button onClick={submit} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded text-sm font-medium">
+            <button onClick={submit} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded-lg text-sm font-medium">
               {editingId ? "Guardar" : "Adicionar"}
             </button>
-            <button onClick={() => { setShowForm(false); setEditingId(null); setForm(blank); }} style={{ borderColor: BORDER }} className="border rounded px-3 py-2 text-sm">
+            <button onClick={() => { setShowForm(false); setEditingId(null); setForm(blank); }} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-sm">
               Cancelar
             </button>
           </div>
         </div>
       )}
 
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, telefone ou NUIT…" style={{ borderColor: BORDER, background: CARD }} className="w-full border rounded px-3 py-2 text-sm" />
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, telefone ou NUIT…" style={{ borderColor: BORDER, background: CARD }} className="w-full border rounded-lg px-3 py-2 text-sm" />
 
       <div className="space-y-1.5">
         {filtered.map((c) => {
@@ -139,7 +139,7 @@ export default function ClientesTab({ store, setStore, api }) {
             <div key={c.id} style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div className="flex items-start gap-3 min-w-0">
-                  <div style={{ background: "#EFF3F1", color: TEAL }} className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0">
+                  <div style={{ background: "#F1F5F9", color: TEAL }} className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0">
                     {(c.name || "?").charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -148,7 +148,7 @@ export default function ClientesTab({ store, setStore, api }) {
                       {[c.tipo, c.phone, c.nuit ? "NUIT " + c.nuit : ""].filter(Boolean).join(" · ") || "sem detalhes"}
                     </div>
                     {c.points > 0 && (
-                      <div className="text-xs" style={{ color: "#C9973B" }}>
+                      <div className="text-xs" style={{ color: "#F59E0B" }}>
                         {c.points} pontos de fidelidade
                       </div>
                     )}
@@ -165,9 +165,9 @@ export default function ClientesTab({ store, setStore, api }) {
               </div>
 
               {total > 0 && (
-                <div style={{ background: overLimit ? "#FBE9E7" : "#F6EBD3", borderColor: overLimit ? "#F0C6C0" : "#C9973B" }} className="border rounded p-2 mt-2">
+                <div style={{ background: overLimit ? "#FEE2E2" : "#FEF3C7", borderColor: overLimit ? "#FCA5A5" : "#F59E0B" }} className="border rounded-lg p-2 mt-2">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span style={{ color: overLimit ? BRICK : "#B2591F" }} className="font-medium">
+                    <span style={{ color: overLimit ? BRICK : "#EA580C" }} className="font-medium">
                       Dívida: {fmtMT(total)} {c.creditLimit > 0 ? `(limite ${fmtMT(c.creditLimit)})` : ""}
                     </span>
                   </div>
@@ -200,7 +200,7 @@ function PagamentoParcial({ cliente, total, onPay }) {
         onChange={(e) => setValor(e.target.value)}
         placeholder="Valor pago (MT)"
         style={{ borderColor: BORDER }}
-        className="border rounded px-2 py-1 text-xs flex-1 min-w-[120px]"
+        className="border rounded-lg px-2 py-1 text-xs flex-1 min-w-[120px]"
       />
       <button
         onClick={() => {
@@ -209,14 +209,14 @@ function PagamentoParcial({ cliente, total, onPay }) {
         }}
         disabled={!valor}
         style={{ background: GREEN, color: "#fff" }}
-        className="rounded px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+        className="rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-40"
       >
         Receber
       </button>
       <button
         onClick={() => onPay(total)}
         style={{ borderColor: BORDER, color: TEAL }}
-        className="border rounded px-2.5 py-1 text-xs font-medium"
+        className="border rounded-lg px-2.5 py-1 text-xs font-medium"
       >
         Liquidar tudo
       </button>
@@ -226,7 +226,7 @@ function PagamentoParcial({ cliente, total, onPay }) {
           target="_blank"
           rel="noopener noreferrer"
           style={{ background: "#25D366", color: "#fff" }}
-          className="rounded px-2.5 py-1 text-xs font-medium"
+          className="rounded-lg px-2.5 py-1 text-xs font-medium"
         >
           Lembrar no WhatsApp
         </a>

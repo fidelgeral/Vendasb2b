@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BG, CARD, BORDER, INK, TEAL, MUTED, BRICK, GREEN } from "../lib/theme.js";
+import { BG, CARD, BORDER, INK, TEAL, MUTED, BRICK, GREEN, GRADIENT } from "../lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "../lib/theme.js";
 import { BRAND_LOGO } from "../lib/logo.js";
 import { superApi, clearSession } from "../lib/api.js";
@@ -58,18 +58,16 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
   }
 
   return (
-    <div style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }} className="min-h-screen p-5">
-      <div className="max-w-3xl mx-auto space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+    <div style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }} className="min-h-screen">
+      <div style={{ background: GRADIENT }} className="px-5 pt-6 pb-16 text-white shadow-md">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <img src={BRAND_LOGO} alt={BRAND_NAME} style={{ height: 52 }} />
+            <div className="bg-white rounded-2xl p-1.5 shadow">
+              <img src={BRAND_LOGO} alt={BRAND_NAME} style={{ height: 46 }} className="block" />
+            </div>
             <div>
-              <div className="text-xs" style={{ color: MUTED }}>
-                {BRAND_TAGLINE} · Painel do administrador
-              </div>
-              <div className="text-2xl font-semibold" style={{ color: TEAL }}>
-                Contas de negócio
-              </div>
+              <div className="text-xs opacity-85">{BRAND_TAGLINE} · Painel do administrador</div>
+              <div className="text-2xl font-extrabold tracking-tight">Contas de negócio</div>
             </div>
           </div>
           <button
@@ -77,12 +75,14 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
               clearSession();
               onLoggedOut();
             }}
-            style={{ borderColor: BORDER, color: MUTED }}
-            className="border rounded px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"
+            style={{ background: "rgba(255,255,255,0.2)" }}
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
           >
             <LogOut size={13} /> Sair
           </button>
         </div>
+      </div>
+      <div className="max-w-3xl mx-auto space-y-4 px-5 -mt-10 pb-8">
 
         <div className="grid grid-cols-2 gap-2.5">
           <StatCard label="Contas criadas" value={businesses.length} />
@@ -107,7 +107,7 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
         </div>
 
         {error && (
-          <div style={{ background: "#FBE9E7", color: BRICK }} className="rounded-lg p-3 text-sm">
+          <div style={{ background: "#FEE2E2", color: BRICK }} className="rounded-lg p-3 text-sm">
             {error}
           </div>
         )}
@@ -127,7 +127,7 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
                     <div className="text-sm font-semibold flex items-center gap-2">
                       {b.name}
                       <span
-                        style={{ background: active ? "#E4F4EA" : "#F1F1F1", color: active ? GREEN : MUTED }}
+                        style={{ background: active ? "#D1FAE5" : "#F1F5F9", color: active ? GREEN : MUTED }}
                         className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase"
                       >
                         {active ? "Activa" : "Suspensa"}
@@ -151,7 +151,7 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
                       onClick={() => onOpenBusiness(b)}
                       disabled={!active}
                       style={{ background: TEAL, color: "#fff" }}
-                      className="rounded px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+                      className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
                     >
                       Abrir
                     </button>
@@ -192,17 +192,17 @@ function NewBusinessForm({ onCreated }) {
 
   return (
     <div className="space-y-2">
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do negócio (ex: Padaria da Maria)" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm" />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do negócio (ex: Padaria da Maria)" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
       <div className="text-xs" style={{ color: MUTED }}>
         Conta do dono (para o primeiro acesso):
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome do dono" style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-        <input type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (mín. 6 caracteres)" style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
+        <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome do dono" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (mín. 6 caracteres)" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
       </div>
       {error && <div className="text-xs" style={{ color: BRICK }}>{error}</div>}
-      <button onClick={submit} disabled={saving} style={{ background: TEAL, color: "#fff" }} className="rounded px-4 py-2 text-sm font-medium disabled:opacity-50">
+      <button onClick={submit} disabled={saving} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50">
         {saving ? "A criar…" : "Criar conta"}
       </button>
     </div>

@@ -13,7 +13,7 @@ function ExportButtons({ title, columns, rows, meta }) {
         onClick={() => exportReportExcel(title, columns, rows)}
         disabled={disabled}
         style={{ borderColor: BORDER, color: GREEN }}
-        className="border rounded px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+        className="border rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-40"
       >
         Excel
       </button>
@@ -21,7 +21,7 @@ function ExportButtons({ title, columns, rows, meta }) {
         onClick={() => exportReportPDF(title, columns, rows, meta)}
         disabled={disabled}
         style={{ background: BRICK, color: "#fff" }}
-        className="rounded px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+        className="rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-40"
       >
         PDF
       </button>
@@ -49,7 +49,7 @@ function ReportTable({ title, columns, rows, meta, note, align }) {
         <div className="overflow-x-auto">
           <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#EFF3F1" }}>
+              <tr style={{ background: "#F1F5F9" }}>
                 {columns.map((c, i) => (
                   <th key={c} style={{ color: MUTED, textAlign: align && align[i] === "r" ? "right" : "left" }} className="font-semibold uppercase tracking-wide px-2 py-2 whitespace-nowrap">
                     {c}
@@ -121,9 +121,9 @@ export default function BalancoTab({ store }) {
   const meta = { business: store.config.businessName, period: periodLabel };
 
   const groups = [
-    { id: "vendas", label: "VENDAS", color: "#5B4FE0" },
+    { id: "vendas", label: "VENDAS", color: "#7C3AED" },
     { id: "financeiro", label: "FINANCEIRO", color: GREEN },
-    { id: "estoque", label: "ESTOQUE", color: "#2E5AAC" },
+    { id: "estoque", label: "ESTOQUE", color: "#2563EB" },
   ];
 
   const selectGroup = (g) => {
@@ -149,7 +149,7 @@ export default function BalancoTab({ store }) {
                       setGroup(g.id);
                       setReport(r.id);
                     }}
-                    style={{ background: active ? g.color : "#EFF3F1", color: active ? "#fff" : INK, borderColor: active ? g.color : BORDER }}
+                    style={{ background: active ? g.color : "#F1F5F9", color: active ? "#fff" : INK, borderColor: active ? g.color : BORDER }}
                     className="border rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap"
                   >
                     {r.label}
@@ -164,13 +164,13 @@ export default function BalancoTab({ store }) {
             <label className="text-xs" style={{ color: MUTED }}>
               Período início
             </label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ borderColor: BORDER }} className="block border rounded px-2 py-1.5 text-sm mt-1" />
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ borderColor: BORDER }} className="block border rounded-lg px-2 py-1.5 text-sm mt-1" />
           </div>
           <div>
             <label className="text-xs" style={{ color: MUTED }}>
               Período final
             </label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ borderColor: BORDER }} className="block border rounded px-2 py-1.5 text-sm mt-1" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ borderColor: BORDER }} className="block border rounded-lg px-2 py-1.5 text-sm mt-1" />
           </div>
           {(from || to) && (
             <button onClick={() => { setFrom(""); setTo(""); }} style={{ color: TEAL }} className="text-xs font-medium self-end pb-2">
@@ -424,7 +424,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to }) {
     ];
     return (
       <div className="space-y-3">
-        <div style={{ background: lucroReal >= 0 ? "#E4F4EA" : "#FBE9E7", borderColor: lucroReal >= 0 ? "#8FCBA6" : "#F0C6C0" }} className="border rounded-lg p-4">
+        <div style={{ background: lucroReal >= 0 ? "#D1FAE5" : "#FEE2E2", borderColor: lucroReal >= 0 ? "#6EE7B7" : "#FCA5A5" }} className="border rounded-lg p-4">
           <div className="text-xs" style={{ color: MUTED }}>
             Resultado líquido estimado no período
           </div>

@@ -162,10 +162,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           <div className="text-base font-semibold">Gestão de Produtos</div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowCategorias(true)} style={{ background: "#D9642C", color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+          <button onClick={() => setShowCategorias(true)} style={{ background: "#F97316", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             Categorias
           </button>
-          <button onClick={onGoEstoque} style={{ background: "#5B4FE0", color: "#fff" }} className="rounded px-3 py-1.5 text-xs font-medium">
+          <button onClick={onGoEstoque} style={{ background: "#7C3AED", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             Importar
           </button>
           <button
@@ -176,7 +176,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
               setErro("");
             }}
             style={{ background: GREEN, color: "#fff" }}
-            className="rounded px-3 py-1.5 text-xs font-medium flex items-center gap-1"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1"
           >
             <Plus size={13} /> Novo produto
           </button>
@@ -218,21 +218,21 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Nome do produto *</label>
-              <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex: Coca-Cola 2L" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex: Coca-Cola 2L" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Código do produto (barras)</label>
-              <input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="EX: 4589641235498" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="EX: 4589641235498" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
           </div>
 
           {form.tipo === "variacao" && (
-            <div style={{ background: "#FDF1EA", borderColor: "#E7C3AC" }} className="border rounded-lg p-3 mb-3">
-              <div className="text-xs font-semibold mb-2" style={{ color: "#B2591F" }}>
+            <div style={{ background: "#FFEDD5", borderColor: "#FDBA74" }} className="border rounded-lg p-3 mb-3">
+              <div className="text-xs font-semibold mb-2" style={{ color: "#EA580C" }}>
                 Produto Pai (origem do stock) *
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <select value={form.parentId} onChange={(e) => set("parentId", e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm">
+                <select value={form.parentId} onChange={(e) => set("parentId", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm">
                   <option value="">Seleccionar produto pai…</option>
                   {possiveisPais.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -241,7 +241,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
                   ))}
                 </select>
                 <div>
-                  <input type="number" step="0.01" value={form.consumo} onChange={(e) => set("consumo", e.target.value)} placeholder="Quantidade consumida" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm" />
+                  <input type="number" step="0.01" value={form.consumo} onChange={(e) => set("consumo", e.target.value)} placeholder="Quantidade consumida" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
                   <div className="text-[11px] mt-1" style={{ color: MUTED }}>
                     Quanto do produto-pai sai a cada venda desta variação.
                   </div>
@@ -251,12 +251,12 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           )}
 
           {form.tipo === "composicao" && (
-            <div style={{ background: "#F2EFFD", borderColor: "#C6BDF0" }} className="border rounded-lg p-3 mb-3">
-              <div className="text-xs font-semibold mb-2" style={{ color: "#5B4FE0" }}>
+            <div style={{ background: "#EDE9FE", borderColor: "#C4B5FD" }} className="border rounded-lg p-3 mb-3">
+              <div className="text-xs font-semibold mb-2" style={{ color: "#7C3AED" }}>
                 Ingredientes / Composição
               </div>
               <div className="flex gap-2 mb-2 flex-wrap">
-                <select value={ingSel.productId} onChange={(e) => setIngSel({ ...ingSel, productId: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm flex-1 min-w-[160px]">
+                <select value={ingSel.productId} onChange={(e) => setIngSel({ ...ingSel, productId: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm flex-1 min-w-[160px]">
                   <option value="">Seleccionar produto/insumo…</option>
                   {store.products.filter((p) => p.id !== editingId && p.tipo !== "composicao").map((p) => (
                     <option key={p.id} value={p.id}>
@@ -264,12 +264,12 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
                     </option>
                   ))}
                 </select>
-                <input type="number" step="0.01" value={ingSel.qty} onChange={(e) => setIngSel({ ...ingSel, qty: e.target.value })} placeholder="Qtd consumo" style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm w-32" />
-                <button onClick={addIngrediente} style={{ background: "#5B4FE0", color: "#fff" }} className="rounded px-3 py-2 text-xs font-medium">
+                <input type="number" step="0.01" value={ingSel.qty} onChange={(e) => setIngSel({ ...ingSel, qty: e.target.value })} placeholder="Qtd consumo" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm w-32" />
+                <button onClick={addIngrediente} style={{ background: "#7C3AED", color: "#fff" }} className="rounded-lg px-3 py-2 text-xs font-medium">
                   Adicionar
                 </button>
               </div>
-              <div style={{ background: CARD, borderColor: BORDER }} className="border rounded p-2 space-y-1">
+              <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-2 space-y-1">
                 {form.ingredientes.length === 0 && (
                   <div className="text-xs italic" style={{ color: MUTED }}>
                     Nenhum ingrediente adicionado.
@@ -303,7 +303,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
             <div className="col-span-2 sm:col-span-1">
               <label className="text-xs" style={{ color: MUTED }}>Categoria *</label>
-              <select value={form.category} onChange={(e) => set("category", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1">
+              <select value={form.category} onChange={(e) => set("category", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
                 <option value="">Seleccionar…</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>
@@ -314,7 +314,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Taxa de IVA</label>
-              <select value={form.ivaTaxa} onChange={(e) => set("ivaTaxa", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1">
+              <select value={form.ivaTaxa} onChange={(e) => set("ivaTaxa", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
                 <option value="">Usar a do sistema</option>
                 {IVA_TAXAS.map((t) => (
                   <option key={t} value={t}>
@@ -325,7 +325,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Unidade de medida *</label>
-              <select value={form.unit} onChange={(e) => set("unit", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1">
+              <select value={form.unit} onChange={(e) => set("unit", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
                 {UNIDADES.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.label}
@@ -335,28 +335,28 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Qtd de itens *</label>
-              <input type="number" value={form.qtdItens} onChange={(e) => set("qtdItens", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input type="number" value={form.qtdItens} onChange={(e) => set("qtdItens", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Preço de venda (MT) *</label>
-              <input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="EX: 100" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="EX: 100" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Custo unitário (MT)</label>
-              <input type="number" value={form.cost} onChange={(e) => set("cost", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input type="number" value={form.cost} onChange={(e) => set("cost", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Stock mínimo *</label>
-              <input type="number" value={form.minStock} onChange={(e) => set("minStock", e.target.value)} placeholder="10" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input type="number" value={form.minStock} onChange={(e) => set("minStock", e.target.value)} placeholder="10" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Prazo reembolso (dias)</label>
-              <input type="number" value={form.prazoReembolso} onChange={(e) => set("prazoReembolso", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+              <input type="number" value={form.prazoReembolso} onChange={(e) => set("prazoReembolso", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
           </div>
 
           {form.tipo === "simples" && !editingId && (
-            <div style={{ background: form.addEstoque ? "#E9F6EE" : "#EFF3F1", borderColor: form.addEstoque ? "#8FCBA6" : BORDER }} className="border rounded-lg p-3 mb-3">
+            <div style={{ background: form.addEstoque ? "#ECFDF5" : "#F1F5F9", borderColor: form.addEstoque ? "#6EE7B7" : BORDER }} className="border rounded-lg p-3 mb-3">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" checked={form.addEstoque} onChange={(e) => set("addEstoque", e.target.checked)} />
                 Adicionar produto no estoque agora
@@ -365,19 +365,19 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mt-3">
                   <div>
                     <label className="text-xs" style={{ color: MUTED }}>Quantidade *</label>
-                    <input type="number" value={form.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="EX: 100" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+                    <input type="number" value={form.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="EX: 100" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
                   </div>
                   <div>
                     <label className="text-xs" style={{ color: MUTED }}>Preço de custo total *</label>
-                    <input type="number" value={form.estoqueCustoTotal} onChange={(e) => set("estoqueCustoTotal", e.target.value)} placeholder="1500" style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+                    <input type="number" value={form.estoqueCustoTotal} onChange={(e) => set("estoqueCustoTotal", e.target.value)} placeholder="1500" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
                   </div>
                   <div>
                     <label className="text-xs" style={{ color: MUTED }}>Data de validade</label>
-                    <input type="date" value={form.estoqueValidade} onChange={(e) => set("estoqueValidade", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1" />
+                    <input type="date" value={form.estoqueValidade} onChange={(e) => set("estoqueValidade", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
                   </div>
                   <div>
                     <label className="text-xs" style={{ color: MUTED }}>Fornecedor</label>
-                    <select value={form.estoqueFornecedor} onChange={(e) => set("estoqueFornecedor", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded px-2.5 py-2 text-sm mt-1">
+                    <select value={form.estoqueFornecedor} onChange={(e) => set("estoqueFornecedor", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
                       <option value="">Escolher fornecedor</option>
                       {store.suppliers.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -408,10 +408,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             </div>
           )}
           <div className="flex gap-2">
-            <button onClick={submit} style={{ background: GREEN, color: "#fff" }} className="px-4 py-2 rounded text-sm font-medium">
+            <button onClick={submit} style={{ background: GREEN, color: "#fff" }} className="px-4 py-2 rounded-lg text-sm font-medium">
               {editingId ? "Salvar mudança" : "Adicionar produto"}
             </button>
-            <button onClick={() => { setShowForm(false); setEditingId(null); setForm(blank); setErro(""); }} style={{ background: "#F5827A", color: "#fff" }} className="rounded px-4 py-2 text-sm font-medium">
+            <button onClick={() => { setShowForm(false); setEditingId(null); setForm(blank); setErro(""); }} style={{ background: "#F87171", color: "#fff" }} className="rounded-lg px-4 py-2 text-sm font-medium">
               Cancelar
             </button>
           </div>
@@ -428,14 +428,14 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             <button
               key={t.id}
               onClick={() => setStatusFilter(t.id)}
-              style={{ background: statusFilter === t.id ? "#16241F" : CARD, color: statusFilter === t.id ? "#fff" : "#16241F", borderColor: BORDER }}
+              style={{ background: statusFilter === t.id ? "#0F172A" : CARD, color: statusFilter === t.id ? "#fff" : "#0F172A", borderColor: BORDER }}
               className="border rounded-full px-3 py-1.5 text-xs font-medium"
             >
               {t.label}
             </button>
           ))}
         </div>
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ borderColor: BORDER, background: CARD }} className="border rounded px-2 py-1.5 text-xs">
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2 py-1.5 text-xs">
           <option value="">Categorias: Todas</option>
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -445,10 +445,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
         </select>
       </div>
 
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar produto ou código…" style={{ borderColor: BORDER, background: CARD }} className="w-full border rounded px-3 py-2 text-sm" />
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar produto ou código…" style={{ borderColor: BORDER, background: CARD }} className="w-full border rounded-lg px-3 py-2 text-sm" />
 
       {erro && !showForm && (
-        <div style={{ background: "#FBE9E7", color: BRICK }} className="rounded p-2 text-xs">
+        <div style={{ background: "#FEE2E2", color: BRICK }} className="rounded-lg p-2 text-xs">
           {erro}
         </div>
       )}
@@ -481,16 +481,16 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onToggleActive }) {
   const stock = getStock(p, produtos);
   const tipoInfo =
     p.tipo === "variacao"
-      ? { label: "Variação", color: "#B2591F", bg: "#FDF1EA" }
+      ? { label: "Variação", color: "#EA580C", bg: "#FFEDD5" }
       : p.tipo === "composicao"
-      ? { label: "Composição", color: "#5B4FE0", bg: "#F2EFFD" }
-      : { label: "Simples", color: MUTED, bg: "#EFF3F1" };
+      ? { label: "Composição", color: "#7C3AED", bg: "#EDE9FE" }
+      : { label: "Simples", color: MUTED, bg: "#F1F5F9" };
   const pai = p.tipo === "variacao" ? produtos.find((x) => x.id === p.parentId) : null;
 
   return (
     <div style={{ background: CARD, borderColor: BORDER, opacity: active ? 1 : 0.6 }} className="border rounded-lg p-2.5">
       <div className="flex items-center gap-3">
-        <div style={{ background: "#EFF3F1" }} className="w-12 h-12 rounded overflow-hidden flex items-center justify-center shrink-0">
+        <div style={{ background: "#F1F5F9" }} className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
           {p.foto ? <img src={p.foto} alt="" className="w-full h-full object-cover" /> : <Package size={18} style={{ color: MUTED }} />}
         </div>
         <div className="flex-1 min-w-0">
@@ -500,13 +500,13 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onToggleActive }) {
               {tipoInfo.label}
             </span>
             <span
-              style={{ background: active ? "#E4F4EA" : "#F1F1F1", color: active ? GREEN : MUTED }}
+              style={{ background: active ? "#D1FAE5" : "#F1F5F9", color: active ? GREEN : MUTED }}
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase"
             >
               {active ? "Ativo" : "Inativo"}
             </span>
             {p.vendaDirecta === false && (
-              <span style={{ background: "#FDF1EA", color: "#B2591F" }} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+              <span style={{ background: "#FFEDD5", color: "#EA580C" }} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
                 Insumo
               </span>
             )}

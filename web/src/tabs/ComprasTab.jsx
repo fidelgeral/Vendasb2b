@@ -35,15 +35,15 @@ export default function ComprasTab({ store, setStore, api }) {
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
         <div className="text-sm font-semibold mb-2">Fornecedores</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-          <input placeholder="Nome / Empresa *" value={sup.name} onChange={(e) => setSup({ ...sup, name: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm sm:col-span-2" />
-          <input placeholder="Pessoa de contacto" value={sup.contacto} onChange={(e) => setSup({ ...sup, contacto: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-          <input placeholder="Telefone" value={sup.phone} onChange={(e) => setSup({ ...sup, phone: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-          <input placeholder="Email" value={sup.email} onChange={(e) => setSup({ ...sup, email: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-          <input placeholder="NUIT" value={sup.nuit} onChange={(e) => setSup({ ...sup, nuit: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
-          <input placeholder="Endereço" value={sup.endereco} onChange={(e) => setSup({ ...sup, endereco: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm sm:col-span-2" />
-          <input placeholder="Prazo de pagamento (ex: 30 dias)" value={sup.prazo} onChange={(e) => setSup({ ...sup, prazo: e.target.value })} style={{ borderColor: BORDER }} className="border rounded px-2.5 py-2 text-sm" />
+          <input placeholder="Nome / Empresa *" value={sup.name} onChange={(e) => setSup({ ...sup, name: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm sm:col-span-2" />
+          <input placeholder="Pessoa de contacto" value={sup.contacto} onChange={(e) => setSup({ ...sup, contacto: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+          <input placeholder="Telefone" value={sup.phone} onChange={(e) => setSup({ ...sup, phone: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+          <input placeholder="Email" value={sup.email} onChange={(e) => setSup({ ...sup, email: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+          <input placeholder="NUIT" value={sup.nuit} onChange={(e) => setSup({ ...sup, nuit: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+          <input placeholder="Endereço" value={sup.endereco} onChange={(e) => setSup({ ...sup, endereco: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm sm:col-span-2" />
+          <input placeholder="Prazo de pagamento (ex: 30 dias)" value={sup.prazo} onChange={(e) => setSup({ ...sup, prazo: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
         </div>
-        <button onClick={addSupplier} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded text-sm font-medium flex items-center gap-1.5">
+        <button onClick={addSupplier} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5">
           <Plus size={14} /> Adicionar fornecedor
         </button>
         <div className="space-y-1.5 mt-3">
@@ -61,7 +61,7 @@ export default function ComprasTab({ store, setStore, api }) {
                 )}
               </div>
               <button onClick={() => removeSupplier(s.id)}>
-                <X size={15} style={{ color: "#B23A2E" }} />
+                <X size={15} style={{ color: "#EF4444" }} />
               </button>
             </div>
           ))}
@@ -76,7 +76,7 @@ export default function ComprasTab({ store, setStore, api }) {
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
         <div className="text-sm font-semibold mb-2">Registar compra (entrada de stock)</div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm">
+          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
             <option value="">Fornecedor</option>
             {store.suppliers.map((s) => (
               <option key={s.id} value={s.id}>
@@ -84,7 +84,7 @@ export default function ComprasTab({ store, setStore, api }) {
               </option>
             ))}
           </select>
-          <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm">
+          <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
             <option value="">Produto</option>
             {store.products.map((p) => (
               <option key={p.id} value={p.id}>
@@ -92,11 +92,11 @@ export default function ComprasTab({ store, setStore, api }) {
               </option>
             ))}
           </select>
-          <input placeholder="Quantidade" type="number" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm" />
-          <input placeholder="Custo unitário" type="number" value={cost} onChange={(e) => setCost(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm" />
-          <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={{ borderColor: BORDER }} className="border rounded px-2 py-1.5 text-sm" />
+          <input placeholder="Quantidade" type="number" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
+          <input placeholder="Custo unitário" type="number" value={cost} onChange={(e) => setCost(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
+          <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
         </div>
-        <button onClick={registerPurchase} style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded text-sm">
+        <button onClick={registerPurchase} style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm">
           <Plus size={14} /> Registar entrada
         </button>
       </div>
@@ -109,7 +109,7 @@ export default function ComprasTab({ store, setStore, api }) {
             const supplier = store.suppliers.find((s) => s.id === p.supplierId);
             const product = store.products.find((pr) => pr.id === p.productId);
             return (
-              <div key={p.id} style={{ background: CARD, borderColor: BORDER }} className="border rounded px-2.5 py-1.5 text-xs flex justify-between">
+              <div key={p.id} style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg px-2.5 py-1.5 text-xs flex justify-between">
                 <span>
                   {product?.name} × {p.qty} — {supplier?.name}
                 </span>
