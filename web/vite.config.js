@@ -8,6 +8,9 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "robots.txt"],
+      // Activa o service worker também em "npm run dev", para se poder testar a
+      // instalação como app e o cache offline sem esperar pelo deploy.
+      devOptions: { enabled: true, type: "module" },
       manifest: {
         name: "VENDASB2B",
         short_name: "VENDASB2B",
