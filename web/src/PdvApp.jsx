@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT } from "./lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./lib/theme.js";
 import { BRAND_LOGO } from "./lib/logo.js";
 import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
+import { enqueueSale, listPending, removePending, countPending } from "./lib/offlineQueue.js";
+import { applyOfflineSale } from "./lib/offlineSale.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
 import { FloatingChart } from "./lib/charts.jsx";
 import HelpAssistant from "./components/HelpAssistant.jsx";
@@ -34,6 +36,8 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const [showUserSwitch, setShowUserSwitch] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [suspended, setSuspended] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
 
   const api = businessApi(businessId);
   const session = getSession();
@@ -68,6 +72,75 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     setToast({ msg, tone });
     setTimeout(() => setToast(null), 2400);
   }, []);
+
+  const refreshPending = useCallback(() => {
+    countPending(businessId).then(setPendingCount).catch(() => {});
+  }, [businessId]);
+
+  // Reenvia ao servidor as vendas feitas offline. O servidor atribui o número
+  // real do documento, por isso não há duplicados. Corre uma de cada vez.
+  const syncingRef = useRef(false);
+  const syncPending = useCallback(async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    try {
+      const sales = await listPending(businessId);
+      if (!sales.length) return;
+      const client = businessApi(businessId);
+      let enviados = 0;
+      for (const item of sales) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await client.finalizeSale(item.payload);
+          // eslint-disable-next-line no-await-in-loop
+          await removePending(item.localId);
+          enviados += 1;
+        } catch (e) {
+          if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 402) {
+            // Erro permanente (ex.: dados inválidos): não adianta repetir — descarta.
+            // eslint-disable-next-line no-await-in-loop
+            await removePending(item.localId);
+            enviados += 1;
+          } else {
+            // Erro de rede ou servidor: pára e tenta de novo mais tarde.
+            break;
+          }
+        }
+      }
+      if (enviados > 0) {
+        showToast(enviados + (enviados === 1 ? " venda sincronizada" : " vendas sincronizadas"));
+        load();
+      }
+    } finally {
+      syncingRef.current = false;
+      refreshPending();
+    }
+  }, [businessId, load, showToast, refreshPending]);
+
+  useEffect(() => {
+    refreshPending();
+  }, [refreshPending]);
+
+  // Liga/desliga: actualiza o indicador e sincroniza quando a internet volta.
+  useEffect(() => {
+    const goOnline = () => {
+      setIsOnline(true);
+      syncPending();
+    };
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    if (navigator.onLine) syncPending();
+    // Rede de segurança: tenta sincronizar a cada 60s caso haja vendas presas.
+    const timer = setInterval(() => {
+      if (navigator.onLine) syncPending();
+    }, 60000);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+      clearInterval(timer);
+    };
+  }, [syncPending]);
 
   if (suspended) {
     return (
@@ -175,6 +248,15 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       showToast("Venda " + res.sale.numero + " registada");
       return res.sale;
     } catch (e) {
+      // Sem ligação ao servidor (status 0): guarda a venda e reenvia quando a
+      // internet voltar. A venda aparece já no ecrã (número "Offline").
+      if (e instanceof ApiError && e.status === 0) {
+        const entry = await enqueueSale({ businessId, payload, employeeName });
+        setStore((s) => applyOfflineSale(s, payload, { localId: entry?.localId, employeeName }));
+        refreshPending();
+        showToast("Sem internet — venda guardada para sincronizar", "warn");
+        return { numero: "Offline", _offline: true };
+      }
       showToast(e.message, "warn");
     }
   };
@@ -227,10 +309,20 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           <button onClick={() => setShowChart((v) => !v)} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1">
             <Scale size={12} /> Gráfico
           </button>
-          {saveError && (
+          {(!isOnline || saveError) && (
             <span style={{ background: "rgba(239,68,68,0.45)" }} className="text-xs px-2.5 py-1.5 rounded-lg font-medium">
               Offline
             </span>
+          )}
+          {pendingCount > 0 && (
+            <button
+              onClick={syncPending}
+              style={{ background: "rgba(245,158,11,0.55)" }}
+              className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+              title="Vendas feitas offline, ainda por enviar ao servidor. Toque para tentar sincronizar agora."
+            >
+              ⟳ {pendingCount} por sincronizar
+            </button>
           )}
           {isSuperAdmin && (
             <button onClick={onExitBusiness} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1">
