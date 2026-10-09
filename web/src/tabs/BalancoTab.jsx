@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, GREEN, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock, isLowStock, nearExpiry, ROLE_LABELS } from "../lib/utils.js";
 import { DonutChart, StatCardChart } from "../lib/charts.jsx";
@@ -110,13 +110,43 @@ const REPORTS = {
   ],
 };
 
-export default function BalancoTab({ store }) {
+export default function BalancoTab({ store, api }) {
   const [group, setGroup] = useState("vendas");
   const [report, setReport] = useState("detalhado");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [history, setHistory] = useState(null);
+  const [loadingHist, setLoadingHist] = useState(true);
 
-  const sales = store.sales.filter((s) => s.status !== "void" && inPeriod(s.date, from, to));
+  // Carrega o histórico completo do período só quando o Balanço está aberto — o
+  // arranque normal do sistema traz apenas as vendas recentes (mais rápido).
+  useEffect(() => {
+    if (!api) return;
+    let cancel = false;
+    setLoadingHist(true);
+    api
+      .getHistory(from, to)
+      .then((h) => {
+        if (!cancel) setHistory(h);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancel) setLoadingHist(false);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [api, from, to]);
+
+  const hist = history || {
+    sales: store.sales,
+    quebras: store.quebras,
+    movimentosCaixa: store.movimentosCaixa,
+    audit: store.audit,
+    purchases: store.purchases,
+  };
+  const data = { ...store, ...hist };
+  const sales = hist.sales.filter((s) => s.status !== "void" && inPeriod(s.date, from, to));
   const periodLabel = from || to ? "Período: " + (from || "início") + " a " + (to || "hoje") : "Período: todo o histórico";
   const meta = { business: store.config.businessName, period: periodLabel };
 
@@ -177,12 +207,17 @@ export default function BalancoTab({ store }) {
               Limpar período
             </button>
           )}
+          {loadingHist && (
+            <span className="text-xs self-end pb-2" style={{ color: MUTED }}>
+              A carregar histórico…
+            </span>
+          )}
         </div>
       </div>
 
-      {group === "vendas" && <VendasReports store={store} sales={sales} report={report} meta={meta} />}
-      {group === "financeiro" && <FinanceiroReports store={store} sales={sales} report={report} meta={meta} from={from} to={to} />}
-      {group === "estoque" && <EstoqueReports store={store} report={report} meta={meta} from={from} to={to} sales={sales} />}
+      {group === "vendas" && <VendasReports store={data} sales={sales} report={report} meta={meta} />}
+      {group === "financeiro" && <FinanceiroReports store={data} sales={sales} report={report} meta={meta} from={from} to={to} />}
+      {group === "estoque" && <EstoqueReports store={data} report={report} meta={meta} from={from} to={to} sales={sales} />}
     </div>
   );
 }

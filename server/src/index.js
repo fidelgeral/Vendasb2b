@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import "dotenv/config";
 
 import { authRouter } from "./routes/auth.js";
@@ -16,6 +17,10 @@ import { configRouter } from "./routes/config.js";
 import { assistantRouter, publicRouter } from "./routes/assistant.js";
 
 const app = express();
+
+// Comprime todas as respostas (JSON + fotos base64 encolhem ~80%) — a maior
+// vitória de desempenho para ligações lentas em Moçambique.
+app.use(compression());
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "").split(",").map((s) => s.trim()).filter(Boolean);
 app.use(

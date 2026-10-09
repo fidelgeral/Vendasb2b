@@ -1,0 +1,15 @@
+name: Manter servidor acordado
+
+# Faz ping ao backend a cada 10 minutos para o plano gratuito do Render não
+# "adormecer" — evita a espera de 30-50s no primeiro acesso durante o dia.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: curl -fsS --max-time 60 https://vendasb2b-api.onrender.com/api/health || true

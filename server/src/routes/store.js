@@ -133,13 +133,16 @@ export async function buildStore(businessId) {
               employee_id AS "employeeId", shift_id AS "shiftId", table_id AS "tableId",
               CASE WHEN voided THEN 'void' ELSE 'completed' END AS status,
               void_reason AS "voidReason", pontos_usados AS "pontosUsados", pontos_ganhos AS "pontosGanhos"
-       FROM sales WHERE business_id = $1 ORDER BY created_at DESC LIMIT 2000`,
+       FROM sales WHERE business_id = $1 ORDER BY created_at DESC LIMIT 120`,
       [businessId]
     ),
     query(
       `SELECT si.id, si.sale_id, si.product_id AS "productId", si.variant_id AS "variantId",
               si.name_snapshot AS name, si.qty, si.price, si.cost
-       FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE s.business_id = $1`,
+       FROM sale_items si
+       WHERE si.sale_id IN (
+         SELECT id FROM sales WHERE business_id = $1 ORDER BY created_at DESC LIMIT 120
+       )`,
       [businessId]
     ),
     query(`SELECT id, cart, created_at AS date FROM parked_sales WHERE business_id = $1`, [businessId]),
@@ -157,7 +160,7 @@ export async function buildStore(businessId) {
     ),
     query(
       `SELECT id, employee_id AS "employeeId", employee_name AS "employeeName", acao, detalhe, valor, created_at AS date
-       FROM audit_log WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1000`,
+       FROM audit_log WHERE business_id = $1 ORDER BY created_at DESC LIMIT 200`,
       [businessId]
     ),
   ]);
@@ -251,4 +254,77 @@ storeRouter.get("/store", async (req, res) => {
   const store = await buildStore(req.params.businessId);
   if (!store) return res.status(404).json({ error: "Negócio não encontrado." });
   res.json({ store });
+});
+
+// Histórico completo por período — usado só quando se abre o Balanço, para não
+// carregar milhares de vendas no arranque normal do sistema.
+storeRouter.get("/history", async (req, res) => {
+  const businessId = req.params.businessId;
+  const from = req.query.from || "1900-01-01";
+  const to = req.query.to || "2999-12-31";
+
+  const [sales, saleItems, quebras, movimentos, audit, purchases] = await Promise.all([
+    query(
+      `SELECT id, numero, created_at AS date, total, discount, payments, client_id AS "clientId",
+              employee_id AS "employeeId", shift_id AS "shiftId", table_id AS "tableId",
+              CASE WHEN voided THEN 'void' ELSE 'completed' END AS status,
+              void_reason AS "voidReason", pontos_usados AS "pontosUsados", pontos_ganhos AS "pontosGanhos"
+       FROM sales WHERE business_id = $1 AND created_at::date BETWEEN $2 AND $3 ORDER BY created_at DESC`,
+      [businessId, from, to]
+    ),
+    query(
+      `SELECT si.sale_id, si.product_id AS "productId", si.variant_id AS "variantId",
+              si.name_snapshot AS name, si.qty, si.price, si.cost
+       FROM sale_items si JOIN sales s ON s.id = si.sale_id
+       WHERE s.business_id = $1 AND s.created_at::date BETWEEN $2 AND $3`,
+      [businessId, from, to]
+    ),
+    query(
+      `SELECT id, product_id AS "productId", variant_id AS "variantId", qty, motivo,
+              custo_impacto AS "custoImpacto", shift_id AS "shiftId", created_at AS date
+       FROM quebras WHERE business_id = $1 AND created_at::date BETWEEN $2 AND $3 ORDER BY created_at DESC`,
+      [businessId, from, to]
+    ),
+    query(
+      `SELECT id, tipo AS type, categoria, amount, descricao AS motivo, employee_id AS "employeeId",
+              shift_id AS "shiftId", created_at AS date
+       FROM movimentos_caixa WHERE business_id = $1 AND created_at::date BETWEEN $2 AND $3 ORDER BY created_at DESC`,
+      [businessId, from, to]
+    ),
+    query(
+      `SELECT id, employee_id AS "employeeId", employee_name AS "employeeName", acao, detalhe, valor, created_at AS date
+       FROM audit_log WHERE business_id = $1 AND created_at::date BETWEEN $2 AND $3 ORDER BY created_at DESC`,
+      [businessId, from, to]
+    ),
+    query(
+      `SELECT id, supplier_id AS "supplierId", product_id AS "productId", qty, cost, total, created_at AS date
+       FROM purchases WHERE business_id = $1 AND created_at::date BETWEEN $2 AND $3 ORDER BY created_at DESC`,
+      [businessId, from, to]
+    ),
+  ]);
+
+  const itemsBySale = groupBy(saleItems.rows, "sale_id");
+  const salesList = sales.rows.map((s) => ({
+    ...s,
+    total: Number(s.total),
+    discount: Number(s.discount),
+    pontosUsados: Number(s.pontosUsados),
+    pontosGanhos: Number(s.pontosGanhos),
+    items: (itemsBySale[s.id] || []).map((it) => ({
+      productId: it.productId,
+      variantId: it.variantId,
+      name: it.name,
+      qty: Number(it.qty),
+      price: Number(it.price),
+      cost: Number(it.cost),
+    })),
+  }));
+
+  res.json({
+    sales: salesList,
+    quebras: quebras.rows.map((q) => ({ ...q, qty: Number(q.qty), custoImpacto: Number(q.custoImpacto) })),
+    movimentosCaixa: movimentos.rows.map((m) => ({ ...m, amount: Number(m.amount) })),
+    audit: audit.rows.map((a) => ({ ...a, valor: a.valor === null ? null : Number(a.valor) })),
+    purchases: purchases.rows.map((p) => ({ ...p, qty: Number(p.qty), cost: Number(p.cost), total: Number(p.total) })),
+  });
 });

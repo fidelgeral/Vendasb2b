@@ -76,6 +76,7 @@ export function businessApi(businessId) {
   const s = (p) => p.then((d) => d.store);
   return {
     getStore: () => get(`${base}/store`).then((d) => d.store),
+    getHistory: (from, to) => get(`${base}/history?from=${from || ""}&to=${to || ""}`),
 
     createProduct: (payload) => s(post(`${base}/products`, payload)),
     updateProduct: (id, payload) => s(patch(`${base}/products/${id}`, payload)),
