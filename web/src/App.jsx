@@ -7,12 +7,18 @@ import PdvApp from "./PdvApp.jsx";
 export default function App() {
   const [session, setSessionState] = useState(getSession());
   const [viewingBusiness, setViewingBusiness] = useState(null);
+  const [activeBusinessId, setActiveBusinessId] = useState(getSession()?.businessId || null);
 
-  const refreshSession = () => setSessionState(getSession());
+  const refreshSession = () => {
+    const s = getSession();
+    setSessionState(s);
+    setActiveBusinessId(s?.businessId || null);
+  };
   const onLoggedOut = () => {
     clearSession();
     setViewingBusiness(null);
     setSessionState(null);
+    setActiveBusinessId(null);
   };
 
   if (!session) {
@@ -26,5 +32,16 @@ export default function App() {
     return <SuperAdminApp onOpenBusiness={(b) => setViewingBusiness(b)} onLoggedOut={onLoggedOut} />;
   }
 
-  return <PdvApp businessId={session.businessId} isSuperAdmin={false} onLoggedOut={onLoggedOut} />;
+  const filiais = session.filiais && session.filiais.length > 1 ? session.filiais : null;
+  return (
+    <PdvApp
+      key={activeBusinessId}
+      businessId={activeBusinessId || session.businessId}
+      isSuperAdmin={false}
+      onLoggedOut={onLoggedOut}
+      filiais={filiais}
+      activeBusinessId={activeBusinessId || session.businessId}
+      onSwitchFilial={setActiveBusinessId}
+    />
+  );
 }

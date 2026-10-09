@@ -135,6 +135,7 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
           </div>
           {showForm && (
             <NewBusinessForm
+              businesses={businesses}
               onCreated={() => {
                 setShowForm(false);
                 load();
@@ -253,13 +254,17 @@ function BillingControls({ b, onChanged }) {
   );
 }
 
-function NewBusinessForm({ onCreated }) {
+function NewBusinessForm({ onCreated, businesses = [] }) {
   const [name, setName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
+  const [parentBusinessId, setParentBusinessId] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Possíveis sedes: negócios que não são, eles próprios, filiais.
+  const sedes = businesses.filter((b) => !b.parentBusinessId);
 
   const submit = async () => {
     if (!name.trim() || !ownerName.trim() || !ownerEmail.trim() || ownerPassword.length < 6) {
@@ -269,7 +274,7 @@ function NewBusinessForm({ onCreated }) {
     setSaving(true);
     setError("");
     try {
-      await superApi.createBusiness({ name: name.trim(), ownerName: ownerName.trim(), ownerEmail: ownerEmail.trim(), ownerPassword });
+      await superApi.createBusiness({ name: name.trim(), ownerName: ownerName.trim(), ownerEmail: ownerEmail.trim(), ownerPassword, parentBusinessId: parentBusinessId || null });
       onCreated();
     } catch (e) {
       setError(e.message);
@@ -280,6 +285,12 @@ function NewBusinessForm({ onCreated }) {
   return (
     <div className="space-y-2">
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do negócio (ex: Padaria da Maria)" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
+      <select value={parentBusinessId} onChange={(e) => setParentBusinessId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm">
+        <option value="">Negócio independente (sem sede)</option>
+        {sedes.map((b) => (
+          <option key={b.id} value={b.id}>Filial de: {b.name}</option>
+        ))}
+      </select>
       <div className="text-xs" style={{ color: MUTED }}>
         Conta do dono (para o primeiro acesso):
       </div>

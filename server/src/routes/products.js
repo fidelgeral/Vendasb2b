@@ -9,6 +9,55 @@ productsRouter.use(requireAuth, requireBusiness);
 
 const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
 
+// Transferência de stock entre filiais do mesmo grupo (produtos simples, sem
+// variantes/lotes). O produto é identificado no destino pelo nome; se não
+// existir, é criado lá.
+const transferSchema = z.object({
+  toBusinessId: z.string().uuid(),
+  productId: z.string().uuid(),
+  qty: z.number().positive(),
+});
+
+productsRouter.post("/transfer-stock", async (req, res) => {
+  const parsed = transferSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Dados da transferência inválidos." });
+  const fromId = req.params.businessId;
+  const { toBusinessId, productId, qty } = parsed.data;
+
+  const allowed = req.auth.type === "super" || (req.auth.groupBusinessIds || [req.auth.businessId]).includes(toBusinessId);
+  if (!allowed) return res.status(403).json({ error: "A filial de destino não pertence ao seu grupo." });
+  if (toBusinessId === fromId) return res.status(400).json({ error: "Escolha uma filial diferente." });
+
+  const prod = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [productId, fromId])).rows[0];
+  if (!prod) return res.status(404).json({ error: "Produto não encontrado." });
+  if (prod.tipo !== "simples") return res.status(400).json({ error: "Só se transferem produtos simples (sem variantes/lotes/composição)." });
+
+  const hasBatchesOrVariants =
+    (await query("SELECT (SELECT count(*) FROM product_batches WHERE product_id=$1)+(SELECT count(*) FROM product_variants WHERE product_id=$1) AS n", [productId])).rows[0].n;
+  if (Number(hasBatchesOrVariants) > 0) return res.status(400).json({ error: "Este produto tem lotes/variantes e não pode ser transferido automaticamente." });
+  if (Number(prod.stock) < qty) return res.status(400).json({ error: "Stock insuficiente na filial de origem." });
+
+  await withTransaction(async (client) => {
+    await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
+    const target = (await client.query("SELECT id FROM products WHERE business_id = $1 AND lower(name) = lower($2) AND tipo = 'simples'", [toBusinessId, prod.name])).rows[0];
+    if (target) {
+      await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, target.id]);
+    } else {
+      await client.query(
+        `INSERT INTO products (business_id, name, category, unit, price, cost, stock, min_stock)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [toBusinessId, prod.name, prod.category, prod.unit, prod.price, prod.cost, qty, prod.min_stock]
+      );
+    }
+    const who = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
+    await client.query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,'TRANSFERENCIA STOCK',$4,$5)", [
+      fromId, who.id, who.name, `${prod.name} × ${qty} enviado para outra filial`, Number(prod.cost) * qty,
+    ]);
+  });
+
+  await respond(res, fromId);
+});
+
 const productSchema = z.object({
   tipo: z.enum(["simples", "variacao", "composicao"]).default("simples"),
   vendaDirecta: z.boolean().default(true),

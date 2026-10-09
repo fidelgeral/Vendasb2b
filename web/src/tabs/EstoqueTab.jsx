@@ -3,6 +3,7 @@ import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, getStock, isLowStock, nearExpiry, daysUntil, todayStr, mapImportRow } from "../lib/utils.js";
 import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
 import { Boxes, Package, AlertTriangle, Layers, Ruler, Minus, Plus } from "../lib/icons.jsx";
+import { getSession } from "../lib/api.js";
 import * as XLSX from "xlsx";
 
 export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras }) {
@@ -10,6 +11,9 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showSaida, setShowSaida] = useState(false);
   const [showNovoLote, setShowNovoLote] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const session = getSession();
+  const outrasFiliais = (session?.filiais || []).filter((f) => f.id !== store.id);
   const lowCount = store.products.filter((p) => isLowStock(p, store.products)).length;
   const expiringCount = store.products.reduce((s, p) => s + nearExpiry(p).length, 0);
   const expiredUnits = store.products.reduce((s, p) => s + (p.batches || []).filter((b) => b.qty > 0 && daysUntil(b.expiryDate) < 0).reduce((a, b) => a + b.qty, 0), 0);
@@ -61,6 +65,11 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
           <button onClick={onGoCompras} style={{ background: "#2563EB", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             Fornecedores
           </button>
+          {outrasFiliais.length > 0 && (
+            <button onClick={() => setShowTransfer(true)} style={{ background: "#7C3AED", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
+              ⇄ Transferir p/ filial
+            </button>
+          )}
           <button
             onClick={() => imprimirEtiquetas(filteredProducts, store.config.businessName)}
             style={{ borderColor: BORDER, color: "#0F172A" }}
@@ -132,6 +141,55 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       {showNovoLote && (
         <NovoLoteModal products={store.products} onAdd={(id, qty, exp) => addBatch(id, qty, exp)} onClose={() => setShowNovoLote(false)} />
       )}
+      {showTransfer && (
+        <TransferModal
+          store={store}
+          filiais={outrasFiliais}
+          onSubmit={async (payload) => {
+            try {
+              setStore(await api.transferStock(payload));
+              showToast("Stock transferido");
+              setShowTransfer(false);
+            } catch (e) {
+              showToast(e.message, "warn");
+            }
+          }}
+          onClose={() => setShowTransfer(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TransferModal({ store, filiais, onSubmit, onClose }) {
+  const simples = store.products.filter((p) => p.tipo === "simples" && !p.variants && !p.batches);
+  const [productId, setProductId] = useState(simples[0]?.id || "");
+  const [toBusinessId, setToBusinessId] = useState(filiais[0]?.id || "");
+  const [qty, setQty] = useState("");
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-sm space-y-2" onClick={(e) => e.stopPropagation()}>
+        <div className="text-sm font-semibold">Transferir stock para outra filial</div>
+        <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
+          <option value="">Produto (só produtos simples)</option>
+          {simples.map((p) => (
+            <option key={p.id} value={p.id}>{p.name} (tem {p.stock})</option>
+          ))}
+        </select>
+        <select value={toBusinessId} onChange={(e) => setToBusinessId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
+          {filiais.map((f) => (
+            <option key={f.id} value={f.id}>{f.name}</option>
+          ))}
+        </select>
+        <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Quantidade" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+        <button
+          onClick={() => productId && toBusinessId && Number(qty) > 0 && onSubmit({ productId, toBusinessId, qty: Number(qty) })}
+          style={{ background: TEAL, color: "#fff" }}
+          className="w-full rounded-lg py-2 text-sm font-semibold"
+        >
+          Transferir
+        </button>
+      </div>
     </div>
   );
 }

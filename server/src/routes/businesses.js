@@ -33,6 +33,7 @@ businessesRouter.get("/", async (req, res) => {
   const { rows } = await query(
     `SELECT b.id, b.name, b.slug, b.active, b.created_at,
             b.plan, b.subscription_status AS "subscriptionStatus", b.monthly_fee AS "monthlyFee", b.next_due_date AS "nextDueDate",
+            b.parent_business_id AS "parentBusinessId",
             (SELECT count(*) FROM employees e WHERE e.business_id = b.id) AS employee_count
      FROM businesses b ORDER BY b.created_at DESC`
   );
@@ -44,12 +45,13 @@ const createSchema = z.object({
   ownerName: z.string().min(2),
   ownerEmail: z.string().email(),
   ownerPassword: z.string().min(6),
+  parentBusinessId: z.string().uuid().optional().nullable(),
 });
 
 businessesRouter.post("/", async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Preencha nome do negócio, nome, email e senha do dono (mín. 6 caracteres)." });
-  const { name, ownerName, ownerEmail, ownerPassword } = parsed.data;
+  const { name, ownerName, ownerEmail, ownerPassword, parentBusinessId } = parsed.data;
 
   // O email do dono é único em toda a plataforma (é ele que faz login, sem código de negócio).
   const dup = (await query("SELECT 1 FROM employees WHERE lower(email) = lower($1)", [ownerEmail])).rows.length;
@@ -60,10 +62,11 @@ businessesRouter.post("/", async (req, res) => {
 
   const business = await withTransaction(async (client) => {
     const biz = (
-      await client.query("INSERT INTO businesses (name, slug, config) VALUES ($1, $2, $3) RETURNING *", [
+      await client.query("INSERT INTO businesses (name, slug, config, parent_business_id) VALUES ($1, $2, $3, $4) RETURNING *", [
         name,
         slug,
         { businessName: name, modules: { mercearia: true, restaurante: false, bar: false, roupa: false, padaria: false } },
+        parentBusinessId || null,
       ])
     ).rows[0];
     await client.query(

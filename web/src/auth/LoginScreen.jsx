@@ -63,7 +63,7 @@ function BusinessLoginForm({ onLogin }) {
     setError("");
     try {
       const res = await auth.login(email.trim(), password);
-      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role });
+      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role, filiais: res.filiais || [] });
       onLogin();
     } catch (err) {
       setError(err.message || "Não foi possível entrar.");

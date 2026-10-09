@@ -25,7 +25,7 @@ import EquipaTab from "./tabs/EquipaTab.jsx";
 import BalancoTab from "./tabs/BalancoTab.jsx";
 import ConfigTab from "./tabs/ConfigTab.jsx";
 
-export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLoggedOut }) {
+export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLoggedOut, filiais, activeBusinessId, onSwitchFilial }) {
   const [store, setStore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saveError, setSaveError] = useState("");
@@ -204,7 +204,23 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           </div>
           <div className="min-w-0">
             <div className="text-[11px] tracking-wide opacity-80 truncate">{BRAND_NAME} · {BRAND_TAGLINE}</div>
-            <div className="text-xl font-bold leading-tight truncate">{store.config.businessName}</div>
+            {filiais ? (
+              <select
+                value={activeBusinessId}
+                onChange={(e) => onSwitchFilial(e.target.value)}
+                className="text-lg font-bold leading-tight bg-transparent outline-none cursor-pointer"
+                style={{ color: "#fff" }}
+                title="Trocar de filial"
+              >
+                {filiais.map((f) => (
+                  <option key={f.id} value={f.id} style={{ color: "#0F172A" }}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-xl font-bold leading-tight truncate">{store.config.businessName}</div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

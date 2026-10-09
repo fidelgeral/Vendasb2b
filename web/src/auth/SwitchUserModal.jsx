@@ -22,7 +22,7 @@ export default function SwitchUserModal({ businessId, onSwitched, onClose }) {
         setLoading(false);
         return;
       }
-      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role });
+      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role, filiais: res.filiais || [] });
       onSwitched();
     } catch (err) {
       setError(err.message || "Não foi possível entrar.");

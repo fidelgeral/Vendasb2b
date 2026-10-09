@@ -48,11 +48,29 @@ authRouter.post("/auth/login", loginLimiter, async (req, res) => {
   if (!ok) return res.status(401).json({ error: "Email ou senha incorrectos." });
   if (!emp.business_active) return res.status(403).json({ error: "Conta de negócio inactiva." });
 
-  const token = signToken({ type: "employee", businessId: emp.business_id, employeeId: emp.id, role: emp.role, name: emp.name });
+  // Filiais: só o dono acede a várias lojas do mesmo grupo. O grupo é a sede
+  // (parent) + todas as suas filiais; se este negócio for a sede, inclui-se a si
+  // próprio + filhos. Para outros papéis, acede só ao seu negócio.
+  let filiais = [{ id: emp.business_id, name: emp.business_name }];
+  if (emp.role === "dono") {
+    const biz = (await query("SELECT id, name, parent_business_id FROM businesses WHERE id = $1", [emp.business_id])).rows[0];
+    const rootId = biz.parent_business_id || biz.id;
+    const group = (
+      await query(
+        "SELECT id, name FROM businesses WHERE active = true AND (id = $1 OR parent_business_id = $1) ORDER BY (id = $1) DESC, name",
+        [rootId]
+      )
+    ).rows;
+    if (group.length) filiais = group;
+  }
+  const groupBusinessIds = filiais.map((f) => f.id);
+
+  const token = signToken({ type: "employee", businessId: emp.business_id, employeeId: emp.id, role: emp.role, name: emp.name, groupBusinessIds });
   res.json({
     token,
     business: { id: emp.business_id, name: emp.business_name },
     employee: { id: emp.id, name: emp.name, role: emp.role, email: emp.email },
+    filiais,
   });
 });
 

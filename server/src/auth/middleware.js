@@ -23,7 +23,12 @@ export function requireSuperAdmin(req, res, next) {
 // Garante que o :businessId do URL corresponde ao negócio do token (ou que é super-admin)
 export function requireBusiness(req, res, next) {
   if (req.auth?.type === "super") return next();
-  if (req.auth?.type !== "employee" || req.auth.businessId !== req.params.businessId) {
+  if (req.auth?.type !== "employee") {
+    return res.status(403).json({ error: "Sem acesso a este negócio." });
+  }
+  // Aceita o negócio do token ou qualquer filial do mesmo grupo (só o dono tem grupo).
+  const allowed = req.auth.groupBusinessIds && req.auth.groupBusinessIds.length ? req.auth.groupBusinessIds : [req.auth.businessId];
+  if (!allowed.includes(req.params.businessId)) {
     return res.status(403).json({ error: "Sem acesso a este negócio." });
   }
   next();

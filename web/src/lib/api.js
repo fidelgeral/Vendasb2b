@@ -135,6 +135,8 @@ export function businessApi(businessId) {
     getBilling: () => get(`${base}/billing`),
     submitPayment: (payload) => post(`${base}/billing/submit`, payload),
 
+    transferStock: (payload) => s(post(`${base}/transfer-stock`, payload)),
+
     addConta: (payload) => s(post(`${base}/contas-pagar`, payload)),
     deleteConta: (id) => s(del(`${base}/contas-pagar/${id}`)),
     pagarConta: (id) => s(post(`${base}/contas-pagar/${id}/pagar`)),
