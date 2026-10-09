@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { CARD, BORDER, MUTED, TEAL } from "../lib/theme.js";
-import { fmtMT, todayStr } from "../lib/utils.js";
+import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK, GOLD } from "../lib/theme.js";
+import { fmtMT, todayStr, daysUntil, DESPESA_CATEGORIAS } from "../lib/utils.js";
 import { Plus, X } from "../lib/icons.jsx";
+import { StatCard } from "../components/Shared.jsx";
 
 export default function ComprasTab({ store, setStore, api }) {
   const [sup, setSup] = useState({ name: "", contacto: "", phone: "", email: "", nuit: "", endereco: "", prazo: "" });
@@ -117,6 +118,92 @@ export default function ComprasTab({ store, setStore, api }) {
               </div>
             );
           })}
+      </div>
+
+      <ContasPagar store={store} setStore={setStore} api={api} />
+    </div>
+  );
+}
+
+function ContasPagar({ store, setStore, api }) {
+  const [form, setForm] = useState({ descricao: "", categoria: DESPESA_CATEGORIAS[0], valor: "", supplierId: "", vencimento: "" });
+  const contas = store.contasPagar || [];
+  const abertas = contas.filter((c) => c.estado === "aberta");
+  const totalAberto = abertas.reduce((a, c) => a + c.valor, 0);
+
+  // Fluxo de caixa simples: entradas de vendas em dinheiro + movimentos − contas em aberto.
+  const vendasDinheiro = store.sales
+    .filter((s) => s.status !== "void")
+    .reduce((a, s) => a + s.payments.filter((p) => p.method === "dinheiro").reduce((x, p) => x + p.amount, 0), 0);
+  const entradas = store.movimentosCaixa.filter((m) => m.type === "entrada").reduce((a, m) => a + m.amount, 0);
+  const saidas = store.movimentosCaixa.filter((m) => m.type === "saida").reduce((a, m) => a + m.amount, 0);
+  const saldoPrevisto = vendasDinheiro + entradas - saidas - totalAberto;
+
+  const add = async () => {
+    if (!form.descricao.trim() || !(Number(form.valor) > 0)) return;
+    setStore(
+      await api.addConta({
+        descricao: form.descricao.trim(),
+        categoria: form.categoria,
+        valor: Number(form.valor),
+        supplierId: form.supplierId || null,
+        vencimento: form.vencimento || null,
+      })
+    );
+    setForm({ descricao: "", categoria: DESPESA_CATEGORIAS[0], valor: "", supplierId: "", vencimento: "" });
+  };
+
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3 space-y-3">
+      <div className="text-sm font-semibold">Contas a pagar e fluxo de caixa</div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <StatCard label="A pagar (em aberto)" value={fmtMT(totalAberto)} />
+        <StatCard label="Vendas em dinheiro" value={fmtMT(vendasDinheiro)} />
+        <StatCard label="Saldo previsto" value={fmtMT(saldoPrevisto)} sub="após pagar o que está em aberto" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+        <input placeholder="Descrição *" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm sm:col-span-2" />
+        <select value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
+          {DESPESA_CATEGORIAS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <input placeholder="Valor (MT) *" type="number" value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
+        <input type="date" value={form.vencimento} onChange={(e) => setForm({ ...form, vencimento: e.target.value })} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
+      </div>
+      <button onClick={add} style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm">
+        <Plus size={14} /> Adicionar conta
+      </button>
+
+      <div className="space-y-1">
+        {contas.length === 0 && <div className="text-xs" style={{ color: MUTED }}>Sem contas registadas.</div>}
+        {contas.map((c) => {
+          const paga = c.estado === "paga";
+          const dias = c.vencimento ? daysUntil(String(c.vencimento).slice(0, 10)) : null;
+          const atrasada = !paga && dias !== null && dias < 0;
+          return (
+            <div key={c.id} style={{ background: CARD, borderColor: atrasada ? BRICK : BORDER, opacity: paga ? 0.6 : 1 }} className="border rounded-lg px-2.5 py-1.5 text-xs flex items-center justify-between gap-2 flex-wrap">
+              <span>
+                <b>{c.descricao}</b> · {c.categoria} · {fmtMT(c.valor)}
+                {c.vencimento ? " · vence " + new Date(c.vencimento).toLocaleDateString("pt-PT") : ""}
+                {atrasada && <span style={{ color: BRICK }} className="font-semibold"> · ATRASADA</span>}
+                {paga && <span style={{ color: GREEN }} className="font-semibold"> · PAGA</span>}
+              </span>
+              <span className="flex gap-2">
+                {!paga && (
+                  <button onClick={async () => setStore(await api.pagarConta(c.id))} style={{ color: GREEN }} className="font-semibold">
+                    Marcar paga
+                  </button>
+                )}
+                <button onClick={async () => setStore(await api.deleteConta(c.id))}>
+                  <X size={13} style={{ color: BRICK }} />
+                </button>
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

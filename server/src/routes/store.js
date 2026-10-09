@@ -66,6 +66,7 @@ export async function buildStore(businessId) {
     quebras,
     movimentos,
     audit,
+    contasPagar,
   ] = await Promise.all([
     query(
       `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
@@ -163,6 +164,12 @@ export async function buildStore(businessId) {
        FROM audit_log WHERE business_id = $1 ORDER BY created_at DESC LIMIT 200`,
       [businessId]
     ),
+    query(
+      `SELECT id, descricao, categoria, valor, supplier_id AS "supplierId", vencimento,
+              estado, paga_em AS "pagaEm", created_at AS "createdAt"
+       FROM contas_pagar WHERE business_id = $1 ORDER BY (estado='paga'), vencimento NULLS LAST`,
+      [businessId]
+    ),
   ]);
 
   const variantsByProduct = groupBy(variants.rows, "product_id");
@@ -238,6 +245,7 @@ export async function buildStore(businessId) {
     quebras: quebras.rows.map((q) => ({ ...q, qty: Number(q.qty), custoImpacto: Number(q.custoImpacto) })),
     movimentosCaixa: movimentos.rows.map((m) => ({ ...m, amount: Number(m.amount) })),
     audit: audit.rows.map((a) => ({ ...a, valor: a.valor === null ? null : Number(a.valor) })),
+    contasPagar: contasPagar.rows.map((c) => ({ ...c, valor: Number(c.valor) })),
     currentShiftId: currentShift ? currentShift.id : null,
   };
 }

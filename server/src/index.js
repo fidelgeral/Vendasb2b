@@ -16,6 +16,7 @@ import { salesRouter } from "./routes/sales.js";
 import { configRouter } from "./routes/config.js";
 import { assistantRouter, publicRouter } from "./routes/assistant.js";
 import { billingRouter, superBillingRouter } from "./routes/billing.js";
+import { contasRouter } from "./routes/contas.js";
 import { requireActiveSubscription } from "./auth/middleware.js";
 
 const app = express();
@@ -58,6 +59,7 @@ app.use("/api/businesses/:businessId", employeesRouter);
 app.use("/api/businesses/:businessId", caixaRouter);
 app.use("/api/businesses/:businessId", salesRouter);
 app.use("/api/businesses/:businessId", configRouter);
+app.use("/api/businesses/:businessId", contasRouter);
 app.use("/api/businesses/:businessId", assistantRouter);
 app.use("/api/public", publicRouter);
 
