@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
-import { requireAuth, requireBusiness } from "../auth/middleware.js";
+import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
 
 export const productsRouter = Router({ mergeParams: true });
@@ -18,7 +18,7 @@ const transferSchema = z.object({
   qty: z.number().positive(),
 });
 
-productsRouter.post("/transfer-stock", async (req, res) => {
+productsRouter.post("/transfer-stock", requireRole("dono", "gerente"), async (req, res) => {
   const parsed = transferSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados da transferência inválidos." });
   const fromId = req.params.businessId;
@@ -27,6 +27,12 @@ productsRouter.post("/transfer-stock", async (req, res) => {
   const allowed = req.auth.type === "super" || (req.auth.groupBusinessIds || [req.auth.businessId]).includes(toBusinessId);
   if (!allowed) return res.status(403).json({ error: "A filial de destino não pertence ao seu grupo." });
   if (toBusinessId === fromId) return res.status(400).json({ error: "Escolha uma filial diferente." });
+
+  // A filial de destino não pode estar suspensa (não se envia stock para uma
+  // loja bloqueada por falta de pagamento).
+  const destino = (await query("SELECT subscription_status FROM businesses WHERE id = $1 AND active = true", [toBusinessId])).rows[0];
+  if (!destino) return res.status(404).json({ error: "Filial de destino não encontrada." });
+  if (destino.subscription_status === "suspenso") return res.status(400).json({ error: "A filial de destino está suspensa." });
 
   const prod = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [productId, fromId])).rows[0];
   if (!prod) return res.status(404).json({ error: "Produto não encontrado." });
