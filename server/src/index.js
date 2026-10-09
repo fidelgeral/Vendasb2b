@@ -15,6 +15,8 @@ import { caixaRouter } from "./routes/caixa.js";
 import { salesRouter } from "./routes/sales.js";
 import { configRouter } from "./routes/config.js";
 import { assistantRouter, publicRouter } from "./routes/assistant.js";
+import { billingRouter, superBillingRouter } from "./routes/billing.js";
+import { requireActiveSubscription } from "./auth/middleware.js";
 
 const app = express();
 
@@ -35,6 +37,15 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use("/api", authRouter);
 app.use("/api/super/businesses", businessesRouter);
+app.use("/api/super/billing", superBillingRouter);
+
+// Billing da loja: fica FORA do bloqueio de assinatura, para a loja suspensa
+// ainda conseguir ver os dados de pagamento e registar que pagou.
+app.use("/api/businesses/:businessId", billingRouter);
+
+// Bloqueio por assinatura suspensa aplica-se a todas as rotas operacionais abaixo.
+app.use("/api/businesses/:businessId", requireActiveSubscription);
+
 // :businessId vive no prefixo do mount (não em cada rota) para que já esteja
 // disponível em req.params quando os middlewares requireAuth/requireBusiness
 // de cada router (registados com .use(), sem path) correm.

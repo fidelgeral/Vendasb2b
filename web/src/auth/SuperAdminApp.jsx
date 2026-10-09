@@ -13,7 +13,9 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const load = () =>
+  const [pending, setPending] = useState([]);
+
+  const load = () => {
     superApi
       .listBusinesses()
       .then((list) => {
@@ -21,6 +23,8 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
         setLoaded(true);
       })
       .catch((e) => setError(e.message));
+    superApi.pendingSubmissions().then(setPending).catch(() => {});
+  };
 
   useEffect(() => {
     load();
@@ -84,10 +88,43 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
       </div>
       <div className="max-w-3xl mx-auto space-y-4 px-5 -mt-10 pb-8">
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           <StatCard label="Contas criadas" value={businesses.length} />
           <StatCard label="Contas activas" value={activeCount} />
+          <StatCard label="Pagamentos a confirmar" value={pending.length} />
         </div>
+
+        {pending.length > 0 && (
+          <div style={{ background: "#FEF3C7", borderColor: "#F59E0B" }} className="border rounded-xl p-3">
+            <div className="text-sm font-bold mb-2">Comprovativos de mensalidade pendentes</div>
+            <div className="space-y-1.5">
+              {pending.map((p) => (
+                <div key={p.id} style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg px-3 py-2 flex items-center justify-between gap-2 flex-wrap text-xs">
+                  <span>
+                    <b>{p.businessName}</b> · {Number(p.amount)} MT · {p.method === "mpesa" ? "M-Pesa" : "e-Mola"}
+                    {p.reference ? " · ref: " + p.reference : ""} · {new Date(p.createdAt).toLocaleDateString("pt-PT")}
+                  </span>
+                  <span className="flex gap-2">
+                    <button
+                      onClick={async () => { await superApi.confirmSubmission(p.id); load(); }}
+                      style={{ background: GREEN, color: "#fff" }}
+                      className="rounded-lg px-2.5 py-1 font-semibold"
+                    >
+                      Confirmar (+30 dias)
+                    </button>
+                    <button
+                      onClick={async () => { await superApi.rejectSubmission(p.id); load(); }}
+                      style={{ color: BRICK }}
+                      className="font-semibold"
+                    >
+                      Rejeitar
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
@@ -157,11 +194,61 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
                     </button>
                   </div>
                 </div>
+                <BillingControls b={b} onChanged={load} />
               </div>
             );
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function BillingControls({ b, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [plan, setPlan] = useState(b.plan || "Gratuito");
+  const [fee, setFee] = useState(b.monthlyFee || 0);
+  const [due, setDue] = useState(b.nextDueDate ? String(b.nextDueDate).slice(0, 10) : "");
+  const sub = b.subscriptionStatus || "ativo";
+  const subColor = sub === "ativo" ? GREEN : sub === "suspenso" ? BRICK : "#F59E0B";
+  const subLabel = sub === "ativo" ? "Assinatura activa" : sub === "suspenso" ? "Assinatura SUSPENSA" : "Pagamento em análise";
+
+  const save = async () => {
+    await superApi.setPlan(b.id, { plan, monthlyFee: Number(fee) || 0, nextDueDate: due || null });
+    setOpen(false);
+    onChanged();
+  };
+
+  return (
+    <div className="mt-2 pt-2 flex items-center justify-between gap-2 flex-wrap text-xs" style={{ borderTop: "1px solid " + BORDER }}>
+      <span style={{ color: subColor }} className="font-semibold">
+        {subLabel} · {b.plan || "Gratuito"}{b.monthlyFee > 0 ? ` · ${b.monthlyFee} MT/mês` : ""}
+        {b.nextDueDate ? ` · vence ${new Date(b.nextDueDate).toLocaleDateString("pt-PT")}` : ""}
+      </span>
+      <span className="flex gap-2 items-center">
+        <button onClick={() => setOpen((o) => !o)} style={{ color: TEAL }} className="font-semibold">
+          {open ? "Fechar" : "Definir plano"}
+        </button>
+        {sub === "suspenso" ? (
+          <button onClick={async () => { await superApi.reactivate(b.id); onChanged(); }} style={{ color: GREEN }} className="font-semibold">
+            Reactivar cobrança
+          </button>
+        ) : (
+          <button onClick={async () => { await superApi.suspend(b.id); onChanged(); }} style={{ color: BRICK }} className="font-semibold">
+            Suspender por falta de pagamento
+          </button>
+        )}
+      </span>
+      {open && (
+        <div className="w-full grid grid-cols-1 sm:grid-cols-4 gap-2 mt-1">
+          <input value={plan} onChange={(e) => setPlan(e.target.value)} placeholder="Nome do plano" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5" />
+          <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Mensalidade (MT)" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5" />
+          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5" />
+          <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 font-semibold">
+            Guardar plano
+          </button>
+        </div>
+      )}
     </div>
   );
 }

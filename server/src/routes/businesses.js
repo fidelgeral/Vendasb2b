@@ -32,6 +32,7 @@ async function uniqueSlug(base) {
 businessesRouter.get("/", async (req, res) => {
   const { rows } = await query(
     `SELECT b.id, b.name, b.slug, b.active, b.created_at,
+            b.plan, b.subscription_status AS "subscriptionStatus", b.monthly_fee AS "monthlyFee", b.next_due_date AS "nextDueDate",
             (SELECT count(*) FROM employees e WHERE e.business_id = b.id) AS employee_count
      FROM businesses b ORDER BY b.created_at DESC`
   );

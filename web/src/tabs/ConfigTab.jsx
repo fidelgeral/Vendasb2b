@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL } from "../lib/theme.js";
 import { ALL_MODULES } from "../lib/utils.js";
-import { Settings, Percent, Wallet, Users, Lock } from "../lib/icons.jsx";
+import { Settings, Percent, Wallet, Users, Lock, Banknote } from "../lib/icons.jsx";
+import BillingPanel from "../components/BillingPanel.jsx";
 
 export default function ConfigTab({ store, setStore, api }) {
   const [cat, setCat] = useState("impressao");
@@ -10,6 +11,7 @@ export default function ConfigTab({ store, setStore, api }) {
     { id: "iva", label: "IVA", icon: Percent },
     { id: "contas", label: "Contas", icon: Wallet },
     { id: "empresa", label: "Empresa", icon: Users },
+    { id: "assinatura", label: "A minha assinatura", icon: Banknote },
     { id: "seguranca", label: "Segurança e Backups", icon: Lock },
   ];
   return (
@@ -31,7 +33,8 @@ export default function ConfigTab({ store, setStore, api }) {
           );
         })}
       </div>
-      <AtendimentoLink store={store} />
+      {cat !== "assinatura" && <AtendimentoLink store={store} />}
+      {cat === "assinatura" && <BillingPanel api={api} canSubmit />}
       {cat === "impressao" && <ImpressaoConfig store={store} setStore={setStore} api={api} />}
       {cat === "iva" && <IvaConfig store={store} setStore={setStore} api={api} />}
       {cat === "contas" && <ContasConfig store={store} setStore={setStore} api={api} />}

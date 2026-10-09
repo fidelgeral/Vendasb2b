@@ -1,4 +1,5 @@
 import { verifyToken } from "./jwt.js";
+import { query } from "../db.js";
 
 // Extrai e valida o token Bearer, define req.auth = { type: 'super' } ou
 // { type: 'employee', businessId, employeeId, role }
@@ -24,6 +25,21 @@ export function requireBusiness(req, res, next) {
   if (req.auth?.type === "super") return next();
   if (req.auth?.type !== "employee" || req.auth.businessId !== req.params.businessId) {
     return res.status(403).json({ error: "Sem acesso a este negócio." });
+  }
+  next();
+}
+
+// Bloqueia o negócio quando a assinatura está suspensa (devolve 402 para o
+// frontend mostrar o ecrã "conta suspensa"). O super-admin nunca é bloqueado.
+export async function requireActiveSubscription(req, res, next) {
+  if (req.auth?.type === "super") return next();
+  try {
+    const biz = (await query("SELECT subscription_status FROM businesses WHERE id = $1", [req.params.businessId])).rows[0];
+    if (biz && biz.subscription_status === "suspenso") {
+      return res.status(402).json({ error: "Conta suspensa por falta de pagamento da mensalidade.", suspended: true });
+    }
+  } catch (e) {
+    // em caso de erro de leitura, não bloqueia (evita derrubar o sistema por causa do billing)
   }
   next();
 }

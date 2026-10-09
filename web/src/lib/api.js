@@ -68,6 +68,13 @@ export const superApi = {
   renameBusiness: (id, name) => patch(`/api/super/businesses/${id}`, { name }).then((d) => d.business),
   toggleActive: (id) => patch(`/api/super/businesses/${id}/toggle-active`).then((d) => d.business),
   deleteBusiness: (id) => del(`/api/super/businesses/${id}`),
+  // Mensalidades
+  pendingSubmissions: () => get("/api/super/billing/submissions").then((d) => d.submissions),
+  setPlan: (id, payload) => patch(`/api/super/billing/${id}/plan`, payload),
+  suspend: (id) => post(`/api/super/billing/${id}/suspend`),
+  reactivate: (id) => post(`/api/super/billing/${id}/reactivate`),
+  confirmSubmission: (subId) => post(`/api/super/billing/submissions/${subId}/confirm`),
+  rejectSubmission: (subId) => post(`/api/super/billing/submissions/${subId}/reject`),
 };
 
 // Cliente da API de um negócio — cada método devolve o "store" já actualizado.
@@ -124,6 +131,9 @@ export function businessApi(businessId) {
     patchConfig: (payload) => s(patch(`${base}/config`, payload)),
 
     assistantChat: (history) => post(`${base}/assistant/chat`, { history }).then((d) => d.reply),
+
+    getBilling: () => get(`${base}/billing`),
+    submitPayment: (payload) => post(`${base}/billing/submit`, payload),
   };
 }
 

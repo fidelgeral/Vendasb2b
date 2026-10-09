@@ -6,6 +6,7 @@ import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
 import { FloatingChart } from "./lib/charts.jsx";
 import HelpAssistant from "./components/HelpAssistant.jsx";
+import BillingPanel from "./components/BillingPanel.jsx";
 import { NotificationBell } from "./components/Shared.jsx";
 import SwitchUserModal from "./auth/SwitchUserModal.jsx";
 import {
@@ -32,6 +33,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const [toast, setToast] = useState(null);
   const [showUserSwitch, setShowUserSwitch] = useState(false);
   const [showChart, setShowChart] = useState(false);
+  const [suspended, setSuspended] = useState(false);
 
   const api = businessApi(businessId);
   const session = getSession();
@@ -42,10 +44,15 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       .then((s) => {
         setStore(s);
         setSaveError("");
+        setSuspended(false);
       })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 401) {
           onLoggedOut();
+          return;
+        }
+        if (e instanceof ApiError && e.status === 402) {
+          setSuspended(true);
           return;
         }
         setSaveError("Sem ligação — não foi possível carregar os dados. Verifique a sua internet e tente novamente.");
@@ -61,6 +68,32 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     setToast({ msg, tone });
     setTimeout(() => setToast(null), 2400);
   }, []);
+
+  if (suspended) {
+    return (
+      <div style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }} className="min-h-screen p-5">
+        <div className="max-w-xl mx-auto space-y-4 pt-6">
+          <div style={{ background: "#FEE2E2", borderColor: "#FCA5A5" }} className="border rounded-xl p-4">
+            <div className="text-lg font-bold" style={{ color: BRICK }}>Conta suspensa</div>
+            <div className="text-sm mt-1" style={{ color: INK }}>
+              A assinatura do VENDASB2B está suspensa por falta de pagamento da mensalidade. Regularize o pagamento abaixo para reactivar o sistema.
+            </div>
+          </div>
+          <BillingPanel api={api} canSubmit={session?.role === "dono" || isSuperAdmin} />
+          <button
+            onClick={() => {
+              clearSession();
+              onLoggedOut();
+            }}
+            style={{ borderColor: BORDER, color: MUTED }}
+            className="border rounded-lg px-3 py-1.5 text-xs font-medium"
+          >
+            Terminar sessão
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !store) {
     return (
