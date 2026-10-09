@@ -4,6 +4,7 @@ import { fmtMT, getStock, uid } from "../lib/utils.js";
 import { imprimirReciboTermico, gerarReciboPDF } from "../lib/print.js";
 import { ProductCard, CheckoutPanel, VoidModal } from "../components/Shared.jsx";
 import { Minus, Plus, Trash2, PauseCircle, PlayCircle } from "../lib/icons.jsx";
+import BarcodeScanner from "../components/BarcodeScanner.jsx";
 
 export default function VenderTab({ store, setStore, api, finalizeSale, voidSale, shiftOpen, canDiscount, canVoid, showToast, paymentMethods }) {
   const [query, setQuery] = useState("");
@@ -12,6 +13,18 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
   const [showParked, setShowParked] = useState(false);
   const [voidTarget, setVoidTarget] = useState(null);
   const [vendaRapida, setVendaRapida] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+
+  const onScan = (code) => {
+    setShowScanner(false);
+    const found = store.products.find((p) => (p.codigo || "").toLowerCase() === String(code).toLowerCase());
+    if (found) {
+      addToCart(found);
+      showToast(found.name + " adicionado");
+    } else {
+      showToast("Código não encontrado: " + code, "warn");
+    }
+  };
 
   const q = query.trim().toLowerCase();
   const filtered = store.products.filter(
@@ -170,6 +183,9 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             style={{ borderColor: BORDER, background: CARD }}
             className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none"
           />
+          <button onClick={() => setShowScanner(true)} style={{ borderColor: BORDER, color: TEAL, background: CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap">
+            📷 Ler código
+          </button>
           <button onClick={() => setVendaRapida((v) => !v)} style={{ borderColor: vendaRapida ? GOLD : BORDER, color: vendaRapida ? GOLD : MUTED, background: vendaRapida ? SOFTGOLD : CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap">
             Venda rápida
           </button>
@@ -340,6 +356,8 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
           onClose={() => setVoidTarget(null)}
         />
       )}
+
+      {showScanner && <BarcodeScanner onDetected={onScan} onClose={() => setShowScanner(false)} />}
     </div>
   );
 }
