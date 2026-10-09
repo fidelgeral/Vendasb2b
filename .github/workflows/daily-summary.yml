@@ -1,0 +1,17 @@
+name: Resumo diario por email
+
+# Envia o resumo do dia a cada dono às 20h (hora de Moçambique = 18h UTC).
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar endpoint de resumo diario
+        run: |
+          curl -fsS --max-time 120 -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            https://vendasb2b-api.onrender.com/api/cron/daily-summary || true

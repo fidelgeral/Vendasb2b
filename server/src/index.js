@@ -17,6 +17,7 @@ import { configRouter } from "./routes/config.js";
 import { assistantRouter, publicRouter } from "./routes/assistant.js";
 import { billingRouter, superBillingRouter } from "./routes/billing.js";
 import { contasRouter } from "./routes/contas.js";
+import { cronRouter } from "./routes/cron.js";
 import { requireActiveSubscription } from "./auth/middleware.js";
 
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api/businesses/:businessId", configRouter);
 app.use("/api/businesses/:businessId", contasRouter);
 app.use("/api/businesses/:businessId", assistantRouter);
 app.use("/api/public", publicRouter);
+app.use("/api/cron", cronRouter);
 
 app.use((req, res) => res.status(404).json({ error: "Rota não encontrada." }));
 
