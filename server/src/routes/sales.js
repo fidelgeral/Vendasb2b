@@ -28,6 +28,9 @@ const saleSchema = z.object({
   clientId: z.string().uuid().optional().nullable(),
   tableId: z.string().uuid().optional().nullable(),
   pontosUsados: z.number().optional().default(0),
+  // Identificador único gerado pelo cliente — torna o registo idempotente
+  // (reenvios não criam vendas duplicadas).
+  clientSaleId: z.string().max(100).optional().nullable(),
 });
 
 function nextDocNumber(config) {
@@ -48,20 +51,39 @@ salesRouter.post("/sales", async (req, res) => {
   }
   const employee = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
 
+  try {
   const shift = (await query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
   if (!shift) return res.status(409).json({ error: "Abra o caixa antes de vender." });
 
-  const biz = (await query("SELECT config FROM businesses WHERE id = $1", [businessId])).rows[0];
-  const doc = nextDocNumber(biz.config || {});
-  const pontosGanhos = f.clientId ? Math.floor(f.total / (biz.config?.pontosPorMT || 50)) : 0;
   const fiadoAmount = f.payments.filter((p) => p.method === "fiado").reduce((s, p) => s + p.amount, 0);
 
+  let duplicate = false;
   const sale = await withTransaction(async (client) => {
+    // Bloqueia a linha do negócio PRIMEIRO. Isto serializa as vendas do mesmo
+    // negócio: a verificação de idempotência e a numeração do documento passam
+    // a correr uma de cada vez, sem corridas entre separadores/reenvios.
+    const biz = (await client.query("SELECT config FROM businesses WHERE id = $1 FOR UPDATE", [businessId])).rows[0];
+
+    // Idempotência: se esta venda já foi registada (mesmo clientSaleId), não
+    // cria outra — devolve a que já existe.
+    if (f.clientSaleId) {
+      const existing = (
+        await client.query("SELECT id FROM sales WHERE business_id = $1 AND client_sale_id = $2", [businessId, f.clientSaleId])
+      ).rows[0];
+      if (existing) {
+        duplicate = true;
+        return existing;
+      }
+    }
+
+    const doc = nextDocNumber(biz.config || {});
+    const pontosGanhos = f.clientId ? Math.floor(f.total / (biz.config?.pontosPorMT || 50)) : 0;
+
     const row = (
       await client.query(
-        `INSERT INTO sales (business_id, shift_id, employee_id, client_id, table_id, numero, total, discount, payments, pontos_usados, pontos_ganhos)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, numero, created_at`,
-        [businessId, shift.id, employee.id, f.clientId || null, f.tableId || null, doc.numero, f.total, f.discount, JSON.stringify(f.payments), f.pontosUsados, pontosGanhos]
+        `INSERT INTO sales (business_id, shift_id, employee_id, client_id, table_id, numero, total, discount, payments, pontos_usados, pontos_ganhos, client_sale_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, numero, created_at`,
+        [businessId, shift.id, employee.id, f.clientId || null, f.tableId || null, doc.numero, f.total, f.discount, JSON.stringify(f.payments), f.pontosUsados, pontosGanhos, f.clientSaleId || null]
       )
     ).rows[0];
 
@@ -100,7 +122,23 @@ salesRouter.post("/sales", async (req, res) => {
   });
 
   const store = await buildStore(businessId);
-  res.status(201).json({ store, sale: store.sales.find((s) => s.id === sale.id) });
+  res.status(duplicate ? 200 : 201).json({ store, sale: store.sales.find((s) => s.id === sale.id) });
+  } catch (err) {
+    // Rede de segurança: se ainda assim duas vendas idênticas colidirem no
+    // índice único (23505), devolve a venda que ficou registada — nunca um
+    // duplicado nem uma falha para o utilizador.
+    if (err && err.code === "23505" && f.clientSaleId) {
+      const existente = (
+        await query("SELECT id FROM sales WHERE business_id = $1 AND client_sale_id = $2", [businessId, f.clientSaleId])
+      ).rows[0];
+      if (existente) {
+        const store = await buildStore(businessId);
+        return res.status(200).json({ store, sale: store.sales.find((s) => s.id === existente.id) });
+      }
+    }
+    console.error(err);
+    return res.status(500).json({ error: "Não foi possível registar a venda." });
+  }
 });
 
 salesRouter.post("/sales/:id/void", requireRole("dono", "gerente"), async (req, res) => {

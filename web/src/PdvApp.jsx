@@ -3,7 +3,7 @@ import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT } 
 import { BRAND_NAME, BRAND_TAGLINE } from "./lib/theme.js";
 import { BRAND_LOGO } from "./lib/logo.js";
 import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
-import { enqueueSale, listPending, removePending, countPending } from "./lib/offlineQueue.js";
+import { enqueueSale, listPending, removePending, countPending, localSaleId } from "./lib/offlineQueue.js";
 import { applyOfflineSale } from "./lib/offlineSale.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
 import { FloatingChart } from "./lib/charts.jsx";
@@ -242,8 +242,11 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     }
   };
   const finalizeSale = async (payload) => {
+    // ID único por venda: torna o registo idempotente. Se o reenvio (offline ou
+    // por resposta perdida) chegar duas vezes, o servidor não duplica a venda.
+    const withId = payload.clientSaleId ? payload : { ...payload, clientSaleId: localSaleId() };
     try {
-      const res = await api.finalizeSale(payload);
+      const res = await api.finalizeSale(withId);
       setStore(res.store);
       showToast("Venda " + res.sale.numero + " registada");
       return res.sale;
@@ -251,8 +254,8 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       // Sem ligação ao servidor (status 0): guarda a venda e reenvia quando a
       // internet voltar. A venda aparece já no ecrã (número "Offline").
       if (e instanceof ApiError && e.status === 0) {
-        const entry = await enqueueSale({ businessId, payload, employeeName });
-        setStore((s) => applyOfflineSale(s, payload, { localId: entry?.localId, employeeName }));
+        const entry = await enqueueSale({ businessId, payload: withId, employeeName });
+        setStore((s) => applyOfflineSale(s, withId, { localId: entry?.localId, employeeName }));
         refreshPending();
         showToast("Sem internet — venda guardada para sincronizar", "warn");
         return { numero: "Offline", _offline: true };

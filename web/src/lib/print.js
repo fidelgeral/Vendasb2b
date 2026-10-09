@@ -1,8 +1,15 @@
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
 import { fmtMT, saveBlob } from "./utils.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./theme.js";
+
+// Bibliotecas pesadas (jsPDF ~1 MB, XLSX) carregadas só quando é preciso gerar
+// um PDF ou um Excel — assim não pesam no arranque da aplicação.
+async function loadPdf() {
+  const [{ jsPDF }, autoTableMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+  return { jsPDF, autoTable: autoTableMod.default };
+}
+async function loadXlsx() {
+  return import("xlsx");
+}
 
 // Recibo térmico 58/80mm — abre janela e chama a impressão do navegador
 export function imprimirReciboTermico(sale, store, clientes) {
@@ -63,6 +70,7 @@ export async function gerarReciboPDF(sale, store, clientes) {
     const iva = store.config.iva || {};
     const taxa = iva.isento ? 0 : Number(iva.taxa) || 0;
     const cli = clientes.find((c) => c.id === sale.clientId);
+    const { jsPDF, autoTable } = await loadPdf();
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     let y = 42;
     doc.setFontSize(16);
@@ -161,8 +169,9 @@ export function imprimirEtiquetas(produtos, empresaNome) {
   return true;
 }
 
-export function downloadWorkbook(rows, filename) {
+export async function downloadWorkbook(rows, filename) {
   try {
+    const XLSX = await loadXlsx();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produtos");
@@ -174,7 +183,7 @@ export function downloadWorkbook(rows, filename) {
   }
 }
 
-export function exportReportExcel(title, columns, rows) {
+export async function exportReportExcel(title, columns, rows) {
   const data = rows.map((r) => {
     const o = {};
     columns.forEach((c, i) => (o[c] = r[i]));
@@ -183,8 +192,9 @@ export function exportReportExcel(title, columns, rows) {
   return downloadWorkbook(data, title.replace(/[^\w-]+/g, "_").toLowerCase() + ".xlsx");
 }
 
-export function exportReportPDF(title, columns, rows, meta) {
+export async function exportReportPDF(title, columns, rows, meta) {
   try {
+    const { jsPDF, autoTable } = await loadPdf();
     const doc = new jsPDF({ orientation: columns.length > 6 ? "landscape" : "portrait", unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     doc.setFontSize(15);

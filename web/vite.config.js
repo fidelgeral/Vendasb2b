@@ -32,19 +32,14 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,woff2}"],
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/loja\//],
+        // Importante: NÃO interceptamos a API aqui. O service worker só trata do
+        // "shell" da app (HTML/JS/CSS, mesma origem). Os pedidos à API (store,
+        // vendas, etc.) passam sempre direto à rede — cacheá-los cross-origin era
+        // frágil e podia impedir o carregamento online. O offline das vendas é
+        // garantido pela fila em IndexedDB, não pelo cache do SW.
         runtimeCaching: [
           {
-            // Última cópia do "store" fica em cache para a app abrir offline com
-            // os últimos dados conhecidos (NetworkFirst: tenta a rede primeiro).
-            urlPattern: ({ url }) => url.pathname.includes("/store"),
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "vendasb2b-store",
-              networkTimeoutSeconds: 8,
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
-          {
+            // Apenas as fontes do Google (padrão seguro e recomendado).
             urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com",
             handler: "CacheFirst",
             options: {

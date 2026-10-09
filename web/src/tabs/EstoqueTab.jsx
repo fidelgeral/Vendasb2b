@@ -4,7 +4,6 @@ import { fmtMT, getStock, isLowStock, nearExpiry, daysUntil, todayStr, mapImport
 import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
 import { Boxes, Package, AlertTriangle, Layers, Ruler, Minus, Plus } from "../lib/icons.jsx";
 import { getSession } from "../lib/api.js";
-import * as XLSX from "xlsx";
 
 export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras }) {
   const [query, setQuery] = useState("");
@@ -323,6 +322,7 @@ function BulkImportExport({ products, onImport }) {
     setFileName(file.name);
     try {
       const buf = await file.arrayBuffer();
+      const XLSX = await import("xlsx");
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
