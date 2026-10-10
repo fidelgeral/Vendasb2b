@@ -5,6 +5,7 @@ import { BRAND_LOGO } from "./lib/logo.js";
 import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
 import { enqueueSale, listPending, removePending, countPending, localSaleId } from "./lib/offlineQueue.js";
 import { applyOfflineSale } from "./lib/offlineSale.js";
+import { loadCachedStore, saveCachedStore } from "./lib/storeCache.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
 import HelpAssistant from "./components/HelpAssistant.jsx";
 import BillingPanel from "./components/BillingPanel.jsx";
@@ -27,8 +28,11 @@ import BalancoTab from "./tabs/BalancoTab.jsx";
 import ConfigTab from "./tabs/ConfigTab.jsx";
 
 export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLoggedOut, filiais, activeBusinessId, onSwitchFilial }) {
-  const [store, setStore] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Arranque instantâneo: começa com o último estado guardado no aparelho (se
+  // existir) e só mostra "a carregar" quando não há nada em cache.
+  const [store, setStore] = useState(() => loadCachedStore(businessId));
+  const [loading, setLoading] = useState(() => !loadCachedStore(businessId));
+  const [refreshing, setRefreshing] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [tab, setTab] = useState("vender");
   const [toast, setToast] = useState(null);
@@ -41,10 +45,12 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const session = getSession();
 
   const load = useCallback(() => {
+    setRefreshing(true);
     api
       .getStore()
       .then((s) => {
         setStore(s);
+        saveCachedStore(businessId, s);
         setSaveError("");
         setSuspended(false);
       })
@@ -57,14 +63,25 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           setSuspended(true);
           return;
         }
+        // Se já mostramos dados da cache, não assustar o utilizador com erro —
+        // só marcamos "offline"; o indicador do cabeçalho trata do resto.
         setSaveError("Sem ligação — não foi possível carregar os dados. Verifique a sua internet e tente novamente.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   }, [businessId]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Mantém a cache local fresca após cada acção, para a próxima abertura ser
+  // instantânea.
+  useEffect(() => {
+    if (store && !suspended) saveCachedStore(businessId, store);
+  }, [store, businessId, suspended]);
 
   const showToast = useCallback((msg, tone = "ok") => {
     setToast({ msg, tone });
@@ -307,6 +324,11 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {refreshing && store && (
+            <span style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded-lg font-medium opacity-80">
+              a atualizar…
+            </span>
+          )}
           {(!isOnline || saveError) && (
             <span style={{ background: "rgba(239,68,68,0.45)" }} className="text-xs px-2.5 py-1.5 rounded-lg font-medium">
               Offline
