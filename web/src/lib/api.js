@@ -137,6 +137,15 @@ export function businessApi(businessId) {
 
     transferStock: (payload) => s(post(`${base}/transfer-stock`, payload)),
 
+    // Lotes de stock
+    createLote: (payload) => s(post(`${base}/lotes`, payload)),
+    createLotesBulk: (payload) => s(post(`${base}/lotes/bulk`, payload)),
+    loteEntrada: (id, qty, descricao) => s(post(`${base}/lotes/${id}/entrada`, { qty, descricao })),
+    updateLote: (id, payload) => s(patch(`${base}/lotes/${id}`, payload)),
+    loteQuebra: (id, qty, motivo) => s(post(`${base}/lotes/${id}/quebra`, { qty, motivo })),
+    deleteLote: (id) => s(del(`${base}/lotes/${id}`)),
+    loteHistorico: (id) => get(`${base}/lotes/${id}/historico`).then((d) => d.movimentos),
+
     addConta: (payload) => s(post(`${base}/contas-pagar`, payload)),
     deleteConta: (id) => s(del(`${base}/contas-pagar/${id}`)),
     pagarConta: (id) => s(post(`${base}/contas-pagar/${id}/pagar`)),

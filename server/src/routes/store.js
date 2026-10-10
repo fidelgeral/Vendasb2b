@@ -81,7 +81,10 @@ export async function buildStore(businessId) {
       [businessId]
     ),
     query(
-      `SELECT b.id, b.product_id, b.qty, b.expiry_date AS "expiryDate" FROM product_batches b
+      `SELECT b.id, b.product_id, b.qty, b.expiry_date AS "expiryDate",
+              b.name, b.cost_total AS "costTotal", b.supplier_id AS "supplierId",
+              b.initial_qty AS "initialQty", b.created_at AS "createdAt"
+       FROM product_batches b
        JOIN products p ON p.id = b.product_id WHERE p.business_id = $1`,
       [businessId]
     ),
@@ -189,7 +192,16 @@ export async function buildStore(businessId) {
       ivaTaxa: p.ivaTaxa === null ? null : Number(p.ivaTaxa),
     };
     const vs = (variantsByProduct[p.id] || []).map((v) => ({ id: v.id, label: v.label, stock: Number(v.stock) }));
-    const bs = (batchesByProduct[p.id] || []).map((b) => ({ id: b.id, qty: Number(b.qty), expiryDate: b.expiryDate }));
+    const bs = (batchesByProduct[p.id] || []).map((b) => ({
+      id: b.id,
+      qty: Number(b.qty),
+      expiryDate: b.expiryDate,
+      name: b.name,
+      costTotal: Number(b.costTotal || 0),
+      supplierId: b.supplierId,
+      initialQty: Number(b.initialQty || 0),
+      createdAt: b.createdAt,
+    }));
     if (vs.length) out.variants = vs;
     if (bs.length) out.batches = bs;
     if (p.tipo === "composicao") out.ingredientes = (comboByProduct[p.id] || []).map((i) => ({ productId: i.productId, qty: Number(i.qty) }));

@@ -17,6 +17,7 @@ import { configRouter } from "./routes/config.js";
 import { assistantRouter, publicRouter } from "./routes/assistant.js";
 import { billingRouter, superBillingRouter } from "./routes/billing.js";
 import { contasRouter } from "./routes/contas.js";
+import { lotesRouter } from "./routes/lotes.js";
 import { cronRouter } from "./routes/cron.js";
 import { requireActiveSubscription } from "./auth/middleware.js";
 
@@ -53,6 +54,7 @@ app.use("/api/businesses/:businessId", requireActiveSubscription);
 // de cada router (registados com .use(), sem path) correm.
 app.use("/api/businesses/:businessId", storeRouter);
 app.use("/api/businesses/:businessId", productsRouter);
+app.use("/api/businesses/:businessId", lotesRouter);
 app.use("/api/businesses/:businessId", clientsRouter);
 app.use("/api/businesses/:businessId", suppliersRouter);
 app.use("/api/businesses/:businessId", tablesRouter);

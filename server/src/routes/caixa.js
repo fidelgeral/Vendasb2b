@@ -140,8 +140,16 @@ export async function decrementStock(client, productId, variantId, qty) {
     for (const b of batches) {
       if (remaining <= 0) break;
       const take = Math.min(Number(b.qty), remaining);
+      const saldo = Number(b.qty) - take;
       // eslint-disable-next-line no-await-in-loop
       await client.query("UPDATE product_batches SET qty = qty - $1 WHERE id = $2", [take, b.id]);
+      // regista a saída no histórico do lote (para a linha do tempo por lote)
+      // eslint-disable-next-line no-await-in-loop
+      await client.query(
+        `INSERT INTO batch_movements (business_id, batch_id, product_id, tipo, qty, saldo, descricao, employee_name)
+         VALUES ($1,$2,$3,'saida',$4,$5,'Saída de stock (Venda)','Sistema')`,
+        [product.business_id, b.id, productId, -take, saldo]
+      );
       remaining -= take;
     }
     return;
