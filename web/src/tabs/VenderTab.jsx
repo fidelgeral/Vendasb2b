@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock, uid } from "../lib/utils.js";
-import { imprimirReciboTermico, gerarReciboPDF } from "../lib/print.js";
-import { ProductCard, CheckoutPanel, VoidModal } from "../components/Shared.jsx";
+import { ProductCard, CheckoutPanel } from "../components/Shared.jsx";
 import { Minus, Plus, Trash2, PauseCircle, PlayCircle } from "../lib/icons.jsx";
 import BarcodeScanner from "../components/BarcodeScanner.jsx";
 
@@ -11,7 +10,6 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
   const [cart, setCart] = useState([]);
   const [variantPicker, setVariantPicker] = useState(null);
   const [showParked, setShowParked] = useState(false);
-  const [voidTarget, setVoidTarget] = useState(null);
   const [vendaRapida, setVendaRapida] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
@@ -93,6 +91,24 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
   const updateQty = (lineId, qty) => setCart((c) => c.map((l) => (l.lineId === lineId ? { ...l, qty: Math.max(0, qty) } : l)).filter((l) => l.qty > 0));
   const removeLine = (lineId) => setCart((c) => c.filter((l) => l.lineId !== lineId));
 
+  // Botão direito do rato sobre um produto: diminui 1 unidade do carrinho
+  // (o botão esquerdo adiciona). Age sobre a última linha desse produto.
+  const diminuirDoCarrinho = (p) => {
+    setCart((c) => {
+      let idx = -1;
+      for (let i = c.length - 1; i >= 0; i--) {
+        if (c[i].productId === p.id) { idx = i; break; }
+      }
+      if (idx === -1) return c;
+      const passo = p.unit === "un" ? 1 : 0.5;
+      return c.map((x, i) => (i === idx ? { ...x, qty: x.qty - passo } : x)).filter((x) => x.qty > 0);
+    });
+  };
+  const onProdutoContexto = (e, p) => {
+    e.preventDefault();
+    if (!vendaRapida) diminuirDoCarrinho(p);
+  };
+
   const parkSale = async () => {
     if (cart.length === 0) return;
     const next = await api.parkSale(cart);
@@ -122,8 +138,6 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     });
     setCart([]);
   };
-
-  const recentSales = [...store.sales].reverse().slice(0, 8);
 
   // leitor de código de barras: deteta digitação muito rápida terminada em Enter
   useEffect(() => {
@@ -205,6 +219,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
                 <button
                   key={p.id}
                   onClick={() => (vendaRapida ? vendaImediata(p) : addToCart(p))}
+                  onContextMenu={(e) => onProdutoContexto(e, p)}
                   style={{ background: SOFTGOLD, borderColor: GOLD, color: INK }}
                   className="border rounded-full px-3 py-1.5 text-xs font-medium"
                 >
@@ -216,7 +231,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
         )}
         <div className="grid grid-cols-3 gap-1.5">
           {filtered.map((p) => (
-            <ProductCard key={p.id} p={p} compact produtos={store.products} disabled={getStock(p, store.products) <= 0} onClick={() => (vendaRapida ? vendaImediata(p) : addToCart(p))} />
+            <ProductCard key={p.id} p={p} compact produtos={store.products} disabled={getStock(p, store.products) <= 0} onClick={() => (vendaRapida ? vendaImediata(p) : addToCart(p))} onContextMenu={(e) => onProdutoContexto(e, p)} />
           ))}
           {filtered.length === 0 && (
             <div className="col-span-full text-sm" style={{ color: MUTED }}>
@@ -225,41 +240,6 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
           )}
         </div>
 
-        {recentSales.length > 0 && (
-          <div className="mt-4">
-            <div className="text-xs font-semibold mb-1.5" style={{ color: MUTED }}>
-              Vendas recentes
-            </div>
-            <div className="space-y-1">
-              {recentSales.map((s) => (
-                <div
-                  key={s.id}
-                  style={{ background: CARD, borderColor: BORDER, opacity: s.status === "void" ? 0.5 : 1 }}
-                  className="border rounded-lg px-2.5 py-1.5 flex items-center justify-between text-xs"
-                >
-                  <span>
-                    {s.numero ? s.numero + " · " : ""}
-                    {new Date(s.date).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })} · {fmtMT(s.total)}
-                    {s.status === "void" && " · CANCELADA"}
-                  </span>
-                  <span className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => imprimirReciboTermico(s, store, store.clients)} style={{ color: TEAL }} className="font-medium">
-                      Imprimir
-                    </button>
-                    <button onClick={() => gerarReciboPDF(s, store, store.clients)} style={{ color: MUTED }} className="font-medium">
-                      PDF
-                    </button>
-                    {canVoid && s.status !== "void" && (
-                      <button onClick={() => setVoidTarget(s.id)} style={{ color: BRICK }} className="font-medium">
-                        Cancelar
-                      </button>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="sm:col-span-3">
@@ -345,16 +325,6 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             </div>
           </div>
         </div>
-      )}
-
-      {voidTarget && (
-        <VoidModal
-          onConfirm={(reason) => {
-            voidSale(voidTarget, reason);
-            setVoidTarget(null);
-          }}
-          onClose={() => setVoidTarget(null)}
-        />
       )}
 
       {showScanner && <BarcodeScanner onDetected={onScan} onClose={() => setShowScanner(false)} />}

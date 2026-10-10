@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, DESPESA_CATEGORIAS, ENTRADA_CATEGORIAS } from "../lib/utils.js";
 import { DonutChart } from "../lib/charts.jsx";
-import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle } from "../lib/icons.jsx";
+import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle, Banknote } from "../lib/icons.jsx";
+import { imprimirReciboTermico, gerarReciboPDF } from "../lib/print.js";
+import { VoidModal } from "../components/Shared.jsx";
 
-export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado }) {
+export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid }) {
   const [sub, setSub] = useState("resumo");
   const [showShiftModal, setShowShiftModal] = useState(null);
 
@@ -20,6 +22,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
 
   const subtabs = [
     { id: "resumo", label: "Resumo", icon: Scale },
+    { id: "historico", label: "Histórico de movimentos", icon: Banknote },
     { id: "quebras", label: "Quebras", icon: PackageX },
     { id: "entrada", label: "Nova entrada", icon: ArrowDownCircle },
     { id: "saida", label: "Nova saída", icon: ArrowUpCircle },
@@ -119,6 +122,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
           )}
         </div>
       )}
+      {sub === "historico" && <CaixaHistorico store={store} voidSale={voidSale} canVoid={canVoid} />}
       {sub === "quebras" && <QuebrasForm store={store} onSubmit={registerQuebra} />}
       {sub === "entrada" && <MovimentoForm type="entrada" shiftOpen={shiftOpen} onSubmit={registerMovimento} />}
       {sub === "saida" && <MovimentoForm type="saida" shiftOpen={shiftOpen} onSubmit={registerMovimento} />}
@@ -135,6 +139,145 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
             setShowShiftModal(null);
           }}
           onClose={() => setShowShiftModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+const METODO_LABEL = { dinheiro: "Numerário", mpesa: "M-Pesa", emola: "e-Mola", fiado: "Fiado", cartao: "Cartão", transferencia: "Transferência" };
+const metodoLabel = (m) => METODO_LABEL[m] || (m ? m.charAt(0).toUpperCase() + m.slice(1) : "—");
+
+// Histórico de Movimentações — a lista de vendas (antes "Vendas recentes" no
+// separador Vender) com filtros por período e pesquisa, no estilo da referência.
+function CaixaHistorico({ store, voidSale, canVoid }) {
+  const [periodo, setPeriodo] = useState("hoje");
+  const [busca, setBusca] = useState("");
+  const [voidTarget, setVoidTarget] = useState(null);
+
+  const nomePorFuncionario = useMemo(() => {
+    const m = {};
+    (store.employees || []).forEach((e) => (m[e.id] = e.name));
+    return m;
+  }, [store.employees]);
+
+  const movimentos = useMemo(() => {
+    const agora = new Date();
+    const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
+    const dentroDoPeriodo = (d) => {
+      const t = new Date(d).getTime();
+      if (periodo === "hoje") return t >= inicioHoje;
+      if (periodo === "semana") return t >= inicioHoje - 6 * 864e5;
+      if (periodo === "mes") return t >= new Date(agora.getFullYear(), agora.getMonth(), 1).getTime();
+      return true; // todos
+    };
+    const q = busca.trim().toLowerCase();
+    const correspondeBusca = (s) => {
+      if (!q) return true;
+      const itens = (s.items || []).map((i) => i.name).join(" ");
+      const func = nomePorFuncionario[s.employeeId] || "";
+      return (s.numero || "").toLowerCase().includes(q) || itens.toLowerCase().includes(q) || func.toLowerCase().includes(q);
+    };
+    return (store.sales || []).filter((s) => dentroDoPeriodo(s.date) && correspondeBusca(s));
+  }, [store.sales, periodo, busca, nomePorFuncionario]);
+
+  const periodos = [
+    { id: "hoje", label: "Hoje" },
+    { id: "semana", label: "Semana" },
+    { id: "mes", label: "Mês" },
+    { id: "todos", label: "Todos" },
+  ];
+
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <div className="text-sm font-semibold">Histórico de Movimentações</div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {periodos.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriodo(p.id)}
+              style={{ background: periodo === p.id ? TEAL : CARD, color: periodo === p.id ? "#fff" : MUTED, borderColor: BORDER }}
+              className="border rounded-full px-2.5 py-1 text-xs font-medium"
+            >
+              {p.label}
+            </button>
+          ))}
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="pesquisar…"
+            style={{ borderColor: BORDER }}
+            className="border rounded-lg px-2.5 py-1 text-xs outline-none w-36"
+          />
+        </div>
+      </div>
+
+      {movimentos.length === 0 && (
+        <div className="text-xs py-6 text-center" style={{ color: MUTED }}>
+          Sem movimentos neste período.
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        {movimentos.map((s) => {
+          const anulada = s.status === "void";
+          const func = nomePorFuncionario[s.employeeId] || (s.employeeId ? "Funcionário" : "Sistema");
+          const itensResumo = (s.items || []).map((i) => `${i.name} x${i.qty}`).join(", ");
+          const metodos = [...new Set((s.payments || []).map((p) => metodoLabel(p.method)))].join(" + ");
+          return (
+            <div
+              key={s.id}
+              style={{ background: CARD, borderColor: BORDER, borderLeft: `3px solid ${anulada ? BRICK : GREEN}`, opacity: anulada ? 0.55 : 1 }}
+              className="border rounded-lg px-3 py-2 flex items-start justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  {s.numero || "VENDA"}
+                  <span className="text-xs font-normal" style={{ color: MUTED }}>
+                    {new Date(s.date).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })} · {func}
+                  </span>
+                  {anulada && <span style={{ color: BRICK }} className="text-xs font-semibold">CANCELADA</span>}
+                </div>
+                {itensResumo && (
+                  <div className="text-xs truncate mt-0.5" style={{ color: MUTED }}>
+                    {itensResumo}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <button onClick={() => imprimirReciboTermico(s, store, store.clients)} style={{ color: TEAL }} className="text-xs font-medium">
+                    Imprimir
+                  </button>
+                  <button onClick={() => gerarReciboPDF(s, store, store.clients)} style={{ color: MUTED }} className="text-xs font-medium">
+                    PDF
+                  </button>
+                  {canVoid && !anulada && (
+                    <button onClick={() => setVoidTarget(s.id)} style={{ color: BRICK }} className="text-xs font-medium">
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div style={{ color: anulada ? MUTED : GREEN, textDecoration: anulada ? "line-through" : "none" }} className="text-sm font-bold">
+                  +{fmtMT(s.total)}
+                </div>
+                <div className="text-xs" style={{ color: MUTED }}>
+                  {metodos || "—"}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {voidTarget && (
+        <VoidModal
+          onConfirm={(reason) => {
+            voidSale(voidTarget, reason);
+            setVoidTarget(null);
+          }}
+          onClose={() => setVoidTarget(null)}
         />
       )}
     </div>

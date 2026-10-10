@@ -165,11 +165,12 @@ export function PhotoPicker({ value, onChange }) {
   );
 }
 
-export function ProductCard({ p, onClick, disabled, produtos, compact }) {
+export function ProductCard({ p, onClick, onContextMenu, disabled, produtos, compact }) {
   const stock = getStock(p, produtos);
   return (
     <button
       onClick={onClick}
+      onContextMenu={onContextMenu}
       disabled={disabled}
       style={{ background: CARD, borderColor: BORDER, opacity: disabled ? 0.45 : 1 }}
       className="border rounded-2xl overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 transition disabled:cursor-not-allowed flex flex-col"

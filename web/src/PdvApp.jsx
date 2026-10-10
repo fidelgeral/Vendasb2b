@@ -6,7 +6,6 @@ import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
 import { enqueueSale, listPending, removePending, countPending, localSaleId } from "./lib/offlineQueue.js";
 import { applyOfflineSale } from "./lib/offlineSale.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
-import { FloatingChart } from "./lib/charts.jsx";
 import HelpAssistant from "./components/HelpAssistant.jsx";
 import BillingPanel from "./components/BillingPanel.jsx";
 import { NotificationBell } from "./components/Shared.jsx";
@@ -34,7 +33,6 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const [tab, setTab] = useState("vender");
   const [toast, setToast] = useState(null);
   const [showUserSwitch, setShowUserSwitch] = useState(false);
-  const [showChart, setShowChart] = useState(false);
   const [suspended, setSuspended] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -309,9 +307,6 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setShowChart((v) => !v)} style={{ background: "rgba(255,255,255,0.15)" }} className="text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1">
-            <Scale size={12} /> Gráfico
-          </button>
           {(!isOnline || saveError) && (
             <span style={{ background: "rgba(239,68,68,0.45)" }} className="text-xs px-2.5 py-1.5 rounded-lg font-medium">
               Offline
@@ -416,6 +411,8 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             closeShift={closeShift}
             registerQuebra={registerQuebra}
             registerMovimento={registerMovimento}
+            voidSale={voidSale}
+            canVoid={canVoid}
           />
         )}
         {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} onGoEstoque={() => setTab("estoque")} />}
@@ -444,7 +441,6 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
         </div>
       )}
 
-      {showChart && <FloatingChart sales={store.sales} onClose={() => setShowChart(false)} />}
       <HelpAssistant api={api} />
 
       {showUserSwitch && (
