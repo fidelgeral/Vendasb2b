@@ -501,7 +501,17 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
         )}
       </div>
 
-      {showCategorias && <CategoriasModal categories={categories} onAdd={addCategory} onRemove={removeCategory} onClose={() => setShowCategorias(false)} />}
+      {showCategorias && (
+        <CategoriasModal
+          categories={categories}
+          onAdd={addCategory}
+          onRemove={removeCategory}
+          onRename={async (antigo, novo) => setStore(await api.renameCategory(antigo, novo))}
+          api={api}
+          produtos={store.products}
+          onClose={() => setShowCategorias(false)}
+        />
+      )}
     </div>
   );
 }

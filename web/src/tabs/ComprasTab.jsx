@@ -2,9 +2,12 @@ import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK, GOLD } from "../lib/theme.js";
 import { fmtMT, todayStr, daysUntil, DESPESA_CATEGORIAS } from "../lib/utils.js";
 import { Plus, X } from "../lib/icons.jsx";
-import { StatCard } from "../components/Shared.jsx";
+import { StatCard, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 
 export default function ComprasTab({ store, setStore, api }) {
+  const [verForn, setVerForn] = useState(null);
+  const [editForn, setEditForn] = useState(null);
+  const [histForn, setHistForn] = useState(null);
   const [sup, setSup] = useState({ name: "", contacto: "", phone: "", email: "", nuit: "", endereco: "", prazo: "" });
   const [supplierId, setSupplierId] = useState("");
   const [productId, setProductId] = useState("");
@@ -22,7 +25,10 @@ export default function ComprasTab({ store, setStore, api }) {
     );
     setSup({ name: "", contacto: "", phone: "", email: "", nuit: "", endereco: "", prazo: "" });
   };
-  const removeSupplier = async (id) => setStore(await api.deleteSupplier(id));
+  const removeSupplier = async (s) => {
+    if (!window.confirm(`Apagar o fornecedor "${s.name}"?`)) return;
+    setStore(await api.deleteSupplier(s.id));
+  };
 
   const registerPurchase = async () => {
     if (!supplierId || !productId || !qty) return;
@@ -61,9 +67,12 @@ export default function ComprasTab({ store, setStore, api }) {
                   </div>
                 )}
               </div>
-              <button onClick={() => removeSupplier(s.id)}>
-                <X size={15} style={{ color: "#EF4444" }} />
-              </button>
+              <AcoesEntidade
+                onVer={() => setVerForn(s)}
+                onEditar={() => setEditForn(s)}
+                onHistorico={() => setHistForn(s)}
+                onApagar={() => removeSupplier(s)}
+              />
             </div>
           ))}
           {store.suppliers.length === 0 && (
@@ -121,6 +130,62 @@ export default function ComprasTab({ store, setStore, api }) {
       </div>
 
       <ContasPagar store={store} setStore={setStore} api={api} />
+
+      {verForn && (
+        <DetalhesModal
+          title={verForn.name}
+          onClose={() => setVerForn(null)}
+          linhas={[
+            { label: "Pessoa de contacto", value: verForn.contacto },
+            { label: "Telefone", value: verForn.phone },
+            { label: "Email", value: verForn.email },
+            { label: "NUIT", value: verForn.nuit },
+            { label: "Endereço", value: verForn.endereco },
+            { label: "Prazo de pagamento", value: verForn.prazo },
+          ]}
+        />
+      )}
+      {editForn && (
+        <FornecedorEditModal
+          fornecedor={editForn}
+          onSubmit={async (payload) => { setStore(await api.updateSupplier(editForn.id, payload)); setEditForn(null); }}
+          onClose={() => setEditForn(null)}
+        />
+      )}
+      {histForn && <HistoricoEntidadeModal title={histForn.name} api={api} tipo="fornecedor" id={histForn.id} onClose={() => setHistForn(null)} />}
+    </div>
+  );
+}
+
+function FornecedorEditModal({ fornecedor, onSubmit, onClose }) {
+  const [f, setF] = useState({
+    name: fornecedor.name || "", contacto: fornecedor.contacto || "", phone: fornecedor.phone || "",
+    email: fornecedor.email || "", nuit: fornecedor.nuit || "", endereco: fornecedor.endereco || "", prazo: fornecedor.prazo || "",
+  });
+  const campo = (k, ph, span) => (
+    <input placeholder={ph} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} style={{ borderColor: BORDER }} className={`border rounded-lg px-2.5 py-2 text-sm ${span || ""}`} />
+  );
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-lg max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold">Editar fornecedor</div>
+          <button onClick={onClose} style={{ color: MUTED }}><X size={16} /></button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {campo("name", "Nome / Empresa *", "sm:col-span-2")}
+          {campo("contacto", "Pessoa de contacto")}
+          {campo("phone", "Telefone")}
+          {campo("email", "Email")}
+          {campo("nuit", "NUIT")}
+          {campo("endereco", "Endereço", "sm:col-span-2")}
+          {campo("prazo", "Prazo de pagamento")}
+        </div>
+        <div className="flex gap-2 mt-3">
+          <button onClick={onClose} style={{ background: "#475569", color: "#fff" }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Cancelar</button>
+          <button onClick={() => f.name.trim() && onSubmit(f)} style={{ background: TEAL, color: "#fff" }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Guardar</button>
+        </div>
+      </div>
     </div>
   );
 }

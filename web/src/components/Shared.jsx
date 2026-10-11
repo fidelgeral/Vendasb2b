@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, BG, PRICE_GREEN, GREEN, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock, isLowStock, compressImageFile } from "../lib/utils.js";
-import { Bell, AlertTriangle, ImageOff, Link2, Package, Percent, Split, X } from "../lib/icons.jsx";
+import { Bell, AlertTriangle, ImageOff, Link2, Package, Percent, Split, X, Settings, Scale, Trash2 } from "../lib/icons.jsx";
 
 const PAYMENT_COLORS = { dinheiro: "#10B981", mpesa: "#DC2626", emola: "#EA580C", fiado: "#7C3AED" };
 
@@ -233,6 +233,95 @@ export function SelectComCriar({ value, onChange, options, onCreate, placeholder
   );
 }
 
+// Ícone simples de "ver" (olho).
+function EyeIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+// Conjunto reutilizável de acções por entidade: Visualizar, Editar, Histórico,
+// Apagar. Cada botão só aparece se a respectiva função for passada.
+export function AcoesEntidade({ onVer, onEditar, onHistorico, onApagar, size = "sm" }) {
+  const cls = size === "sm" ? "w-7 h-7" : "w-8 h-8";
+  const Btn = ({ title, onClick, color, children }) => (
+    <button onClick={onClick} title={title} style={{ borderColor: BORDER, color: color || INK }} className={`border rounded-full ${cls} flex items-center justify-center shrink-0 hover:bg-gray-50`}>
+      {children}
+    </button>
+  );
+  return (
+    <div className="flex items-center gap-1">
+      {onVer && <Btn title="Visualizar" onClick={onVer}><EyeIcon size={14} /></Btn>}
+      {onEditar && <Btn title="Editar" onClick={onEditar}><Settings size={13} /></Btn>}
+      {onHistorico && <Btn title="Histórico (quem alterou e quando)" onClick={onHistorico}><Scale size={13} /></Btn>}
+      {onApagar && <Btn title="Apagar" onClick={onApagar} color={BRICK}><Trash2 size={13} /></Btn>}
+    </div>
+  );
+}
+
+// Modal genérico de detalhes (só leitura): recebe uma lista de { label, value }.
+export function DetalhesModal({ title, linhas, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-sm max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold">{title}</div>
+          <button onClick={onClose} style={{ color: MUTED }}><X size={16} /></button>
+        </div>
+        <div className="space-y-1.5">
+          {linhas.filter((l) => l).map((l, i) => (
+            <div key={i} className="flex justify-between gap-3 text-sm">
+              <span style={{ color: MUTED }}>{l.label}</span>
+              <span className="text-right font-medium break-words">{l.value || "—"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const ACAO_COR = { PRODUTO: "#4F46E5", FORNECEDOR: "#0EA5E9", CATEGORIA: "#F59E0B" };
+
+// Modal de histórico de alterações de uma entidade (o que mudou, quem, quando).
+export function HistoricoEntidadeModal({ title, api, tipo, id, onClose }) {
+  const [movs, setMovs] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    api.auditEntidade(tipo, id).then((m) => vivo && setMovs(m)).catch(() => vivo && setMovs([]));
+    return () => { vivo = false; };
+  }, [api, tipo, id]);
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-md max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-sm font-semibold">Histórico — {title}</div>
+          <button onClick={onClose} style={{ color: MUTED }}><X size={16} /></button>
+        </div>
+        <div className="text-[11px] mb-3" style={{ color: MUTED }}>O que mudou, quem alterou e quando.</div>
+        {movs === null && <div className="text-xs py-4 text-center" style={{ color: MUTED }}>A carregar…</div>}
+        {movs && movs.length === 0 && <div className="text-xs py-4 text-center" style={{ color: MUTED }}>Sem alterações registadas.</div>}
+        <div className="space-y-2">
+          {movs && movs.map((m) => (
+            <div key={m.id} className="flex items-start gap-2">
+              <div style={{ background: ACAO_COR[m.acao] || MUTED }} className="w-2 h-2 rounded-full mt-1.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs">{m.detalhe}</div>
+                <div className="text-[11px]" style={{ color: MUTED }}>
+                  {new Date(m.date).toLocaleString("pt-PT")} · {m.employeeName || "Sistema"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ProductCard({ p, onClick, onContextMenu, onLongPress, disabled, produtos, compact }) {
   const stock = getStock(p, produtos);
   const timer = useRef(null);
@@ -325,49 +414,69 @@ export function VoidModal({ onConfirm, onClose }) {
   );
 }
 
-export function CategoriasModal({ categories, onAdd, onRemove, onClose }) {
+export function CategoriasModal({ categories, onAdd, onRemove, onRename, onClose, api, produtos = [] }) {
   const [name, setName] = useState("");
+  const [renomear, setRenomear] = useState(null); // categoria em edição
+  const [novoNome, setNovoNome] = useState("");
+  const [ver, setVer] = useState(null);
+  const [hist, setHist] = useState(null);
+  const contar = (c) => produtos.filter((p) => p.category === c).length;
+
+  const confirmarRename = () => {
+    const n = novoNome.trim();
+    if (n && renomear && n !== renomear && onRename) onRename(renomear, n);
+    setRenomear(null);
+    setNovoNome("");
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div style={{ background: CARD }} className="rounded-lg p-4 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <div className="text-sm font-semibold mb-3">Categorias</div>
-        <div className="flex gap-2 mb-3">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Nova categoria"
-            style={{ borderColor: BORDER }}
-            className="flex-1 border rounded-lg px-2 py-1.5 text-sm"
-          />
-          <button
-            onClick={() => {
-              if (name.trim()) {
-                onAdd(name.trim());
-                setName("");
-              }
-            }}
-            style={{ background: TEAL, color: "#fff" }}
-            className="rounded-lg px-3 py-1.5 text-sm"
-          >
-            Adicionar
-          </button>
+      <div style={{ background: CARD }} className="rounded-lg p-4 w-full max-w-md max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold">Categorias de produto</div>
+          <button onClick={onClose} style={{ color: MUTED }}><X size={16} /></button>
         </div>
-        <div className="space-y-1 max-h-56 overflow-auto">
+        <div className="flex gap-2 mb-3">
+          <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name.trim() && (onAdd(name.trim()), setName(""))} placeholder="Nova categoria" style={{ borderColor: BORDER }} className="flex-1 border rounded-lg px-2 py-1.5 text-sm" />
+          <button onClick={() => { if (name.trim()) { onAdd(name.trim()); setName(""); } }} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-sm">Adicionar</button>
+        </div>
+        <div className="space-y-1.5 max-h-72 overflow-auto">
           {categories.map((c) => (
-            <div key={c} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-1.5 text-sm flex items-center justify-between">
-              <span>{c}</span>
-              <button onClick={() => onRemove(c)}>
-                <X size={14} style={{ color: BRICK }} />
-              </button>
+            <div key={c} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-1.5 text-sm flex items-center justify-between gap-2">
+              {renomear === c ? (
+                <div className="flex gap-1.5 flex-1">
+                  <input autoFocus value={novoNome} onChange={(e) => setNovoNome(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmarRename(); if (e.key === "Escape") setRenomear(null); }} style={{ borderColor: BORDER }} className="flex-1 border rounded-lg px-2 py-1 text-sm" />
+                  <button onClick={confirmarRename} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-2 py-1 text-xs font-medium">Guardar</button>
+                  <button onClick={() => setRenomear(null)} style={{ borderColor: BORDER, color: MUTED }} className="border rounded-lg px-2 py-1 text-xs">✕</button>
+                </div>
+              ) : (
+                <>
+                  <span className="min-w-0 truncate">{c} <span style={{ color: MUTED }} className="text-xs">({contar(c)})</span></span>
+                  <AcoesEntidade
+                    onVer={() => setVer(c)}
+                    onEditar={onRename ? () => { setRenomear(c); setNovoNome(c); } : undefined}
+                    onHistorico={api ? () => setHist(c) : undefined}
+                    onApagar={() => onRemove(c)}
+                  />
+                </>
+              )}
             </div>
           ))}
-          {categories.length === 0 && (
-            <div className="text-xs" style={{ color: MUTED }}>
-              Ainda não há categorias.
-            </div>
-          )}
+          {categories.length === 0 && <div className="text-xs" style={{ color: MUTED }}>Ainda não há categorias.</div>}
         </div>
       </div>
+
+      {ver && (
+        <DetalhesModal
+          title={`Categoria: ${ver}`}
+          onClose={() => setVer(null)}
+          linhas={[
+            { label: "Nome", value: ver },
+            { label: "Produtos nesta categoria", value: contar(ver) },
+          ]}
+        />
+      )}
+      {hist && <HistoricoEntidadeModal title={`Categoria ${hist}`} api={api} tipo="categoria" id={hist} onClose={() => setHist(null)} />}
     </div>
   );
 }

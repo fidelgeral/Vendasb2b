@@ -4,7 +4,7 @@ import { fmtMT, getStock, daysUntil, todayStr, mapImportRow } from "../lib/utils
 import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
 import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, Settings, ArrowDownCircle, PackageX, Scale, X } from "../lib/icons.jsx";
 import { getSession } from "../lib/api.js";
-import { SelectComCriar } from "../components/Shared.jsx";
+import { SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 
 const GOLD = "#F59E0B";
 
@@ -46,6 +46,9 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const [entradaLote, setEntradaLote] = useState(null);
   const [showSaida, setShowSaida] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [verProduto, setVerProduto] = useState(null);
+  const [editProduto, setEditProduto] = useState(null);
+  const [histProduto, setHistProduto] = useState(null);
 
   const session = getSession();
   const outrasFiliais = (session?.filiais || []).filter((f) => f.id !== store.id);
@@ -135,6 +138,10 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const apagarLote = (id) => {
     if (!window.confirm("Apagar este lote? Esta acção não pode ser anulada.")) return;
     guard(() => api.deleteLote(id), "Lote apagado", "warn");
+  };
+  const apagarProduto = (p) => {
+    if (!window.confirm(`Apagar o produto "${p.name}"? Esta acção não pode ser anulada.`)) return;
+    guard(() => api.deleteProduct(p.id), "Produto apagado", "warn");
   };
   // Criação rápida de fornecedor a partir dos seletores dos modais.
   const criarFornecedorRapido = async (name) => {
@@ -261,6 +268,10 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
                 onQuebra={() => setQuebraLote(l)}
                 onApagar={() => apagarLote(l.loteId)}
                 onCriarLote={() => abrirNovoLote(l.product)}
+                onVerProduto={() => setVerProduto(l.product)}
+                onEditarProduto={() => setEditProduto(l.product)}
+                onHistoricoProduto={() => setHistProduto(l.product)}
+                onApagarProduto={() => apagarProduto(l.product)}
               />
             ))}
             {linhasFiltradas.length === 0 && (
@@ -338,6 +349,34 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       )}
       {histLote && <HistoricoLoteModal lote={histLote} api={api} onClose={() => setHistLote(null)} />}
 
+      {verProduto && (
+        <DetalhesModal
+          title={verProduto.name}
+          onClose={() => setVerProduto(null)}
+          linhas={[
+            { label: "Categoria", value: verProduto.category },
+            { label: "Código", value: verProduto.codigo },
+            { label: "Unidade", value: verProduto.unit },
+            { label: "Preço de venda", value: fmtMT(verProduto.price) },
+            { label: "Custo unitário", value: fmtMT(verProduto.cost) },
+            { label: "Stock actual", value: `${getStock(verProduto, store.products)} ${verProduto.unit || "un"}` },
+            { label: "Stock mínimo", value: verProduto.minStock },
+            { label: "Fornecedor", value: nomeFornecedor[verProduto.fornecedorId] },
+            { label: "Estado", value: verProduto.active === false ? "Inativo" : "Activo" },
+          ]}
+        />
+      )}
+      {editProduto && (
+        <ProdutoEditModal
+          produto={editProduto}
+          store={store}
+          onCreateCategoria={async (name) => { const st = await api.addCategory(name); setStore(st); return name; }}
+          onSubmit={(payload) => { guard(() => api.updateProduct(editProduto.id, payload), "Produto actualizado"); setEditProduto(null); }}
+          onClose={() => setEditProduto(null)}
+        />
+      )}
+      {histProduto && <HistoricoEntidadeModal title={histProduto.name} api={api} tipo="produto" id={histProduto.id} onClose={() => setHistProduto(null)} />}
+
       {showSaida && <SaidaEstoqueModal store={store} onSubmit={registerQuebra} onClose={() => setShowSaida(false)} />}
       {showTransfer && (
         <TransferModal
@@ -367,7 +406,7 @@ function IconBtn({ title, onClick, children, color }) {
   );
 }
 
-function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, onApagar, onCriarLote }) {
+function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, onApagar, onCriarLote, onVerProduto, onEditarProduto, onHistoricoProduto, onApagarProduto }) {
   const st = statusDe(l);
   const p = l.product;
   const unit = p.unit && p.unit !== "un" ? p.unit : "un";
@@ -405,9 +444,12 @@ function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, on
               <IconBtn title="Apagar lote" onClick={onApagar} color={BRICK}><Trash2 size={13} /></IconBtn>
             </>
           ) : l.tipo === "stock" ? (
-            <button onClick={onCriarLote} style={{ color: TEAL, borderColor: BORDER }} className="border rounded-full px-2.5 py-1 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
-              <Plus size={12} /> Criar lote
-            </button>
+            <>
+              <button onClick={onCriarLote} style={{ color: TEAL, borderColor: BORDER }} className="border rounded-full px-2.5 py-1 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
+                <Plus size={12} /> Criar lote
+              </button>
+              <AcoesEntidade onVer={onVerProduto} onEditar={onEditarProduto} onHistorico={onHistoricoProduto} onApagar={onApagarProduto} />
+            </>
           ) : (
             <span className="text-[11px]" style={{ color: MUTED }}>variantes → Produtos</span>
           )}
@@ -780,6 +822,62 @@ function HistoricoLoteModal({ lote, api, onClose }) {
             </div>
           );
         })}
+      </div>
+    </ModalShell>
+  );
+}
+
+function ProdutoEditModal({ produto, store, onSubmit, onClose, onCreateCategoria }) {
+  const [name, setName] = useState(produto.name || "");
+  const [category, setCategory] = useState(produto.category || "");
+  const [codigo, setCodigo] = useState(produto.codigo || "");
+  const [price, setPrice] = useState(String(produto.price ?? ""));
+  const [cost, setCost] = useState(String(produto.cost ?? ""));
+  const [minStock, setMinStock] = useState(String(produto.minStock ?? ""));
+  const categorias = store.categories && store.categories.length ? store.categories : [...new Set(store.products.map((p) => p.category).filter(Boolean))].sort();
+
+  const submit = () => {
+    if (!name.trim()) return;
+    onSubmit({ name: name.trim(), category, codigo, price: Number(price) || 0, cost: Number(cost) || 0, minStock: Number(minStock) || 0 });
+  };
+
+  return (
+    <ModalShell title="📦 Editar Produto" onClose={onClose}>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs" style={{ color: MUTED }}>Nome do produto *</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Categoria</label>
+            <div className="mt-1">
+              <SelectComCriar value={category} onChange={setCategory} options={categorias.map((c) => ({ value: c, label: c }))} onCreate={onCreateCategoria} placeholder="Seleccionar…" createLabel="➕ Nova categoria" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Código (barras)</label>
+            <input value={codigo} onChange={(e) => setCodigo(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Preço (MT)</label>
+            <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Custo (MT)</label>
+            <input type="number" value={cost} onChange={(e) => setCost(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Stock mín.</label>
+            <input type="number" value={minStock} onChange={(e) => setMinStock(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} style={{ background: "#475569", color: "#fff" }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Cancelar</button>
+          <button onClick={submit} style={{ background: TEAL, color: "#fff" }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Guardar</button>
+        </div>
       </div>
     </ModalShell>
   );

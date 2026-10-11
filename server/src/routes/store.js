@@ -278,6 +278,22 @@ storeRouter.get("/store", async (req, res) => {
 
 // Histórico completo por período — usado só quando se abre o Balanço, para não
 // carregar milhares de vendas no arranque normal do sistema.
+// Histórico de alterações de uma entidade (fornecedor, categoria, produto, …):
+// o que mudou, quem mudou e quando.
+storeRouter.get("/audit-entidade", async (req, res) => {
+  const { type, id } = req.query;
+  if (!type || !id) return res.status(400).json({ error: "Indique type e id." });
+  const movimentos = (
+    await query(
+      `SELECT id, acao, detalhe, valor, employee_name AS "employeeName", created_at AS date
+       FROM audit_log WHERE business_id = $1 AND entity_type = $2 AND entity_id = $3
+       ORDER BY created_at DESC LIMIT 200`,
+      [req.params.businessId, type, String(id)]
+    )
+  ).rows;
+  res.json({ movimentos });
+});
+
 storeRouter.get("/history", async (req, res) => {
   const businessId = req.params.businessId;
   const from = req.query.from || "1900-01-01";

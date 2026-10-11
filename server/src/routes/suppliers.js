@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { logAudit, authEmployee } from "../audit.js";
 
 export const suppliersRouter = Router({ mergeParams: true });
 suppliersRouter.use(requireAuth, requireBusiness);
@@ -24,16 +25,40 @@ suppliersRouter.post("/suppliers", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Dados do fornecedor inválidos." });
   const f = parsed.data;
   const businessId = req.params.businessId;
-  await query(
-    "INSERT INTO suppliers (business_id, name, contacto, phone, email, nuit, endereco, prazo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-    [businessId, f.name, f.contacto, f.phone, f.email, f.nuit, f.endereco, f.prazo]
-  );
+  const novo = (
+    await query(
+      "INSERT INTO suppliers (business_id, name, contacto, phone, email, nuit, endereco, prazo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+      [businessId, f.name, f.contacto, f.phone, f.email, f.nuit, f.endereco, f.prazo]
+    )
+  ).rows[0];
+  await logAudit({ businessId, employee: authEmployee(req), acao: "FORNECEDOR", detalhe: `Criou o fornecedor "${f.name}"`, entityType: "fornecedor", entityId: novo.id });
   await respond(res, businessId, 201);
+});
+
+suppliersRouter.patch("/suppliers/:id", async (req, res) => {
+  const parsed = supplierSchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Dados do fornecedor inválidos." });
+  const { businessId, id } = req.params;
+  const antes = (await query("SELECT * FROM suppliers WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  if (!antes) return res.status(404).json({ error: "Fornecedor não encontrado." });
+  const f = { ...antes, ...parsed.data };
+  await query(
+    "UPDATE suppliers SET name=$1, contacto=$2, phone=$3, email=$4, nuit=$5, endereco=$6, prazo=$7 WHERE id=$8 AND business_id=$9",
+    [f.name, f.contacto || "", f.phone || "", f.email || "", f.nuit || "", f.endereco || "", f.prazo || "", id, businessId]
+  );
+  const mudancas = ["name", "contacto", "phone", "email", "nuit", "endereco", "prazo"]
+    .filter((k) => parsed.data[k] !== undefined && String(parsed.data[k] || "") !== String(antes[k] || ""))
+    .map((k) => `${k}: "${antes[k] || ""}" → "${parsed.data[k] || ""}"`)
+    .join("; ");
+  await logAudit({ businessId, employee: authEmployee(req), acao: "FORNECEDOR", detalhe: `Editou o fornecedor "${f.name}"${mudancas ? ` (${mudancas})` : ""}`, entityType: "fornecedor", entityId: id });
+  await respond(res, businessId);
 });
 
 suppliersRouter.delete("/suppliers/:id", async (req, res) => {
   const { businessId, id } = req.params;
+  const antes = (await query("SELECT name FROM suppliers WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   await query("DELETE FROM suppliers WHERE id = $1 AND business_id = $2", [id, businessId]);
+  if (antes) await logAudit({ businessId, employee: authEmployee(req), acao: "FORNECEDOR", detalhe: `Apagou o fornecedor "${antes.name}"`, entityType: "fornecedor", entityId: id });
   await respond(res, businessId);
 });
 

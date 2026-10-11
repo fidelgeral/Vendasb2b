@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { logAudit, authEmployee } from "../audit.js";
 
 export const productsRouter = Router({ mergeParams: true });
 productsRouter.use(requireAuth, requireBusiness);
@@ -135,6 +136,7 @@ productsRouter.post("/products", async (req, res) => {
         businessId, f.fornecedorId || null, product.id, f.estoqueQtd, cost, cost * f.estoqueQtd,
       ]);
     }
+    await logAudit({ businessId, employee: authEmployee(req), acao: "PRODUTO", detalhe: `Criou o produto "${f.name}"`, valor: f.price, entityType: "produto", entityId: product.id }, (t, p) => client.query(t, p));
   });
 
   await respond(res, businessId, 201);
@@ -194,6 +196,19 @@ productsRouter.patch("/products/:id", async (req, res) => {
         await client.query("INSERT INTO product_combo_items (product_id, ingredient_product_id, qty) VALUES ($1,$2,$3)", [id, ing.productId, ing.qty]);
       }
     }
+    const campos = [
+      ["name", "nome", existing.name],
+      ["price", "preço", Number(existing.price)],
+      ["cost", "custo", Number(existing.cost)],
+      ["category", "categoria", existing.category],
+      ["minStock", "stock mínimo", Number(existing.min_stock)],
+      ["active", "activo", existing.active],
+    ];
+    const mudancas = campos
+      .filter(([k]) => f[k] !== undefined && String(f[k]) !== String(campos.find((c) => c[0] === k)[2]))
+      .map(([k, lbl]) => `${lbl}: "${campos.find((c) => c[0] === k)[2]}" → "${f[k]}"`)
+      .join("; ");
+    await logAudit({ businessId, employee: authEmployee(req), acao: "PRODUTO", detalhe: `Editou o produto "${f.name ?? existing.name}"${mudancas ? ` (${mudancas})` : ""}`, entityType: "produto", entityId: id }, (t, p) => client.query(t, p));
   });
 
   await respond(res, businessId);
@@ -208,7 +223,9 @@ productsRouter.delete("/products/:id", async (req, res) => {
     )
   ).rows;
   if (dependents.length) return res.status(409).json({ error: "Não é possível apagar: outro produto depende deste." });
+  const antes = (await query("SELECT name FROM products WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   await query("DELETE FROM products WHERE id = $1 AND business_id = $2", [id, businessId]);
+  if (antes) await logAudit({ businessId, employee: authEmployee(req), acao: "PRODUTO", detalhe: `Apagou o produto "${antes.name}"`, entityType: "produto", entityId: id });
   await respond(res, businessId);
 });
 
@@ -318,11 +335,29 @@ productsRouter.post("/categories", async (req, res) => {
   if (!name) return res.status(400).json({ error: "Indique um nome de categoria." });
   const businessId = req.params.businessId;
   await query("INSERT INTO categories (business_id, name) VALUES ($1,$2) ON CONFLICT DO NOTHING", [businessId, name]);
+  await logAudit({ businessId, employee: authEmployee(req), acao: "CATEGORIA", detalhe: `Criou a categoria "${name}"`, entityType: "categoria", entityId: name });
   await respond(res, businessId, 201);
+});
+
+// Renomear uma categoria (actualiza também os produtos que a usam).
+productsRouter.patch("/categories/:name", async (req, res) => {
+  const businessId = req.params.businessId;
+  const antigo = req.params.name;
+  const novo = String(req.body?.name || "").trim();
+  if (!novo) return res.status(400).json({ error: "Indique o novo nome." });
+  await withTransaction(async (client) => {
+    await client.query("UPDATE categories SET name = $1 WHERE business_id = $2 AND name = $3", [novo, businessId, antigo]);
+    await client.query("UPDATE products SET category = $1 WHERE business_id = $2 AND category = $3", [novo, businessId, antigo]);
+    await logAudit({ businessId, employee: authEmployee(req), acao: "CATEGORIA", detalhe: `Renomeou a categoria "${antigo}" → "${novo}"`, entityType: "categoria", entityId: novo }, (t, p) => client.query(t, p));
+    // mantém o histórico acessível também pelo nome antigo
+    await logAudit({ businessId, employee: authEmployee(req), acao: "CATEGORIA", detalhe: `Renomeada para "${novo}"`, entityType: "categoria", entityId: antigo }, (t, p) => client.query(t, p));
+  });
+  await respond(res, businessId);
 });
 
 productsRouter.delete("/categories/:name", async (req, res) => {
   const businessId = req.params.businessId;
   await query("DELETE FROM categories WHERE business_id = $1 AND name = $2", [businessId, req.params.name]);
+  await logAudit({ businessId, employee: authEmployee(req), acao: "CATEGORIA", detalhe: `Apagou a categoria "${req.params.name}"`, entityType: "categoria", entityId: req.params.name });
   await respond(res, businessId);
 });

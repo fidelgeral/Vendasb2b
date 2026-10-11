@@ -94,7 +94,9 @@ export function businessApi(businessId) {
     addBatch: (id, qty, expiryDate) => s(post(`${base}/products/${id}/batches`, { qty, expiryDate })),
     bulkImportProducts: (rows) => post(`${base}/products/bulk-import`, { rows }),
     addCategory: (name) => s(post(`${base}/categories`, { name })),
+    renameCategory: (name, novo) => s(patch(`${base}/categories/${encodeURIComponent(name)}`, { name: novo })),
     removeCategory: (name) => s(del(`${base}/categories/${encodeURIComponent(name)}`)),
+    auditEntidade: (type, id) => get(`${base}/audit-entidade?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`).then((d) => d.movimentos),
 
     createClient: (payload) => s(post(`${base}/clients`, payload)),
     updateClient: (id, payload) => s(patch(`${base}/clients/${id}`, payload)),
@@ -103,6 +105,7 @@ export function businessApi(businessId) {
     payPartial: (id, valor) => s(post(`${base}/clients/${id}/pay-partial`, { valor })),
 
     createSupplier: (payload) => s(post(`${base}/suppliers`, payload)),
+    updateSupplier: (id, payload) => s(patch(`${base}/suppliers/${id}`, payload)),
     deleteSupplier: (id) => s(del(`${base}/suppliers/${id}`)),
     registerPurchase: (payload) => s(post(`${base}/purchases`, payload)),
 
