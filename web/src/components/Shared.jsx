@@ -169,18 +169,16 @@ export function ProductCard({ p, onClick, onContextMenu, onLongPress, disabled, 
   const stock = getStock(p, produtos);
   const timer = useRef(null);
   const longFired = useRef(false);
-  const handled = useRef(false); // evita diminuir a dobrar (timer + contextmenu)
+  const lastLong = useRef(0); // quando um toque prolongado diminuiu (timestamp)
   // Toque prolongado (ecrã tátil) = equivalente ao botão direito do rato:
   // diminui a quantidade. No telemóvel não há botão direito, por isso usa-se
   // manter o dedo pressionado ~0,45 s.
   const startPress = () => {
-    handled.current = false;
     longFired.current = false;
     if (!onLongPress) return;
     timer.current = setTimeout(() => {
-      if (handled.current) return;
-      handled.current = true;
       longFired.current = true;
+      lastLong.current = Date.now();
       onLongPress();
     }, 450);
   };
@@ -190,13 +188,13 @@ export function ProductCard({ p, onClick, onContextMenu, onLongPress, disabled, 
       timer.current = null;
     }
   };
+  // Botão direito do rato: diminui SEMPRE (uma vez por clique). Só é ignorado se
+  // um toque prolongado acabou mesmo agora de diminuir (o Android dispara também
+  // o menu de contexto a seguir ao long-press), evitando diminuir a dobrar.
   const handleContext = (e) => {
     cancelPress();
-    if (handled.current) {
-      e.preventDefault();
-      return;
-    }
-    handled.current = true;
+    e.preventDefault();
+    if (Date.now() - lastLong.current < 700) return;
     if (onContextMenu) onContextMenu(e);
   };
   const handleClick = (e) => {
