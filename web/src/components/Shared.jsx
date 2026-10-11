@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, BG, PRICE_GREEN, GREEN, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock, isLowStock, compressImageFile } from "../lib/utils.js";
 import { Bell, AlertTriangle, ImageOff, Link2, Package, Percent, Split, X } from "../lib/icons.jsx";
@@ -165,12 +165,56 @@ export function PhotoPicker({ value, onChange }) {
   );
 }
 
-export function ProductCard({ p, onClick, onContextMenu, disabled, produtos, compact }) {
+export function ProductCard({ p, onClick, onContextMenu, onLongPress, disabled, produtos, compact }) {
   const stock = getStock(p, produtos);
+  const timer = useRef(null);
+  const longFired = useRef(false);
+  const handled = useRef(false); // evita diminuir a dobrar (timer + contextmenu)
+  // Toque prolongado (ecrã tátil) = equivalente ao botão direito do rato:
+  // diminui a quantidade. No telemóvel não há botão direito, por isso usa-se
+  // manter o dedo pressionado ~0,45 s.
+  const startPress = () => {
+    handled.current = false;
+    longFired.current = false;
+    if (!onLongPress) return;
+    timer.current = setTimeout(() => {
+      if (handled.current) return;
+      handled.current = true;
+      longFired.current = true;
+      onLongPress();
+    }, 450);
+  };
+  const cancelPress = () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  const handleContext = (e) => {
+    cancelPress();
+    if (handled.current) {
+      e.preventDefault();
+      return;
+    }
+    handled.current = true;
+    if (onContextMenu) onContextMenu(e);
+  };
+  const handleClick = (e) => {
+    if (longFired.current) {
+      // foi um toque prolongado: não adicionar ao carrinho a seguir
+      longFired.current = false;
+      e.preventDefault();
+      return;
+    }
+    if (onClick) onClick(e);
+  };
   return (
     <button
-      onClick={onClick}
-      onContextMenu={onContextMenu}
+      onClick={handleClick}
+      onContextMenu={handleContext}
+      onTouchStart={startPress}
+      onTouchEnd={cancelPress}
+      onTouchMove={cancelPress}
       disabled={disabled}
       style={{ background: CARD, borderColor: BORDER, opacity: disabled ? 0.45 : 1 }}
       className="border rounded-2xl overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 transition disabled:cursor-not-allowed flex flex-col"

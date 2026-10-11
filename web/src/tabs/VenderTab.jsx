@@ -108,6 +108,45 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     e.preventDefault();
     if (!vendaRapida) diminuirDoCarrinho(p);
   };
+  const diminuirPorToque = (p) => {
+    if (!vendaRapida) diminuirDoCarrinho(p);
+  };
+  // Handlers de toque prolongado + botão direito para os botões "mais vendidos"
+  // (que não são ProductCard). Mantém o dedo ~0,45 s para diminuir. O `handled`
+  // evita diminuir a dobrar quando o Android dispara o menu de contexto além do
+  // temporizador.
+  const toqueProlongado = (p) => {
+    let t = null;
+    let handled = false;
+    let fired = false;
+    const diminuir = () => {
+      if (handled) return;
+      handled = true;
+      fired = true;
+      diminuirPorToque(p);
+    };
+    return {
+      onTouchStart: () => {
+        handled = false;
+        fired = false;
+        t = setTimeout(diminuir, 450);
+      },
+      onTouchEnd: () => t && clearTimeout(t),
+      onTouchMove: () => t && clearTimeout(t),
+      onContextMenu: (e) => {
+        e.preventDefault();
+        if (t) clearTimeout(t);
+        diminuir();
+      },
+      onClickCapture: (e) => {
+        if (fired) {
+          fired = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+    };
+  };
 
   const parkSale = async () => {
     if (cart.length === 0) return;
@@ -219,7 +258,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
                 <button
                   key={p.id}
                   onClick={() => (vendaRapida ? vendaImediata(p) : addToCart(p))}
-                  onContextMenu={(e) => onProdutoContexto(e, p)}
+                  {...toqueProlongado(p)}
                   style={{ background: SOFTGOLD, borderColor: GOLD, color: INK }}
                   className="border rounded-full px-3 py-1.5 text-xs font-medium"
                 >
@@ -231,7 +270,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
         )}
         <div className="grid grid-cols-3 gap-1.5">
           {filtered.map((p) => (
-            <ProductCard key={p.id} p={p} compact produtos={store.products} disabled={getStock(p, store.products) <= 0} onClick={() => (vendaRapida ? vendaImediata(p) : addToCart(p))} onContextMenu={(e) => onProdutoContexto(e, p)} />
+            <ProductCard key={p.id} p={p} compact produtos={store.products} disabled={getStock(p, store.products) <= 0} onClick={() => (vendaRapida ? vendaImediata(p) : addToCart(p))} onContextMenu={(e) => onProdutoContexto(e, p)} onLongPress={() => diminuirPorToque(p)} />
           ))}
           {filtered.length === 0 && (
             <div className="col-span-full text-sm" style={{ color: MUTED }}>

@@ -30,6 +30,11 @@ export default defineConfig({
       workbox: {
         // Faz precache do "shell" da app para ela abrir mesmo sem internet.
         globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        // Não faz precache das bibliotecas pesadas (PDF/Excel): só são
+        // descarregadas quando o utilizador gera um recibo/relatório. Assim a
+        // primeira visita é muito mais leve e rápida em ligações lentas.
+        globIgnores: ["**/jspdf*", "**/xlsx*", "**/html2canvas*", "**/purify*", "**/index.es-*"],
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/loja\//],
         // Importante: NÃO interceptamos a API aqui. O service worker só trata do
