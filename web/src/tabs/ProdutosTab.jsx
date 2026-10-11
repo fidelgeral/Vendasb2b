@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, getStock, UNIDADES, IVA_TAXAS } from "../lib/utils.js";
 import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar } from "../components/Shared.jsx";
@@ -152,6 +152,15 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
     const novo = [...(novoStore.suppliers || [])].reverse().find((s) => s.name === name);
     return novo ? novo.id : "";
   };
+  // Unidades de medida: as fixas + as personalizadas já usadas nos produtos.
+  // Criar uma nova é só usar o texto (fica guardado no próprio produto).
+  const unidadeOptions = useMemo(() => {
+    const base = UNIDADES.map((u) => ({ value: u.id, label: u.label }));
+    const fixas = new Set(UNIDADES.map((u) => u.id));
+    const extras = [...new Set(store.products.map((p) => p.unit).filter((u) => u && !fixas.has(u)))].map((u) => ({ value: u, label: u }));
+    return [...base, ...extras];
+  }, [store.products]);
+  const criarUnidade = (name) => name;
 
   const addIngrediente = () => {
     if (!ingSel.productId || !(Number(ingSel.qty) > 0)) return;
@@ -340,13 +349,16 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Unidade de medida *</label>
-              <select value={form.unit} onChange={(e) => set("unit", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
-                {UNIDADES.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.label}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <SelectComCriar
+                  value={form.unit}
+                  onChange={(v) => set("unit", v)}
+                  options={unidadeOptions}
+                  onCreate={criarUnidade}
+                  placeholder="Seleccionar…"
+                  createLabel="➕ Nova unidade"
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Qtd de itens *</label>

@@ -211,6 +211,9 @@ export function SelectComCriar({ value, onChange, options, onCreate, placeholder
       </div>
     );
   }
+  // Garante que o valor atual aparece mesmo que não esteja na lista (ex.: uma
+  // unidade de medida personalizada acabada de criar).
+  const opts = value && !options.some((o) => String(o.value) === String(value)) ? [{ value, label: value }, ...options] : options;
   return (
     <select
       value={value}
@@ -220,7 +223,7 @@ export function SelectComCriar({ value, onChange, options, onCreate, placeholder
       className="w-full border rounded-lg px-2 py-1.5 text-sm"
     >
       <option value="">{placeholder}</option>
-      {options.map((o) => (
+      {opts.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
