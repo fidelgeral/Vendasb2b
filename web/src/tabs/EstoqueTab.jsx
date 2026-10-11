@@ -4,6 +4,7 @@ import { fmtMT, getStock, daysUntil, todayStr, mapImportRow } from "../lib/utils
 import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
 import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, Settings, ArrowDownCircle, PackageX, Scale, X } from "../lib/icons.jsx";
 import { getSession } from "../lib/api.js";
+import { SelectComCriar } from "../components/Shared.jsx";
 
 const GOLD = "#F59E0B";
 
@@ -134,6 +135,13 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const apagarLote = (id) => {
     if (!window.confirm("Apagar este lote? Esta acção não pode ser anulada.")) return;
     guard(() => api.deleteLote(id), "Lote apagado", "warn");
+  };
+  // Criação rápida de fornecedor a partir dos seletores dos modais.
+  const criarFornecedorRapido = async (name) => {
+    const novoStore = await api.createSupplier({ name });
+    setStore(novoStore);
+    const novo = [...(novoStore.suppliers || [])].reverse().find((s) => s.name === name);
+    return novo ? novo.id : "";
   };
 
   const abrirNovoLote = (produto) => {
@@ -278,7 +286,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       )}
       {novoLoteProduct && (
         <NovoLoteModal
-          store={store}
+          store={store} onCreateSupplier={criarFornecedorRapido}
           produtoInicial={novoLoteProduct.id ? novoLoteProduct : null}
           onAdd={(payload) => {
             criarLote(payload);
@@ -289,7 +297,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       )}
       {showMultiplos && (
         <MultiplosLotesModal
-          store={store}
+          store={store} onCreateSupplier={criarFornecedorRapido}
           onAdd={(payload) => {
             criarLotesBulk(payload);
             setShowMultiplos(false);
@@ -310,7 +318,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       {editLote && (
         <EditarLoteModal
           lote={editLote}
-          store={store}
+          store={store} onCreateSupplier={criarFornecedorRapido}
           onSubmit={(payload) => {
             editarSubmit(editLote.loteId, payload);
             setEditLote(null);
@@ -443,7 +451,7 @@ function TipoAdicaoModal({ onIndividual, onMultiplos, onClose }) {
   );
 }
 
-function NovoLoteModal({ store, produtoInicial, onAdd, onClose }) {
+function NovoLoteModal({ store, produtoInicial, onAdd, onClose, onCreateSupplier }) {
   const produtos = store.products.filter((p) => p.tipo === "simples" && !(p.variants && p.variants.length));
   const [productId, setProductId] = useState(produtoInicial?.id || produtos[0]?.id || "");
   const [name, setName] = useState("");
@@ -475,12 +483,16 @@ function NovoLoteModal({ store, produtoInicial, onAdd, onClose }) {
           </div>
           <div>
             <label className="text-xs" style={{ color: MUTED }}>Fornecedor</label>
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1">
-              <option value="">Escolher fornecedor</option>
-              {(store.suppliers || []).map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SelectComCriar
+                value={supplierId}
+                onChange={setSupplierId}
+                options={(store.suppliers || []).map((s) => ({ value: s.id, label: s.name }))}
+                onCreate={onCreateSupplier}
+                placeholder="Escolher fornecedor"
+                createLabel="➕ Novo fornecedor"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -517,7 +529,7 @@ function NovoLoteModal({ store, produtoInicial, onAdd, onClose }) {
   );
 }
 
-function MultiplosLotesModal({ store, onAdd, onClose }) {
+function MultiplosLotesModal({ store, onAdd, onClose, onCreateSupplier }) {
   const produtos = store.products.filter((p) => p.tipo === "simples" && !(p.variants && p.variants.length));
   const [supplierId, setSupplierId] = useState("");
   const linhaVazia = () => ({ productId: "", qty: "", costTotal: "", expiryDate: "" });
@@ -535,12 +547,16 @@ function MultiplosLotesModal({ store, onAdd, onClose }) {
       <div className="space-y-3">
         <div>
           <label className="text-xs" style={{ color: MUTED }}>Fornecedor</label>
-          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1">
-            <option value="">Pesquisar Fornecedor…</option>
-            {(store.suppliers || []).map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <SelectComCriar
+              value={supplierId}
+              onChange={setSupplierId}
+              options={(store.suppliers || []).map((s) => ({ value: s.id, label: s.name }))}
+              onCreate={onCreateSupplier}
+              placeholder="Pesquisar Fornecedor…"
+              createLabel="➕ Novo fornecedor"
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <div className="grid grid-cols-12 gap-1.5 text-[11px] font-semibold" style={{ color: MUTED }}>
@@ -611,7 +627,7 @@ function EntradaLoteModal({ lote, onSubmit, onClose }) {
   );
 }
 
-function EditarLoteModal({ lote, store, onSubmit, onClose }) {
+function EditarLoteModal({ lote, store, onSubmit, onClose, onCreateSupplier }) {
   const [name, setName] = useState(lote.nome || "");
   const [expiryDate, setExpiryDate] = useState(toInputDate(lote.expiry));
   const [costTotal, setCostTotal] = useState(String(lote.custoTotal || ""));
@@ -634,12 +650,16 @@ function EditarLoteModal({ lote, store, onSubmit, onClose }) {
         </div>
         <div>
           <label className="text-xs" style={{ color: MUTED }}>Fornecedor</label>
-          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1">
-            <option value="">Escolher fornecedor</option>
-            {(store.suppliers || []).map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <SelectComCriar
+              value={supplierId}
+              onChange={setSupplierId}
+              options={(store.suppliers || []).map((s) => ({ value: s.id, label: s.name }))}
+              onCreate={onCreateSupplier}
+              placeholder="Escolher fornecedor"
+              createLabel="➕ Novo fornecedor"
+            />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>

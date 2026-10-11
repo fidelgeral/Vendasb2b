@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, getStock, UNIDADES, IVA_TAXAS } from "../lib/utils.js";
-import { StatCard, PhotoPicker, CategoriasModal } from "../components/Shared.jsx";
+import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar } from "../components/Shared.jsx";
 import { Plus, X, Package } from "../lib/icons.jsx";
 
 export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
@@ -140,6 +140,18 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
     setStore(await api.addCategory(name));
   };
   const removeCategory = async (name) => setStore(await api.removeCategory(name));
+
+  // Criação rápida a partir dos seletores do formulário.
+  const criarCategoriaRapida = async (name) => {
+    await addCategory(name);
+    return name;
+  };
+  const criarFornecedorRapido = async (name) => {
+    const novoStore = await api.createSupplier({ name });
+    setStore(novoStore);
+    const novo = [...(novoStore.suppliers || [])].reverse().find((s) => s.name === name);
+    return novo ? novo.id : "";
+  };
 
   const addIngrediente = () => {
     if (!ingSel.productId || !(Number(ingSel.qty) > 0)) return;
@@ -304,14 +316,16 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
             <div className="col-span-2 sm:col-span-1">
               <label className="text-xs" style={{ color: MUTED }}>Categoria *</label>
-              <select value={form.category} onChange={(e) => set("category", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
-                <option value="">Seleccionar…</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <SelectComCriar
+                  value={form.category}
+                  onChange={(v) => set("category", v)}
+                  options={categories.map((c) => ({ value: c, label: c }))}
+                  onCreate={criarCategoriaRapida}
+                  placeholder="Seleccionar…"
+                  createLabel="➕ Nova categoria"
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Taxa de IVA</label>
@@ -378,14 +392,16 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
                   </div>
                   <div>
                     <label className="text-xs" style={{ color: MUTED }}>Fornecedor</label>
-                    <select value={form.estoqueFornecedor} onChange={(e) => set("estoqueFornecedor", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
-                      <option value="">Escolher fornecedor</option>
-                      {store.suppliers.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="mt-1">
+                      <SelectComCriar
+                        value={form.estoqueFornecedor}
+                        onChange={(v) => set("estoqueFornecedor", v)}
+                        options={(store.suppliers || []).map((s) => ({ value: s.id, label: s.name }))}
+                        onCreate={criarFornecedorRapido}
+                        placeholder="Escolher fornecedor"
+                        createLabel="➕ Novo fornecedor"
+                      />
+                    </div>
                   </div>
                   {Number(form.estoqueQtd) > 0 && Number(form.estoqueCustoTotal) > 0 && (
                     <div className="sm:col-span-4 text-xs" style={{ color: GREEN }}>

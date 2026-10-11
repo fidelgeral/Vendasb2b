@@ -165,6 +165,71 @@ export function PhotoPicker({ value, onChange }) {
   );
 }
 
+// Seletor com opção de criar um novo item rapidamente (ex.: fornecedor,
+// categoria). Ao escolher "➕ criar novo", abre um campo para o nome; depois de
+// criar, seleciona-o e continua-se o preenchimento. `onCreate(nome)` deve
+// devolver o valor a seleccionar (id do fornecedor, ou o próprio nome da
+// categoria).
+export function SelectComCriar({ value, onChange, options, onCreate, placeholder = "Seleccionar…", createLabel = "➕ Criar novo", disabled }) {
+  const [criando, setCriando] = useState(false);
+  const [nome, setNome] = useState("");
+  const [busy, setBusy] = useState(false);
+  const criar = async () => {
+    const n = nome.trim();
+    if (!n || busy) return;
+    setBusy(true);
+    try {
+      const novo = await onCreate(n);
+      if (novo !== undefined && novo !== null && novo !== "") onChange(novo);
+      setCriando(false);
+      setNome("");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (criando) {
+    return (
+      <div className="flex gap-1.5">
+        <input
+          autoFocus
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); criar(); }
+            if (e.key === "Escape") { setCriando(false); setNome(""); }
+          }}
+          placeholder="Escreva o nome e Enter…"
+          style={{ borderColor: BORDER }}
+          className="flex-1 border rounded-lg px-2 py-1.5 text-sm"
+        />
+        <button onClick={criar} disabled={busy} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-2.5 py-1.5 text-sm font-medium disabled:opacity-50">
+          {busy ? "…" : "Criar"}
+        </button>
+        <button onClick={() => { setCriando(false); setNome(""); }} style={{ borderColor: BORDER, color: MUTED }} className="border rounded-lg px-2 py-1.5 text-sm">
+          ✕
+        </button>
+      </div>
+    );
+  }
+  return (
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => (e.target.value === "__novo__" ? setCriando(true) : onChange(e.target.value))}
+      style={{ borderColor: BORDER }}
+      className="w-full border rounded-lg px-2 py-1.5 text-sm"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+      <option value="__novo__">{createLabel}</option>
+    </select>
+  );
+}
+
 export function ProductCard({ p, onClick, onContextMenu, onLongPress, disabled, produtos, compact }) {
   const stock = getStock(p, produtos);
   const timer = useRef(null);
