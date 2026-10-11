@@ -78,9 +78,12 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   }, [load]);
 
   // Mantém a cache local fresca após cada acção, para a próxima abertura ser
-  // instantânea.
+  // instantânea. Adiado ~400 ms para nunca bloquear o clique/navegação (a
+  // serialização do estado não acontece durante a interação).
   useEffect(() => {
-    if (store && !suspended) saveCachedStore(businessId, store);
+    if (!store || suspended) return undefined;
+    const id = setTimeout(() => saveCachedStore(businessId, store), 400);
+    return () => clearTimeout(id);
   }, [store, businessId, suspended]);
 
   const showToast = useCallback((msg, tone = "ok") => {

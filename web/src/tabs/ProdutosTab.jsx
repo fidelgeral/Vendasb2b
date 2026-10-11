@@ -491,7 +491,7 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onToggleActive }) {
     <div style={{ background: CARD, borderColor: BORDER, opacity: active ? 1 : 0.6 }} className="border rounded-lg p-2.5">
       <div className="flex items-center gap-3">
         <div style={{ background: "#F1F5F9" }} className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
-          {p.foto ? <img src={p.foto} alt="" className="w-full h-full object-cover" /> : <Package size={18} style={{ color: MUTED }} />}
+          {p.foto ? <img src={p.foto} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <Package size={18} style={{ color: MUTED }} />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium truncate flex items-center gap-2 flex-wrap">

@@ -220,7 +220,7 @@ export function ProductCard({ p, onClick, onContextMenu, onLongPress, disabled, 
       className="border rounded-2xl overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 transition disabled:cursor-not-allowed flex flex-col"
     >
       <div style={{ background: "linear-gradient(135deg,#EEF2FF,#FCE7F3)" }} className={"w-full flex items-center justify-center overflow-hidden relative " + (compact ? "aspect-[5/3]" : "aspect-[4/3]")}>
-        {p.foto ? <img src={p.foto} alt={p.name} className="w-full h-full object-cover" /> : <Package size={compact ? 22 : 28} style={{ color: "#818CF8" }} />}
+        {p.foto ? <img src={p.foto} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <Package size={compact ? 22 : 28} style={{ color: "#818CF8" }} />}
         <span
           style={{ background: stock <= 0 ? BRICK : isLowStock(p, produtos) ? GOLD : GREEN, color: "#fff" }}
           className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow"

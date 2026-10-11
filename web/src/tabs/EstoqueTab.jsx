@@ -350,7 +350,7 @@ function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, on
     <div style={{ background: CARD, borderColor: BORDER, borderLeft: `3px solid ${st.color}` }} className="border rounded-lg p-2.5">
       <div className="flex items-start gap-3">
         <div style={{ background: "#F1F5F9" }} className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
-          {p.foto ? <img src={p.foto} alt="" className="w-full h-full object-cover" /> : <Package size={16} style={{ color: MUTED }} />}
+          {p.foto ? <img src={p.foto} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <Package size={16} style={{ color: MUTED }} />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold truncate">{l.nome}</div>

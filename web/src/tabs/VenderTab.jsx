@@ -25,8 +25,12 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
   };
 
   const q = query.trim().toLowerCase();
-  const filtered = store.products.filter(
-    (p) => p.active !== false && p.vendaDirecta !== false && (p.name.toLowerCase().includes(q) || (p.codigo || "").toLowerCase().includes(q))
+  const filtered = useMemo(
+    () =>
+      store.products.filter(
+        (p) => p.active !== false && p.vendaDirecta !== false && (p.name.toLowerCase().includes(q) || (p.codigo || "").toLowerCase().includes(q))
+      ),
+    [store.products, q]
   );
 
   const favoritos = useMemo(() => {
