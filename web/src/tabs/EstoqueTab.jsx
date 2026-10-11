@@ -227,25 +227,43 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
         </select>
       </div>
 
-      <div className="space-y-1.5">
-        {linhasFiltradas.map((l) => (
-          <LoteRow
-            key={l.key}
-            l={l}
-            fornecedor={nomeFornecedor[l.supplierId]}
-            onEntrada={() => setEntradaLote(l)}
-            onEditar={() => setEditLote(l)}
-            onHistorico={() => setHistLote(l)}
-            onQuebra={() => setQuebraLote(l)}
-            onApagar={() => apagarLote(l.loteId)}
-            onCriarLote={() => abrirNovoLote(l.product)}
-          />
-        ))}
-        {linhasFiltradas.length === 0 && (
-          <div className="text-sm py-6 text-center" style={{ color: MUTED }}>
-            {store.products.length === 0 ? "Adicione produtos na aba Produtos primeiro." : "Nenhum lote corresponde aos filtros."}
-          </div>
-        )}
+      <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg overflow-x-auto">
+        <table className="w-full text-sm border-collapse" style={{ minWidth: 860 }}>
+          <thead>
+            <tr style={{ color: MUTED, borderBottom: `1px solid ${BORDER}`, background: "#F8FAFC" }} className="text-left text-[11px] uppercase tracking-wide">
+              <th className="px-3 py-2 font-semibold">Stock</th>
+              <th className="px-3 py-2 font-semibold">Produto</th>
+              <th className="px-3 py-2 font-semibold">Categoria</th>
+              <th className="px-3 py-2 font-semibold">Validade</th>
+              <th className="px-3 py-2 font-semibold text-right">Qtd</th>
+              <th className="px-3 py-2 font-semibold text-right">Preço</th>
+              <th className="px-3 py-2 font-semibold">Status</th>
+              <th className="px-3 py-2 font-semibold text-center">Acção</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhasFiltradas.map((l) => (
+              <LoteRow
+                key={l.key}
+                l={l}
+                fornecedor={nomeFornecedor[l.supplierId]}
+                onEntrada={() => setEntradaLote(l)}
+                onEditar={() => setEditLote(l)}
+                onHistorico={() => setHistLote(l)}
+                onQuebra={() => setQuebraLote(l)}
+                onApagar={() => apagarLote(l.loteId)}
+                onCriarLote={() => abrirNovoLote(l.product)}
+              />
+            ))}
+            {linhasFiltradas.length === 0 && (
+              <tr>
+                <td colSpan={8} className="text-sm py-6 text-center" style={{ color: MUTED }}>
+                  {store.products.length === 0 ? "Adicione produtos na aba Produtos primeiro." : "Nenhum lote corresponde aos filtros."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {showTipoAdicao && (
@@ -346,49 +364,48 @@ function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, on
   const p = l.product;
   const unit = p.unit && p.unit !== "un" ? p.unit : "un";
   const isLote = l.tipo === "lote";
+  const td = "px-3 py-2 align-middle";
   return (
-    <div style={{ background: CARD, borderColor: BORDER, borderLeft: `3px solid ${st.color}` }} className="border rounded-lg p-2.5">
-      <div className="flex items-start gap-3">
-        <div style={{ background: "#F1F5F9" }} className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
-          {p.foto ? <img src={p.foto} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <Package size={16} style={{ color: MUTED }} />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold truncate">{l.nome}</div>
-          <div style={{ color: MUTED }} className="text-xs truncate">
-            {p.name} · ID {String(p.id).slice(0, 4)} · {unit}
+    <tr style={{ borderBottom: `1px solid ${BORDER}`, borderLeft: `3px solid ${st.color}` }} className="hover:bg-gray-50">
+      <td className={td}>
+        <div className="flex items-center gap-2 min-w-0">
+          <div style={{ background: "#F1F5F9" }} className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+            {p.foto ? <img src={p.foto} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <Package size={14} style={{ color: MUTED }} />}
           </div>
-          <div style={{ color: MUTED }} className="text-[11px] truncate">
-            {p.category || "Sem categoria"} · Val: {fmtData(l.expiry)}{fornecedor ? ` · ${fornecedor}` : ""}
-          </div>
+          <span className="font-medium truncate max-w-[160px]">{l.nome}</span>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-sm font-bold" style={{ color: l.qty <= 0 ? BRICK : INK }}>
-            {l.qty} {unit}
-          </div>
-          <div className="text-xs" style={{ color: MUTED }}>{fmtMT(l.custoTotal)}</div>
-          <span style={{ background: st.color, color: "#fff" }} className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5">
-            {st.label}
-          </span>
+      </td>
+      <td className={td}>
+        <div className="truncate max-w-[180px]">{p.name}</div>
+        <div style={{ color: MUTED }} className="text-[11px]">ID {String(p.id).slice(0, 4)} · {unit}{fornecedor ? ` · ${fornecedor}` : ""}</div>
+      </td>
+      <td className={td} style={{ color: MUTED }}>{p.category || "—"}</td>
+      <td className={td} style={{ color: l.expiry && statusDe(l).k === "expirado" ? BRICK : MUTED }}>{fmtData(l.expiry)}</td>
+      <td className={td + " text-right font-semibold"} style={{ color: l.qty <= 0 ? BRICK : INK }}>{l.qty}</td>
+      <td className={td + " text-right"}>{fmtMT(l.custoTotal)}</td>
+      <td className={td}>
+        <span style={{ background: st.color, color: "#fff" }} className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">{st.label}</span>
+      </td>
+      <td className={td}>
+        <div className="flex items-center justify-center gap-1">
+          {isLote ? (
+            <>
+              <IconBtn title="Entrada (adicionar quantidade)" onClick={onEntrada} color={GREEN}><ArrowDownCircle size={14} /></IconBtn>
+              <IconBtn title="Editar lote" onClick={onEditar}><Settings size={13} /></IconBtn>
+              <IconBtn title="Histórico" onClick={onHistorico}><Scale size={13} /></IconBtn>
+              <IconBtn title="Quebra" onClick={onQuebra} color={GOLD}><PackageX size={13} /></IconBtn>
+              <IconBtn title="Apagar lote" onClick={onApagar} color={BRICK}><Trash2 size={13} /></IconBtn>
+            </>
+          ) : l.tipo === "stock" ? (
+            <button onClick={onCriarLote} style={{ color: TEAL, borderColor: BORDER }} className="border rounded-full px-2.5 py-1 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
+              <Plus size={12} /> Criar lote
+            </button>
+          ) : (
+            <span className="text-[11px]" style={{ color: MUTED }}>variantes → Produtos</span>
+          )}
         </div>
-      </div>
-      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-        {isLote ? (
-          <>
-            <IconBtn title="Entrada (adicionar quantidade)" onClick={onEntrada} color={GREEN}><ArrowDownCircle size={14} /></IconBtn>
-            <IconBtn title="Editar lote" onClick={onEditar}><Settings size={13} /></IconBtn>
-            <IconBtn title="Histórico" onClick={onHistorico}><Scale size={13} /></IconBtn>
-            <IconBtn title="Quebra" onClick={onQuebra} color={GOLD}><PackageX size={13} /></IconBtn>
-            <IconBtn title="Apagar lote" onClick={onApagar} color={BRICK}><Trash2 size={13} /></IconBtn>
-          </>
-        ) : l.tipo === "stock" ? (
-          <button onClick={onCriarLote} style={{ color: TEAL, borderColor: BORDER }} className="border rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1">
-            <Plus size={12} /> Criar lote
-          </button>
-        ) : (
-          <span className="text-[11px]" style={{ color: MUTED }}>Produto com variantes — gerir na aba Produtos</span>
-        )}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 

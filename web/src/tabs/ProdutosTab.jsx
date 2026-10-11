@@ -191,7 +191,8 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
       </div>
 
       {showForm && (
-        <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setShowForm(false); setEditingId(null); setForm(blank); setErro(""); }}>
+        <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-2xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
           <div className="text-sm font-semibold mb-3">{editingId ? "Editar produto" : "Adicionar novo produto"}</div>
 
           <div className="flex gap-4 mb-3 flex-wrap text-sm">
@@ -409,12 +410,13 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           )}
           <div className="flex gap-2">
             <button onClick={submit} style={{ background: GREEN, color: "#fff" }} className="px-4 py-2 rounded-lg text-sm font-medium">
-              {editingId ? "Salvar mudança" : "Adicionar produto"}
+              Guardar
             </button>
             <button onClick={() => { setShowForm(false); setEditingId(null); setForm(blank); setErro(""); }} style={{ background: "#F87171", color: "#fff" }} className="rounded-lg px-4 py-2 text-sm font-medium">
               Cancelar
             </button>
           </div>
+        </div>
         </div>
       )}
 
