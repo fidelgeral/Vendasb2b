@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK, GREEN } from "../lib/theme.js";
 import { ROLE_LABELS } from "../lib/utils.js";
+import { AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 
 export default function EquipaTab({ store, setStore, api }) {
   const blank = { name: "", email: "", phone: "", password: "", role: "caixa", docId: "" };
@@ -8,6 +9,8 @@ export default function EquipaTab({ store, setStore, api }) {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [verFunc, setVerFunc] = useState(null);
+  const [histFunc, setHistFunc] = useState(null);
 
   const validate = () => {
     if (!form.name.trim()) return "Indique o nome completo.";
@@ -47,7 +50,10 @@ export default function EquipaTab({ store, setStore, api }) {
     setForm({ name: e.name || "", email: e.email || "", phone: e.phone || "", password: "", role: e.role || "caixa", docId: e.docId || "" });
     setError("");
   };
-  const removeEmployee = async (id) => setStore(await api.deleteEmployee(id));
+  const removeEmployee = async (e) => {
+    if (!window.confirm(`Remover o utilizador "${e.name}"? Esta ação não pode ser desfeita.`)) return;
+    setStore(await api.deleteEmployee(e.id));
+  };
   const toggleActive = async (id) => setStore(await api.toggleEmployeeActive(id));
 
   return (
@@ -128,12 +134,12 @@ export default function EquipaTab({ store, setStore, api }) {
                 <button onClick={() => toggleActive(e.id)} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
                   {active ? "Desativar" : "Ativar"}
                 </button>
-                <button onClick={() => startEdit(e)} style={{ color: TEAL }} className="text-xs font-medium">
-                  Editar
-                </button>
-                <button onClick={() => removeEmployee(e.id)} style={{ color: BRICK }} className="text-xs font-medium">
-                  Apagar
-                </button>
+                <AcoesEntidade
+                  onVer={() => setVerFunc(e)}
+                  onEditar={() => startEdit(e)}
+                  onHistorico={() => setHistFunc(e)}
+                  onApagar={() => removeEmployee(e)}
+                />
               </div>
             </div>
           );
@@ -144,6 +150,29 @@ export default function EquipaTab({ store, setStore, api }) {
           </div>
         )}
       </div>
+
+      {verFunc && (
+        <DetalhesModal
+          title={verFunc.name}
+          linhas={[
+            ["Email", verFunc.email || "—"],
+            ["Telefone", verFunc.phone || "—"],
+            ["Função", ROLE_LABELS[verFunc.role] || verFunc.role],
+            ["Nº de documento", verFunc.docId || "—"],
+            ["Estado", verFunc.active !== false ? "Ativo" : "Inativo"],
+          ]}
+          onClose={() => setVerFunc(null)}
+        />
+      )}
+      {histFunc && (
+        <HistoricoEntidadeModal
+          title={`Histórico — ${histFunc.name}`}
+          api={api}
+          tipo="funcionario"
+          id={histFunc.id}
+          onClose={() => setHistFunc(null)}
+        />
+      )}
     </div>
   );
 }

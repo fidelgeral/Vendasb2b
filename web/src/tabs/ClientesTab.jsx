@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK, GREEN } from "../lib/theme.js";
 import { fmtMT, whatsappLink } from "../lib/utils.js";
-import { StatCard } from "../components/Shared.jsx";
-import { Plus, X } from "../lib/icons.jsx";
+import { StatCard, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
+import { Plus } from "../lib/icons.jsx";
 
 export default function ClientesTab({ store, setStore, api }) {
   const blank = { name: "", tipo: "Particular", phone: "", email: "", nuit: "", endereco: "", cidade: "", creditLimit: "", notas: "" };
@@ -10,6 +10,8 @@ export default function ClientesTab({ store, setStore, api }) {
   const [editingId, setEditingId] = useState(null);
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [verCliente, setVerCliente] = useState(null);
+  const [histCliente, setHistCliente] = useState(null);
 
   const submit = async () => {
     if (!form.name.trim()) return;
@@ -42,7 +44,10 @@ export default function ClientesTab({ store, setStore, api }) {
     });
     setShowForm(true);
   };
-  const removeClient = async (id) => setStore(await api.deleteClient(id));
+  const removeClient = async (c) => {
+    if (!window.confirm(`Apagar o cliente "${c.name}"? Esta ação não pode ser desfeita.`)) return;
+    setStore(await api.deleteClient(c.id));
+  };
   const payPartial = async (clientId, valor) => {
     const v = Number(valor) || 0;
     if (v <= 0) return;
@@ -154,14 +159,12 @@ export default function ClientesTab({ store, setStore, api }) {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => startEdit(c)} style={{ color: TEAL }} className="text-xs font-medium">
-                    Editar
-                  </button>
-                  <button onClick={() => removeClient(c.id)}>
-                    <X size={15} style={{ color: BRICK }} />
-                  </button>
-                </div>
+                <AcoesEntidade
+                  onVer={() => setVerCliente(c)}
+                  onEditar={() => startEdit(c)}
+                  onHistorico={() => setHistCliente(c)}
+                  onApagar={() => removeClient(c)}
+                />
               </div>
 
               {total > 0 && (
@@ -183,6 +186,34 @@ export default function ClientesTab({ store, setStore, api }) {
           </div>
         )}
       </div>
+
+      {verCliente && (
+        <DetalhesModal
+          title={verCliente.name}
+          linhas={[
+            ["Tipo", verCliente.tipo || "—"],
+            ["Telefone", verCliente.phone || "—"],
+            ["Email", verCliente.email || "—"],
+            ["NUIT", verCliente.nuit || "—"],
+            ["Endereço", verCliente.endereco || "—"],
+            ["Cidade / Província", verCliente.cidade || "—"],
+            ["Limite de crédito", verCliente.creditLimit > 0 ? fmtMT(verCliente.creditLimit) : "—"],
+            ["Dívida atual", fmtMT((verCliente.debts || []).reduce((s, d) => s + d.amount, 0))],
+            ["Pontos de fidelidade", String(verCliente.points || 0)],
+            ["Notas", verCliente.notas || "—"],
+          ]}
+          onClose={() => setVerCliente(null)}
+        />
+      )}
+      {histCliente && (
+        <HistoricoEntidadeModal
+          title={`Histórico — ${histCliente.name}`}
+          api={api}
+          tipo="cliente"
+          id={histCliente.id}
+          onClose={() => setHistCliente(null)}
+        />
+      )}
     </div>
   );
 }

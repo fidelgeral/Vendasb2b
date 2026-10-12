@@ -4,6 +4,7 @@ import { query } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
 import { hashPassword } from "../auth/hash.js";
 import { buildStore } from "./store.js";
+import { logAudit, authEmployee } from "../audit.js";
 
 export const employeesRouter = Router({ mergeParams: true });
 employeesRouter.use(requireAuth, requireBusiness, requireRole("dono"));
@@ -31,10 +32,13 @@ employeesRouter.post("/employees", async (req, res) => {
   if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email noutro negócio ou nesta equipa." });
 
   const passwordHash = await hashPassword(f.password);
-  await query(
-    "INSERT INTO employees (business_id, name, email, phone, role, doc_id, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-    [businessId, f.name, f.email.toLowerCase(), f.phone, f.role, f.docId, passwordHash]
-  );
+  const novo = (
+    await query(
+      "INSERT INTO employees (business_id, name, email, phone, role, doc_id, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+      [businessId, f.name, f.email.toLowerCase(), f.phone, f.role, f.docId, passwordHash]
+    )
+  ).rows[0];
+  await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Adicionou o utilizador "${f.name}" (${f.role})`, entityType: "funcionario", entityId: novo.id });
   await respond(res, businessId, 201);
 });
 
@@ -70,17 +74,26 @@ employeesRouter.patch("/employees/:id", async (req, res) => {
       f.role ?? existing.role, f.docId ?? existing.doc_id, passwordHash, id,
     ]
   );
+  const campos = { name: "name", email: "email", phone: "phone", role: "role", docId: "doc_id" };
+  const mudancas = Object.keys(campos)
+    .filter((k) => f[k] !== undefined && String(f[k] ?? "") !== String(existing[campos[k]] ?? ""))
+    .map((k) => `${k}: "${existing[campos[k]] ?? ""}" → "${f[k] ?? ""}"`);
+  if (f.password) mudancas.push("senha alterada");
+  await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Editou o utilizador "${f.name ?? existing.name}"${mudancas.length ? ` (${mudancas.join("; ")})` : ""}`, entityType: "funcionario", entityId: id });
   await respond(res, businessId);
 });
 
 employeesRouter.delete("/employees/:id", async (req, res) => {
   const { businessId, id } = req.params;
+  const antes = (await query("SELECT name FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   await query("DELETE FROM employees WHERE id = $1 AND business_id = $2", [id, businessId]);
+  if (antes) await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Removeu o utilizador "${antes.name}"`, entityType: "funcionario", entityId: id });
   await respond(res, businessId);
 });
 
 employeesRouter.post("/employees/:id/toggle-active", async (req, res) => {
   const { businessId, id } = req.params;
-  await query("UPDATE employees SET active = NOT active WHERE id = $1 AND business_id = $2", [id, businessId]);
+  const row = (await query("UPDATE employees SET active = NOT active WHERE id = $1 AND business_id = $2 RETURNING name, active", [id, businessId])).rows[0];
+  if (row) await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `${row.active ? "Ativou" : "Desativou"} o utilizador "${row.name}"`, entityType: "funcionario", entityId: id });
   await respond(res, businessId);
 });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { logAudit, authEmployee } from "../audit.js";
 
 export const clientsRouter = Router({ mergeParams: true });
 clientsRouter.use(requireAuth, requireBusiness);
@@ -26,11 +27,14 @@ clientsRouter.post("/clients", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Dados do cliente inválidos." });
   const f = parsed.data;
   const businessId = req.params.businessId;
-  await query(
-    `INSERT INTO clients (business_id, name, tipo, phone, email, nuit, endereco, cidade, credit_limit, notas)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [businessId, f.name, f.tipo, f.phone, f.email, f.nuit, f.endereco, f.cidade, f.creditLimit, f.notas]
-  );
+  const novo = (
+    await query(
+      `INSERT INTO clients (business_id, name, tipo, phone, email, nuit, endereco, cidade, credit_limit, notas)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      [businessId, f.name, f.tipo, f.phone, f.email, f.nuit, f.endereco, f.cidade, f.creditLimit, f.notas]
+    )
+  ).rows[0];
+  await logAudit({ businessId, employee: authEmployee(req), acao: "CLIENTE", detalhe: `Criou o cliente "${f.name}"`, entityType: "cliente", entityId: novo.id });
   await respond(res, businessId, 201);
 });
 
@@ -61,12 +65,20 @@ clientsRouter.patch("/clients/:id", async (req, res) => {
       f.creditLimit ?? existing.credit_limit, f.notas ?? existing.notas, id,
     ]
   );
+  const campos = { name: "name", tipo: "tipo", phone: "phone", email: "email", nuit: "nuit", endereco: "endereco", cidade: "cidade", creditLimit: "credit_limit", notas: "notas" };
+  const mudancas = Object.keys(campos)
+    .filter((k) => f[k] !== undefined && String(f[k] ?? "") !== String(existing[campos[k]] ?? ""))
+    .map((k) => `${k}: "${existing[campos[k]] ?? ""}" → "${f[k] ?? ""}"`)
+    .join("; ");
+  await logAudit({ businessId, employee: authEmployee(req), acao: "CLIENTE", detalhe: `Editou o cliente "${f.name ?? existing.name}"${mudancas ? ` (${mudancas})` : ""}`, entityType: "cliente", entityId: id });
   await respond(res, businessId);
 });
 
 clientsRouter.delete("/clients/:id", async (req, res) => {
   const { businessId, id } = req.params;
+  const antes = (await query("SELECT name FROM clients WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   await query("DELETE FROM clients WHERE id = $1 AND business_id = $2", [id, businessId]);
+  if (antes) await logAudit({ businessId, employee: authEmployee(req), acao: "CLIENTE", detalhe: `Apagou o cliente "${antes.name}"`, entityType: "cliente", entityId: id });
   await respond(res, businessId);
 });
 

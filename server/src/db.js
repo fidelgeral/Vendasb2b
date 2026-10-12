@@ -13,6 +13,13 @@ export const pool = new Pool({
   ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false },
 });
 
+// A Neon (tier grátis) fecha ligações ociosas. Sem este listener, o evento "error"
+// de um cliente ocioso derrubaria o processo inteiro. Apenas registamos — o pool
+// descarta a ligação partida e abre outra no próximo pedido.
+pool.on("error", (err) => {
+  console.error("Aviso: ligação do pool caiu (será reaberta no próximo pedido):", err.message);
+});
+
 export const query = (text, params) => pool.query(text, params);
 
 export async function withTransaction(fn) {
