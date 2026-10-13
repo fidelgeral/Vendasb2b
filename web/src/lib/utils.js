@@ -1,5 +1,3 @@
-import { Wallet, Smartphone, Landmark, HandCoins } from "./icons.jsx";
-
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const fmtMT = (n) => new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 0 }).format(Math.round(n || 0)) + " MT";
@@ -101,6 +99,8 @@ const IMPORT_HEADER_MAP = {
   venda: "price",
   custo: "cost",
   precocusto: "cost",
+  precodecusto: "cost",
+  custounitario: "cost",
   stock: "stock",
   estoque: "stock",
   quantidade: "stock",
@@ -152,15 +152,6 @@ export const UNIDADES = [
   { id: "dz", label: "dz (Dúzia)" },
 ];
 export const IVA_TAXAS = [0, 5, 16];
-
-export function getActivePaymentMethods(config) {
-  const list = [];
-  if (config.contas?.dinheiro?.activo !== false) list.push({ id: "dinheiro", label: "Dinheiro", icon: Wallet });
-  if (config.contas?.mpesa?.activo !== false) list.push({ id: "mpesa", label: "M-Pesa", icon: Smartphone });
-  if (config.contas?.emola?.activo !== false) list.push({ id: "emola", label: "e-Mola", icon: Landmark });
-  list.push({ id: "fiado", label: "Fiado", icon: HandCoins });
-  return list;
-}
 
 export const ALL_MODULES = [
   { id: "mercearia", label: "Mercearia / loja geral" },
