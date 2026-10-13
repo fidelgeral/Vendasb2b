@@ -36,9 +36,11 @@ jobs:
       run:
         working-directory: server
     env:
-      # Segredo só para os testes correrem (o jwt.js exige JWT_SECRET definido).
-      # Não é o segredo de produção — esse vive apenas no Render.
+      # Valores fictícios só para os módulos arrancarem (jwt.js exige JWT_SECRET;
+      # db.js exige DATABASE_URL). Os testes usam dados/BD simulados — nunca ligam
+      # a uma base real. Os segredos de produção vivem apenas no Render.
       JWT_SECRET: ci-apenas-para-testes
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
