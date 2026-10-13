@@ -594,6 +594,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const fiadoBloqueado = !!cliente && limite > 0 && dividaActual + total > limite;
   const trocoDevido = Number(recebido || 0) - total;
 
+  const ivaTaxaVenda = ivaConfig?.isento ? null : ivaRate;
   const finalizar = () => {
     if (items.length === 0) return;
     if (split) {
@@ -605,11 +606,12 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         payments: splitLines.map((l) => ({ method: l.method, amount: Number(l.amount || 0) })),
         clientId: clientId || null,
         pontosUsados,
+        ivaTaxa: ivaTaxaVenda,
       });
       return;
     }
     if (selectedMethod === "fiado" && (!clientId || fiadoBloqueado)) return;
-    onConfirm({ total, discount: Number(discount || 0), payments: [{ method: selectedMethod, amount: total }], clientId: clientId || null, pontosUsados });
+    onConfirm({ total, discount: Number(discount || 0), payments: [{ method: selectedMethod, amount: total }], clientId: clientId || null, pontosUsados, ivaTaxa: ivaTaxaVenda });
   };
 
   const criarCliente = async () => {

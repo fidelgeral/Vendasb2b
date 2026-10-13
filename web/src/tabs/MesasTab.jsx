@@ -39,7 +39,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
     setOpenTableId(null);
   };
 
-  const closeComanda = async ({ total, discount, payments, clientId }) => {
+  const closeComanda = async ({ total, discount, payments, clientId, ivaTaxa }) => {
     if (!shiftOpen) {
       showToast("Abra o caixa antes de fechar contas", "warn");
       return;
@@ -51,6 +51,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
       discount,
       payments,
       clientId,
+      ivaTaxa,
       tableId: openTableId,
     });
     setOpenTableId(null);

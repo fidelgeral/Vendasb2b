@@ -16,7 +16,7 @@ export function imprimirReciboTermico(sale, store, clientes) {
   const largura = (store.config.impressao && store.config.impressao.papel) === "58mm" ? 58 : 80;
   const emp = store.config.empresa || {};
   const iva = store.config.iva || {};
-  const taxa = iva.isento ? 0 : Number(iva.taxa) || 0;
+  const taxa = iva.isento ? 0 : sale.ivaTaxa != null ? Number(sale.ivaTaxa) : Number(iva.taxa) || 0;
   const cli = clientes.find((c) => c.id === sale.clientId);
   const bruto = sale.total;
   const base = iva.precosIncluemIva && taxa ? bruto / (1 + taxa / 100) : bruto;
@@ -40,6 +40,7 @@ export function imprimirReciboTermico(sale, store, clientes) {
       ".tot{font-size:14px;font-weight:bold}" +
       "@media print{@page{size:" + largura + "mm auto;margin:0}body{padding:3mm}}" +
       "</style></head><body>" +
+      (emp.logo ? '<div class="c"><img src="' + emp.logo + '" style="max-width:85%;max-height:28mm;margin:0 auto 4px"/></div>' : "") +
       '<div class="c"><h1>' + esc(emp.nome || store.config.businessName) + "</h1>" +
       (emp.endereco ? "<div>" + esc(emp.endereco) + "</div>" : "") +
       (emp.cidade ? "<div>" + esc(emp.cidade) + "</div>" : "") +
@@ -68,11 +69,27 @@ export async function gerarReciboPDF(sale, store, clientes) {
   try {
     const emp = store.config.empresa || {};
     const iva = store.config.iva || {};
-    const taxa = iva.isento ? 0 : Number(iva.taxa) || 0;
+    const taxa = iva.isento ? 0 : sale.ivaTaxa != null ? Number(sale.ivaTaxa) : Number(iva.taxa) || 0;
     const cli = clientes.find((c) => c.id === sale.clientId);
     const { jsPDF, autoTable } = await loadPdf();
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     let y = 42;
+    if (emp.logo) {
+      try {
+        const props = doc.getImageProperties(emp.logo);
+        const maxW = 150;
+        const maxH = 70;
+        let lw = props.width;
+        let lh = props.height;
+        const r = Math.min(maxW / lw, maxH / lh);
+        lw = lw * r;
+        lh = lh * r;
+        doc.addImage(emp.logo, "PNG", 40, y - 18, lw, lh);
+        y += lh - 2;
+      } catch (e) {
+        /* logótipo inválido: ignora */
+      }
+    }
     doc.setFontSize(16);
     doc.setTextColor(79, 70, 229);
     doc.text(emp.nome || store.config.businessName || "", 40, y);
@@ -167,6 +184,7 @@ export function imprimirCotacao(cot, store, clientes) {
       "th{background:#4F46E5;color:#fff}tfoot td{font-weight:700;border:none}" +
       "@media print{@page{margin:12mm}}" +
       "</style></head><body>" +
+      (emp.logo ? '<img src="' + emp.logo + '" style="max-height:26mm;max-width:70mm;display:block;margin-bottom:4mm"/>' : "") +
       "<h1>" + esc(emp.nome || store.config.businessName) + "</h1>" +
       '<div class="muted">' +
       [emp.endereco, [emp.bairro, emp.cidade, emp.provincia].filter(Boolean).join(", "), emp.contacto ? "Tel: " + esc(emp.contacto) : "", emp.nuit ? "NUIT: " + esc(emp.nuit) : ""]

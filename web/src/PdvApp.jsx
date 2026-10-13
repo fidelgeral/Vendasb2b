@@ -7,6 +7,7 @@ import { enqueueSale, listPending, removePending, countPending, localSaleId } fr
 import { applyOfflineSale } from "./lib/offlineSale.js";
 import { loadCachedStore, saveCachedStore } from "./lib/storeCache.js";
 import { getActivePaymentMethods, isLowStock, getStock, nearExpiry } from "./lib/utils.js";
+import { imprimirReciboTermico } from "./lib/print.js";
 import HelpAssistant from "./components/HelpAssistant.jsx";
 import BillingPanel from "./components/BillingPanel.jsx";
 import { NotificationBell } from "./components/Shared.jsx";
@@ -267,6 +268,9 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       const res = await api.finalizeSale(withId);
       setStore(res.store);
       showToast("Venda " + res.sale.numero + " registada");
+      if (res.store.config.impressao?.imprimirAoFinalizar && res.sale) {
+        imprimirReciboTermico(res.sale, res.store, res.store.clients);
+      }
       return res.sale;
     } catch (e) {
       // Sem ligação ao servidor (status 0): guarda a venda e reenvia quando a

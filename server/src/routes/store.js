@@ -137,7 +137,8 @@ export async function buildStore(businessId) {
       `SELECT id, numero, created_at AS date, total, discount, payments, client_id AS "clientId",
               employee_id AS "employeeId", shift_id AS "shiftId", table_id AS "tableId",
               CASE WHEN voided THEN 'void' ELSE 'completed' END AS status,
-              void_reason AS "voidReason", pontos_usados AS "pontosUsados", pontos_ganhos AS "pontosGanhos"
+              void_reason AS "voidReason", pontos_usados AS "pontosUsados", pontos_ganhos AS "pontosGanhos",
+              iva_taxa AS "ivaTaxa"
        FROM sales WHERE business_id = $1 ORDER BY created_at DESC LIMIT 120`,
       [businessId]
     ),
@@ -228,6 +229,7 @@ export async function buildStore(businessId) {
     discount: Number(s.discount),
     pontosUsados: Number(s.pontosUsados),
     pontosGanhos: Number(s.pontosGanhos),
+    ivaTaxa: s.ivaTaxa === null || s.ivaTaxa === undefined ? null : Number(s.ivaTaxa),
     items: (itemsBySale[s.id] || []).map((it) => ({
       productId: it.productId,
       variantId: it.variantId,

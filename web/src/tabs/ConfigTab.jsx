@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { CARD, BORDER, MUTED, TEAL } from "../lib/theme.js";
+import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
 import { ALL_MODULES } from "../lib/utils.js";
+import { processarLogo } from "../lib/logoProcess.js";
 import { Settings, Percent, Wallet, Users, Lock, Banknote } from "../lib/icons.jsx";
 import BillingPanel from "../components/BillingPanel.jsx";
 
@@ -269,11 +270,54 @@ function ContasConfig({ store, setStore, api }) {
 function EmpresaConfig({ store, setStore, api }) {
   const [businessName, setBusinessName] = useState(store.config.businessName);
   const [empresa, setEmpresa] = useState(store.config.empresa);
+  const [logoBusy, setLogoBusy] = useState(false);
   const update = (field, value) => setEmpresa((e) => ({ ...e, [field]: value }));
   const save = async () => setStore(await api.patchConfig({ businessName, empresa }));
+
+  const onLogoFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoBusy(true);
+    try {
+      const dataUrl = await processarLogo(file);
+      update("logo", dataUrl);
+    } catch (err) {
+      alert("Não foi possível processar o logótipo: " + (err.message || err));
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-semibold">Dados da empresa</div>
+      <div>
+        <label className="text-xs" style={{ color: MUTED }}>Logótipo (aparece nos recibos e cotações)</label>
+        <div className="flex items-center gap-3 mt-1">
+          <div style={{ borderColor: BORDER, background: "#fff" }} className="border rounded-lg flex items-center justify-center" >
+            {empresa.logo ? (
+              <img src={empresa.logo} alt="Logótipo" style={{ maxHeight: 64, maxWidth: 140, padding: 6 }} className="block object-contain" />
+            ) : (
+              <span className="text-xs px-6 py-6" style={{ color: MUTED }}>Sem logótipo</span>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label style={{ borderColor: TEAL, color: TEAL }} className="border rounded-lg px-3 py-1.5 text-sm cursor-pointer inline-block">
+              {logoBusy ? "A processar…" : empresa.logo ? "Mudar logótipo" : "Carregar logótipo"}
+              <input type="file" accept="image/*" onChange={onLogoFile} className="hidden" disabled={logoBusy} />
+            </label>
+            {empresa.logo && (
+              <button onClick={() => update("logo", "")} style={{ color: BRICK }} className="block text-xs">
+                Remover logótipo
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="text-xs mt-1" style={{ color: MUTED }}>
+          O sistema escurece e reforça o contraste do logótipo para ficar bem visível na impressão (sobretudo em impressoras térmicas).
+        </div>
+      </div>
       <input placeholder="Nome do negócio (mostrado no sistema)" value={businessName} onChange={(e) => setBusinessName(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
       <input placeholder="Nome legal/completo" value={empresa.nome} onChange={(e) => update("nome", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
       <input placeholder="NUIT" value={empresa.nuit} onChange={(e) => update("nuit", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />

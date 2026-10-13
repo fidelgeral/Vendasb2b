@@ -227,7 +227,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     setShowParked(false);
   };
 
-  const handleConfirm = async ({ total, discount, payments, clientId, pontosUsados }) => {
+  const handleConfirm = async ({ total, discount, payments, clientId, pontosUsados, ivaTaxa }) => {
     if (!shiftOpen) {
       showToast("Abra o caixa antes de vender", "warn");
       return;
@@ -239,6 +239,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
       payments,
       clientId,
       pontosUsados,
+      ivaTaxa,
     });
     setCart([]);
   };

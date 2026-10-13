@@ -28,6 +28,7 @@ const saleSchema = z.object({
   clientId: z.string().uuid().optional().nullable(),
   tableId: z.string().uuid().optional().nullable(),
   pontosUsados: z.number().optional().default(0),
+  ivaTaxa: z.number().min(0).optional().nullable(),
   // Identificador único gerado pelo cliente — torna o registo idempotente
   // (reenvios não criam vendas duplicadas).
   clientSaleId: z.string().max(100).optional().nullable(),
@@ -81,9 +82,9 @@ salesRouter.post("/sales", async (req, res) => {
 
     const row = (
       await client.query(
-        `INSERT INTO sales (business_id, shift_id, employee_id, client_id, table_id, numero, total, discount, payments, pontos_usados, pontos_ganhos, client_sale_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, numero, created_at`,
-        [businessId, shift.id, employee.id, f.clientId || null, f.tableId || null, doc.numero, f.total, f.discount, JSON.stringify(f.payments), f.pontosUsados, pontosGanhos, f.clientSaleId || null]
+        `INSERT INTO sales (business_id, shift_id, employee_id, client_id, table_id, numero, total, discount, payments, pontos_usados, pontos_ganhos, client_sale_id, iva_taxa)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id, numero, created_at`,
+        [businessId, shift.id, employee.id, f.clientId || null, f.tableId || null, doc.numero, f.total, f.discount, JSON.stringify(f.payments), f.pontosUsados, pontosGanhos, f.clientSaleId || null, f.ivaTaxa == null ? null : f.ivaTaxa]
       )
     ).rows[0];
 
