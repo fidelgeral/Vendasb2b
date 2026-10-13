@@ -23,7 +23,7 @@ export default function PublicChatPage({ slug }) {
     setMessages(next);
     setLoading(true);
     try {
-      const reply = await publicApi.chat(slug, next);
+      const reply = await publicApi.chat(slug, next.slice(-30));
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     } catch (e) {
       setMessages((m) => [...m, { role: "assistant", content: "Desculpe, não consegui responder agora (" + e.message + ")." }]);

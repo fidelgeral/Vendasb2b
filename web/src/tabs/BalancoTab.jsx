@@ -655,10 +655,12 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
 
   if (report === "contabilidade") {
     const iva = store.config.iva || {};
-    const taxa = iva.isento ? 0 : Number(iva.taxa) || 0;
     const emp = store.config.empresa || {};
+    // Taxa de cada venda: usa a taxa escolhida na venda; se não houver, a padrão.
+    const taxaDe = (s) => (iva.isento ? 0 : s.ivaTaxa != null ? Number(s.ivaTaxa) : Number(iva.taxa) || 0);
     const rows = [...sales].reverse().map((s) => {
       const bruto = s.total;
+      const taxa = taxaDe(s);
       const base = iva.precosIncluemIva && taxa ? bruto / (1 + taxa / 100) : bruto;
       const valorIva = iva.precosIncluemIva && taxa ? bruto - base : bruto * (taxa / 100);
       const cli = store.clients.find((c) => c.id === s.clientId);
@@ -706,23 +708,25 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
 
   if (report === "iva") {
     const iva = store.config.iva || {};
-    const taxa = iva.isento ? 0 : Number(iva.taxa) || 0;
+    const taxaDe = (s) => (iva.isento ? 0 : s.ivaTaxa != null ? Number(s.ivaTaxa) : Number(iva.taxa) || 0);
+    const ivaDe = (s) => {
+      const taxa = taxaDe(s);
+      const base = iva.precosIncluemIva && taxa ? s.total / (1 + taxa / 100) : s.total;
+      return { taxa, base, valor: iva.precosIncluemIva && taxa ? s.total - base : s.total * (taxa / 100) };
+    };
     const rows = [...sales].reverse().map((s) => {
-      const base = iva.precosIncluemIva && taxa ? s.total / (1 + taxa / 100) : s.total;
-      const valorIva = iva.precosIncluemIva && taxa ? s.total - base : s.total * (taxa / 100);
-      return ["#" + s.id.slice(0, 6).toUpperCase(), new Date(s.date).toLocaleDateString("pt-PT"), fmtMT(base), taxa + "%", fmtMT(valorIva), fmtMT(iva.precosIncluemIva ? s.total : s.total + valorIva)];
+      const { taxa, base, valor } = ivaDe(s);
+      return ["#" + s.id.slice(0, 6).toUpperCase(), new Date(s.date).toLocaleDateString("pt-PT"), fmtMT(base), taxa + "%", fmtMT(valor), fmtMT(iva.precosIncluemIva ? s.total : s.total + valor)];
     });
-    const totalIva = [...sales].reverse().reduce((a, s) => {
-      const base = iva.precosIncluemIva && taxa ? s.total / (1 + taxa / 100) : s.total;
-      return a + (iva.precosIncluemIva && taxa ? s.total - base : s.total * (taxa / 100));
-    }, 0);
+    const totalIva = sales.reduce((a, s) => a + ivaDe(s).valor, 0);
+    const taxasUsadas = iva.isento ? "Isento" : [...new Set(sales.map((s) => taxaDe(s)))].sort((a, b) => a - b).map((t) => t + "%").join(", ") || (Number(iva.taxa) || 0) + "%";
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2.5">
-          <StatCard label="Taxa aplicada" value={iva.isento ? "Isento" : taxa + "%"} sub={iva.precosIncluemIva ? "preços com IVA incluído" : "IVA acrescido"} />
+          <StatCard label="Taxas aplicadas" value={taxasUsadas} sub={iva.precosIncluemIva ? "preços com IVA incluído" : "IVA acrescido"} />
           <StatCard label="IVA do período" value={fmtMT(totalIva)} />
         </div>
-        <ReportTable title="Mapa Fiscal (IVA)" note="Valores calculados pelo sistema — confirme sempre com o seu contabilista antes de submeter à Autoridade Tributária." columns={["Documento", "Data", "Base tributável", "Taxa", "IVA", "Total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Taxa aplicada", value: iva.isento ? "Isento" : taxa + "%" }, { label: "IVA do período", value: fmtMT(totalIva) }, { label: "Documentos", value: String(rows.length) }] }} align={["l", "l", "r", "r", "r", "r"]} />
+        <ReportTable title="Mapa Fiscal (IVA)" note="Valores calculados pelo sistema — confirme sempre com o seu contabilista antes de submeter à Autoridade Tributária." columns={["Documento", "Data", "Base tributável", "Taxa", "IVA", "Total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Taxas aplicadas", value: taxasUsadas }, { label: "IVA do período", value: fmtMT(totalIva) }, { label: "Documentos", value: String(rows.length) }] }} align={["l", "l", "r", "r", "r", "r"]} />
       </div>
     );
   }

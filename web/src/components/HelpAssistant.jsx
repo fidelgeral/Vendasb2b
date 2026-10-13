@@ -12,7 +12,9 @@ export default function HelpAssistant({ api }) {
     setMessages(next);
     setLoading(true);
     try {
-      const reply = await api.assistantChat(next);
+      // Envia só as últimas mensagens (o servidor aceita até 40) para a conversa
+      // poder continuar indefinidamente sem rejeitar o histórico.
+      const reply = await api.assistantChat(next.slice(-30));
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     } catch (e) {
       setMessages((m) => [...m, { role: "assistant", content: "Desculpe, não consegui responder agora (" + e.message + ")." }]);

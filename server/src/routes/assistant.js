@@ -40,9 +40,13 @@ async function askGroq(systemPrompt, history) {
 
 const messageSchema = z.object({
   history: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(1000) }))
+    // As respostas do assistente podem ser longas (passo-a-passo). Limitar o
+    // content a 1000 fazia a 2.ª pergunta falhar, porque o histórico reenviado
+    // já incluía uma resposta maior do que isso. Damos folga ao conteúdo e à
+    // quantidade de mensagens para a conversa poder continuar.
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(4000) }))
     .min(1)
-    .max(12),
+    .max(40),
 });
 
 // ---------------- Assistente interno (ajuda a usar o sistema) ----------------

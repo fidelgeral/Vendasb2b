@@ -344,11 +344,13 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
               <label className="text-xs" style={{ color: MUTED }}>Taxa de IVA</label>
               <select value={form.ivaTaxa} onChange={(e) => set("ivaTaxa", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
                 <option value="">Usar a taxa padrão da venda</option>
-                {(store.config.iva.taxas || []).map((t) => (
-                  <option key={t} value={t}>
-                    {t}%
-                  </option>
-                ))}
+                {Array.from(new Set([...(store.config.iva.taxas || []), ...(form.ivaTaxa !== "" ? [Number(form.ivaTaxa)] : [])]))
+                  .sort((a, b) => a - b)
+                  .map((t) => (
+                    <option key={t} value={t}>
+                      {t}%
+                    </option>
+                  ))}
               </select>
             </div>
             <div>

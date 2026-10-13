@@ -157,6 +157,16 @@ salesRouter.post("/sales/:id/void", requireRole("dono", "gerente"), async (req, 
       // eslint-disable-next-line no-await-in-loop
       await incrementStock(client, it.product_id, it.variant_id, Number(it.qty));
     }
+    // Reverte a dívida (fiado) criada por esta venda — uma venda cancelada não
+    // pode continuar a "contar" como dívida do cliente.
+    await client.query("DELETE FROM client_debts WHERE sale_id = $1", [id]);
+    // Reverte os pontos de fidelidade: tira os que foram ganhos e devolve os
+    // que foram usados nesta venda.
+    if (sale.client_id) {
+      await client.query("UPDATE clients SET points = GREATEST(0, points - $1 + $2) WHERE id = $3", [
+        Number(sale.pontos_ganhos || 0), Number(sale.pontos_usados || 0), sale.client_id,
+      ]);
+    }
     await client.query("UPDATE sales SET voided = true, void_reason = $1 WHERE id = $2", [reason, id]);
     await client.query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,$4,$5,$6)", [
       businessId, employee.id, employee.name, "CANCELAMENTO", `Venda ${sale.numero || id} — motivo: ${reason || "não indicado"}`, sale.total,
