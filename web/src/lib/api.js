@@ -131,6 +131,8 @@ export function businessApi(businessId) {
     voidSale: (id, reason) => s(post(`${base}/sales/${id}/void`, { reason })),
     parkSale: (cart) => s(post(`${base}/parked`, { cart })),
     resumeSale: (id) => s(del(`${base}/parked/${id}`)),
+    createQuotation: (payload) => s(post(`${base}/quotations`, payload)),
+    deleteQuotation: (id) => s(del(`${base}/quotations/${id}`)),
 
     patchConfig: (payload) => s(patch(`${base}/config`, payload)),
 

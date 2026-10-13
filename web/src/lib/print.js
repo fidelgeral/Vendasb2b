@@ -143,6 +143,78 @@ export async function gerarReciboPDF(sale, store, clientes) {
   }
 }
 
+// Cotação / orçamento (documento não-fiscal em folha A4) — abre o diálogo de impressão.
+export function imprimirCotacao(cot, store, clientes) {
+  const emp = store.config.empresa || {};
+  const cli = clientes.find((c) => c.id === cot.clientId);
+  const esc = (t) => String(t == null ? "" : t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  const taxa = cot.ivaTaxa == null ? 0 : Number(cot.ivaTaxa) || 0;
+  const linhas = cot.items
+    .map(
+      (it) =>
+        "<tr><td>" + esc(it.name) + "</td><td class='r'>" + it.qty + "</td><td class='r'>" + fmtMT(it.price) + "</td><td class='r'>" + fmtMT(it.price * it.qty) + "</td></tr>"
+    )
+    .join("");
+  const w = window.open("", "_blank", "width=820,height=900");
+  if (!w) return false;
+  w.document.write(
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotação ' + esc(cot.numero || "") + '</title><style>' +
+      "body{font-family:system-ui,Arial,sans-serif;margin:14mm;color:#111;font-size:11pt}" +
+      "h1{font-size:16pt;color:#4F46E5;margin:0}.muted{color:#666;font-size:9pt}" +
+      ".doc{font-size:14pt;font-weight:700;margin:8mm 0 2mm}" +
+      "table{width:100%;border-collapse:collapse;margin-top:4mm}" +
+      "th,td{padding:5px 6px;border-bottom:1px solid #ddd;text-align:left}.r{text-align:right}" +
+      "th{background:#4F46E5;color:#fff}tfoot td{font-weight:700;border:none}" +
+      "@media print{@page{margin:12mm}}" +
+      "</style></head><body>" +
+      "<h1>" + esc(emp.nome || store.config.businessName) + "</h1>" +
+      '<div class="muted">' +
+      [emp.endereco, [emp.bairro, emp.cidade, emp.provincia].filter(Boolean).join(", "), emp.contacto ? "Tel: " + esc(emp.contacto) : "", emp.nuit ? "NUIT: " + esc(emp.nuit) : ""]
+        .filter(Boolean)
+        .map(esc)
+        .join(" · ") +
+      "</div>" +
+      '<div class="doc">COTAÇÃO ' + esc(cot.numero || "") + "</div>" +
+      '<div class="muted">Data: ' + new Date(cot.date || Date.now()).toLocaleDateString("pt-PT") + "</div>" +
+      '<div class="muted">Cliente: ' + esc(cli ? cli.name : "Consumidor Final") + "</div>" +
+      "<table><thead><tr><th>Descrição</th><th class='r'>Qtd</th><th class='r'>Preço un.</th><th class='r'>Total</th></tr></thead>" +
+      "<tbody>" + linhas + "</tbody>" +
+      "<tfoot>" +
+      (cot.discount ? "<tr><td colspan='3' class='r'>Desconto</td><td class='r'>-" + fmtMT(cot.discount) + "</td></tr>" : "") +
+      (taxa ? "<tr><td colspan='3' class='r'>IVA (" + taxa + "%)</td><td class='r'>incluído</td></tr>" : "") +
+      "<tr><td colspan='3' class='r'>TOTAL</td><td class='r'>" + fmtMT(cot.total) + "</td></tr>" +
+      "</tfoot></table>" +
+      '<p class="muted" style="margin-top:8mm">Documento não-fiscal. Cotação válida por 15 dias. Os preços podem variar conforme a disponibilidade de stock.</p>' +
+      '<div class="muted" style="margin-top:10mm">Processado por ' + BRAND_NAME + "</div>" +
+      "<script>window.onload=function(){window.print();}<\/script></body></html>"
+  );
+  w.document.close();
+  return true;
+}
+
+// Pedido/comanda para a cozinha ou bar (talão térmico) — sem valores de pagamento.
+export function imprimirPedidoMesa(mesaLabel, items, store) {
+  const largura = (store.config.impressao && store.config.impressao.papel) === "58mm" ? 58 : 80;
+  const esc = (t) => String(t == null ? "" : t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  const linhas = items.map((it) => "<tr><td class='q'>" + it.qty + "x</td><td>" + esc(it.name) + "</td></tr>").join("");
+  const w = window.open("", "_blank", "width=420,height=760");
+  if (!w) return false;
+  w.document.write(
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido ' + esc(mesaLabel) + '</title><style>' +
+      "*{box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:13px;margin:0;padding:4mm;width:" + largura + "mm;color:#000}" +
+      ".c{text-align:center}h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}" +
+      "td{padding:3px 0;vertical-align:top;font-size:14px;font-weight:bold}.q{width:34px}" +
+      "hr{border:none;border-top:1px dashed #000;margin:4px 0}" +
+      "@media print{@page{size:" + largura + "mm auto;margin:0}body{padding:3mm}}" +
+      "</style></head><body>" +
+      '<div class="c"><h1>PEDIDO</h1><div>' + esc(mesaLabel) + "</div><div>" + new Date().toLocaleString("pt-PT") + "</div></div>" +
+      "<hr><table>" + linhas + "</table><hr>" +
+      "<script>window.onload=function(){window.print();}<\/script></body></html>"
+  );
+  w.document.close();
+  return true;
+}
+
 export function imprimirEtiquetas(produtos, empresaNome) {
   const w = window.open("", "_blank", "width=820,height=900");
   if (!w) return false;

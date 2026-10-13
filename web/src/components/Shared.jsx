@@ -548,7 +548,7 @@ export function CategoriasModal({ categories, onAdd, onRemove, onRename, onClose
 }
 
 // ================= Checkout partilhado =================
-export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, mesas = null, onGuardarMesa, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config }) {
+export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, onQuote, mesas = null, onGuardarMesa, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config }) {
   const [discount, setDiscount] = useState(0);
   const [clientId, setClientId] = useState("");
   const [recebido, setRecebido] = useState("");
@@ -843,6 +843,17 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
           </button>
         )}
       </div>
+
+      {onQuote && (
+        <button
+          onClick={() => onQuote({ items, total, discount: Number(discount || 0), clientId: clientId || null, ivaTaxa: ivaConfig?.isento ? null : ivaRate })}
+          disabled={items.length === 0}
+          style={{ color: TEAL }}
+          className="w-full mt-2 text-sm font-medium disabled:opacity-40"
+        >
+          Gerar cotação / orçamento
+        </button>
+      )}
 
       {onPark && temMesas && guardarOpen && items.length > 0 && (
         <div style={{ borderColor: BORDER }} className="border rounded-lg p-2 mt-2 space-y-2">

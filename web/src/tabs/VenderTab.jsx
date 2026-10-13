@@ -4,12 +4,14 @@ import { fmtMT, getStock, uid } from "../lib/utils.js";
 import { ProductCard, CheckoutPanel } from "../components/Shared.jsx";
 import { Minus, Plus, Trash2, PlayCircle } from "../lib/icons.jsx";
 import BarcodeScanner from "../components/BarcodeScanner.jsx";
+import { imprimirCotacao } from "../lib/print.js";
 
 export default function VenderTab({ store, setStore, api, finalizeSale, voidSale, shiftOpen, canDiscount, canVoid, showToast, paymentMethods, restauranteAtivo }) {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
   const [variantPicker, setVariantPicker] = useState(null);
   const [showParked, setShowParked] = useState(false);
+  const [showCotacoes, setShowCotacoes] = useState(false);
   const [vendaRapida, setVendaRapida] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
@@ -179,6 +181,37 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     showToast("Pedido guardado em " + (mesa ? mesa.label : "mesa"));
   };
 
+  const gerarCotacao = async ({ items, total, discount, clientId, ivaTaxa }) => {
+    if (!items || items.length === 0) return;
+    const payloadItems = items.map((l) => ({ productId: l.productId, variantId: l.variantId || null, name: l.name, qty: l.qty, price: l.price, cost: l.cost || 0 }));
+    const next = await api.createQuotation({ items: payloadItems, total, discount, clientId, ivaTaxa });
+    setStore(next);
+    const cot = (next.cotacoes || [])[0];
+    if (cot) imprimirCotacao(cot, next, next.clients);
+    showToast("Cotação gerada" + (cot ? " (" + cot.numero + ")" : ""));
+  };
+
+  const carregarCotacao = (cot) => {
+    setCart(
+      cot.items.map((it) => ({
+        lineId: (it.productId || "x") + uid(),
+        productId: it.productId,
+        variantId: it.variantId || null,
+        name: it.name,
+        price: it.price,
+        cost: it.cost || 0,
+        unit: "un",
+        qty: it.qty,
+      }))
+    );
+    setShowCotacoes(false);
+    showToast("Cotação carregada para a venda");
+  };
+
+  const apagarCotacao = async (id) => {
+    setStore(await api.deleteQuotation(id));
+  };
+
   const addClientInline = async ({ name, phone }) => {
     const prevIds = new Set(store.clients.map((c) => c.id));
     const next = await api.createClient({ name, phone });
@@ -279,6 +312,11 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
               <PlayCircle size={13} /> {store.parkedSales.length} em espera
             </button>
           )}
+          {(store.cotacoes || []).length > 0 && (
+            <button onClick={() => setShowCotacoes(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-2.5 py-2 text-xs whitespace-nowrap">
+              {store.cotacoes.length} cotações
+            </button>
+          )}
         </div>
         {favoritos.length > 0 && !q && (
           <div className="mb-3">
@@ -348,7 +386,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             ))}
           </div>
           <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-2 mt-2">
-            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
+            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} onQuote={gerarCotacao} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
           </div>
         </div>
       </div>
@@ -388,6 +426,44 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCotacoes && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowCotacoes(false)}>
+          <div style={{ background: CARD }} className="rounded-lg p-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm font-semibold mb-3">Cotações / orçamentos</div>
+            <div className="space-y-1.5 max-h-[60vh] overflow-auto">
+              {(store.cotacoes || []).length === 0 && (
+                <div className="text-xs" style={{ color: MUTED }}>Ainda não há cotações.</div>
+              )}
+              {(store.cotacoes || []).map((c) => {
+                const cli = store.clients.find((x) => x.id === c.clientId);
+                return (
+                  <div key={c.id} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <div className="font-medium">{c.numero}</div>
+                      <div style={{ color: TEAL }} className="font-semibold">{fmtMT(c.total)}</div>
+                    </div>
+                    <div className="text-xs" style={{ color: MUTED }}>
+                      {c.items.length} item(ns) · {cli ? cli.name : "Consumidor Final"} · {new Date(c.date).toLocaleDateString("pt-PT")}
+                    </div>
+                    <div className="flex gap-1.5 mt-2">
+                      <button onClick={() => carregarCotacao(c)} style={{ background: TEAL, color: "#fff" }} className="flex-1 rounded-lg py-1.5 text-xs font-medium">
+                        Carregar para venda
+                      </button>
+                      <button onClick={() => imprimirCotacao(c, store, store.clients)} style={{ borderColor: BORDER, color: INK }} className="border rounded-lg px-2.5 py-1.5 text-xs">
+                        Imprimir
+                      </button>
+                      <button onClick={() => apagarCotacao(c.id)} style={{ borderColor: BORDER, color: BRICK }} className="border rounded-lg px-2.5 py-1.5 text-xs">
+                        Apagar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

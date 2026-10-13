@@ -3,6 +3,7 @@ import { CARD, BORDER, MUTED, TEAL, GOLD, BRICK, GREEN, SOFTGOLD } from "../lib/
 import { fmtMT, getStock } from "../lib/utils.js";
 import { ProductCard, CheckoutPanel } from "../components/Shared.jsx";
 import { ChevronLeft, Minus, Plus } from "../lib/icons.jsx";
+import { imprimirPedidoMesa } from "../lib/print.js";
 
 export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen, canDiscount, showToast, paymentMethods }) {
   const [openTableId, setOpenTableId] = useState(null);
@@ -104,9 +105,19 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
                   </div>
                 ))}
               </div>
-              <button onClick={() => cancelComanda(openTableId)} style={{ color: BRICK }} className="text-xs font-medium mb-3">
-                Cancelar comanda
-              </button>
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() => openComanda.items.length && imprimirPedidoMesa(table?.label || "Mesa", openComanda.items, store)}
+                  disabled={openComanda.items.length === 0}
+                  style={{ color: TEAL }}
+                  className="text-xs font-medium disabled:opacity-40"
+                >
+                  🧾 Imprimir pedido
+                </button>
+                <button onClick={() => cancelComanda(openTableId)} style={{ color: BRICK }} className="text-xs font-medium">
+                  Cancelar comanda
+                </button>
+              </div>
               <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-2">
                 <CheckoutPanel
                   items={openComanda.items}
