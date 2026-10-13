@@ -183,10 +183,10 @@ productsRouter.patch("/products/:id", async (req, res) => {
        WHERE id = $18`,
       [
         f.tipo ?? existing.tipo, f.vendaDirecta ?? existing.venda_directa, f.codigo ?? existing.codigo, f.name ?? existing.name,
-        f.category ?? existing.category, f.unit ?? existing.unit, f.qtdItens ?? existing.qtd_itens, f.ivaTaxa ?? existing.iva_taxa,
+        f.category ?? existing.category, f.unit ?? existing.unit, f.qtdItens ?? existing.qtd_itens, f.ivaTaxa !== undefined ? f.ivaTaxa : existing.iva_taxa,
         f.price ?? existing.price, f.cost ?? existing.cost, f.minStock ?? existing.min_stock, f.prazoReembolso ?? existing.prazo_reembolso,
         f.foto ?? existing.foto, (f.tipo ?? existing.tipo) === "variacao" ? f.parentId ?? existing.parent_id : null,
-        f.consumo ?? existing.consumo, f.fornecedorId ?? existing.fornecedor_id, f.active ?? null, id,
+        f.consumo ?? existing.consumo, f.fornecedorId !== undefined ? f.fornecedorId : existing.fornecedor_id, f.active ?? null, id,
       ]
     );
     if (f.ingredientes) {

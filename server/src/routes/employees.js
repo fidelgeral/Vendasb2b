@@ -11,6 +11,15 @@ employeesRouter.use(requireAuth, requireBusiness, requireRole("dono"));
 
 const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
 
+// Garante que nunca se fica sem nenhum administrador (dono) activo — evita o
+// bloqueio total do negócio (sem quem gira equipa/configurações).
+async function outroDonoActivo(businessId, excluirId) {
+  const n = (
+    await query("SELECT COUNT(*)::int AS n FROM employees WHERE business_id = $1 AND role = 'dono' AND active = true AND id <> $2", [businessId, excluirId])
+  ).rows[0].n;
+  return n > 0;
+}
+
 const employeeSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
@@ -59,6 +68,11 @@ employeesRouter.patch("/employees/:id", async (req, res) => {
   const existing = (await query("SELECT * FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (!existing) return res.status(404).json({ error: "Utilizador não encontrado." });
 
+  // Não permitir tirar o papel de "dono" ao último administrador activo.
+  if (existing.role === "dono" && existing.active && f.role && f.role !== "dono" && !(await outroDonoActivo(businessId, id))) {
+    return res.status(409).json({ error: "Este é o único administrador activo. Promova outro a Administrador antes de mudar o papel deste." });
+  }
+
   if (f.email) {
     const dup = (
       await query("SELECT 1 FROM employees WHERE lower(email) = lower($1) AND id <> $2", [f.email, id])
@@ -85,7 +99,10 @@ employeesRouter.patch("/employees/:id", async (req, res) => {
 
 employeesRouter.delete("/employees/:id", async (req, res) => {
   const { businessId, id } = req.params;
-  const antes = (await query("SELECT name FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  const antes = (await query("SELECT name, role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  if (antes && antes.role === "dono" && antes.active && !(await outroDonoActivo(businessId, id))) {
+    return res.status(409).json({ error: "Não pode remover o único administrador activo. Promova outro a Administrador primeiro." });
+  }
   await query("DELETE FROM employees WHERE id = $1 AND business_id = $2", [id, businessId]);
   if (antes) await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Removeu o utilizador "${antes.name}"`, entityType: "funcionario", entityId: id });
   await respond(res, businessId);
@@ -93,6 +110,10 @@ employeesRouter.delete("/employees/:id", async (req, res) => {
 
 employeesRouter.post("/employees/:id/toggle-active", async (req, res) => {
   const { businessId, id } = req.params;
+  const atual = (await query("SELECT role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  if (atual && atual.role === "dono" && atual.active && !(await outroDonoActivo(businessId, id))) {
+    return res.status(409).json({ error: "Não pode desativar o único administrador activo." });
+  }
   const row = (await query("UPDATE employees SET active = NOT active WHERE id = $1 AND business_id = $2 RETURNING name, active", [id, businessId])).rows[0];
   if (row) await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `${row.active ? "Ativou" : "Desativou"} o utilizador "${row.name}"`, entityType: "funcionario", entityId: id });
   await respond(res, businessId);
