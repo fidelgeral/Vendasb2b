@@ -189,8 +189,17 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
 
   if (loading || !store) {
     return (
-      <div style={{ background: BG, color: INK }} className="flex items-center justify-center p-10 text-sm min-h-[400px]">
-        {saveError || "A carregar o sistema…"}
+      <div style={{ background: "linear-gradient(135deg, #f6f8fb 0%, #eef2f7 100%)", color: INK }} className="fixed inset-0 flex flex-col items-center justify-center gap-7 p-10 text-center">
+        <img src="/vb-logo.jpg" alt="VENDASB2B" style={{ width: "min(72vw, 380px)", height: "auto", filter: "drop-shadow(0 8px 24px rgba(30,91,168,0.12))" }} />
+        {saveError ? (
+          <div className="text-sm" style={{ color: BRICK, maxWidth: 420 }}>{saveError}</div>
+        ) : (
+          <>
+            <div style={{ width: 34, height: 34, border: "3px solid rgba(31,142,142,0.25)", borderTopColor: "#1f8e8e", borderRadius: "50%", animation: "vbspin 0.8s linear infinite" }} />
+            <div className="text-sm" style={{ color: MUTED }}>A carregar o sistema…</div>
+          </>
+        )}
+        <style>{"@keyframes vbspin{to{transform:rotate(360deg)}}"}</style>
       </div>
     );
   }
