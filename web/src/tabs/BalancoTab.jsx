@@ -3,6 +3,8 @@ import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, GREEN, SOFTGOLD } from "..
 import { fmtMT, getStock, isLowStock, nearExpiry, ROLE_LABELS } from "../lib/utils.js";
 import { DonutChart, StatCardChart } from "../lib/charts.jsx";
 import { exportReportExcel, exportReportPDF } from "../lib/print.js";
+import { computeIva } from "../lib/iva.js";
+import { inPeriod, periodoAnterior, variacao } from "../lib/periods.js";
 import { StatCard, ReportBlock, EmptyNote, BarRow } from "../components/Shared.jsx";
 
 function ExportButtons({ title, columns, rows, meta }) {
@@ -75,32 +77,6 @@ function ReportTable({ title, columns, rows, meta, note, align }) {
   );
 }
 
-function inPeriod(dateIso, from, to) {
-  const d = dateIso.slice(0, 10);
-  if (from && d < from) return false;
-  if (to && d > to) return false;
-  return true;
-}
-
-// Período imediatamente anterior, com a mesma duração do período escolhido —
-// para a comparação "Atual vs Anterior". Só existe quando há uma data inicial.
-function periodoAnterior(from, to) {
-  if (!from) return null;
-  const f = new Date(from + "T00:00:00");
-  const t = to ? new Date(to + "T00:00:00") : new Date();
-  const dias = Math.max(1, Math.round((t - f) / 86400000) + 1);
-  const prevTo = new Date(f.getTime() - 86400000);
-  const prevFrom = new Date(prevTo.getTime() - (dias - 1) * 86400000);
-  return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
-}
-
-// Variação percentual entre dois valores, formatada (com sinal). "—" quando o
-// anterior é zero (não há base de comparação).
-function variacao(atual, anterior) {
-  if (!anterior) return "—";
-  const v = ((atual - anterior) / Math.abs(anterior)) * 100;
-  return (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-}
 
 const REPORTS = {
   vendas: [
@@ -656,13 +632,8 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
   if (report === "contabilidade") {
     const iva = store.config.iva || {};
     const emp = store.config.empresa || {};
-    // Taxa de cada venda: usa a taxa escolhida na venda; se não houver, a padrão.
-    const taxaDe = (s) => (iva.isento ? 0 : s.ivaTaxa != null ? Number(s.ivaTaxa) : Number(iva.taxa) || 0);
     const rows = [...sales].reverse().map((s) => {
-      const bruto = s.total;
-      const taxa = taxaDe(s);
-      const base = iva.precosIncluemIva && taxa ? bruto / (1 + taxa / 100) : bruto;
-      const valorIva = iva.precosIncluemIva && taxa ? bruto - base : bruto * (taxa / 100);
+      const { taxa, base, valor } = computeIva(s.total, iva, s.ivaTaxa);
       const cli = store.clients.find((c) => c.id === s.clientId);
       return [
         s.numero || s.id,
@@ -671,8 +642,8 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
         cli && cli.nuit ? cli.nuit : "",
         base.toFixed(2),
         taxa + "%",
-        valorIva.toFixed(2),
-        bruto.toFixed(2),
+        valor.toFixed(2),
+        Number(s.total).toFixed(2),
         s.payments.map((p) => p.method).join("/"),
       ];
     });
@@ -708,18 +679,12 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
 
   if (report === "iva") {
     const iva = store.config.iva || {};
-    const taxaDe = (s) => (iva.isento ? 0 : s.ivaTaxa != null ? Number(s.ivaTaxa) : Number(iva.taxa) || 0);
-    const ivaDe = (s) => {
-      const taxa = taxaDe(s);
-      const base = iva.precosIncluemIva && taxa ? s.total / (1 + taxa / 100) : s.total;
-      return { taxa, base, valor: iva.precosIncluemIva && taxa ? s.total - base : s.total * (taxa / 100) };
-    };
     const rows = [...sales].reverse().map((s) => {
-      const { taxa, base, valor } = ivaDe(s);
-      return ["#" + s.id.slice(0, 6).toUpperCase(), new Date(s.date).toLocaleDateString("pt-PT"), fmtMT(base), taxa + "%", fmtMT(valor), fmtMT(iva.precosIncluemIva ? s.total : s.total + valor)];
+      const { taxa, base, valor } = computeIva(s.total, iva, s.ivaTaxa);
+      return ["#" + s.id.slice(0, 6).toUpperCase(), new Date(s.date).toLocaleDateString("pt-PT"), fmtMT(base), taxa + "%", fmtMT(valor), fmtMT(s.total)];
     });
-    const totalIva = sales.reduce((a, s) => a + ivaDe(s).valor, 0);
-    const taxasUsadas = iva.isento ? "Isento" : [...new Set(sales.map((s) => taxaDe(s)))].sort((a, b) => a - b).map((t) => t + "%").join(", ") || (Number(iva.taxa) || 0) + "%";
+    const totalIva = sales.reduce((a, s) => a + computeIva(s.total, iva, s.ivaTaxa).valor, 0);
+    const taxasUsadas = iva.isento ? "Isento" : [...new Set(sales.map((s) => computeIva(s.total, iva, s.ivaTaxa).taxa))].sort((a, b) => a - b).map((t) => t + "%").join(", ") || (Number(iva.taxa) || 0) + "%";
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2.5">

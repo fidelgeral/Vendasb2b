@@ -4,6 +4,7 @@ import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
 import { decrementStock, incrementStock } from "./caixa.js";
+import { nextDocNumber } from "../docNumber.js";
 
 export const salesRouter = Router({ mergeParams: true });
 salesRouter.use(requireAuth, requireBusiness);
@@ -33,14 +34,6 @@ const saleSchema = z.object({
   // (reenvios não criam vendas duplicadas).
   clientSaleId: z.string().max(100).optional().nullable(),
 });
-
-function nextDocNumber(config) {
-  const ds = config.docSeries || { prefixo: "FT", ano: new Date().getFullYear(), proximo: 1 };
-  const anoActual = new Date().getFullYear();
-  const ano = ds.ano === anoActual ? ds.ano : anoActual;
-  const proximo = ds.ano === anoActual ? ds.proximo || 1 : 1;
-  return { numero: (ds.prefixo || "FT") + ano + "/" + String(proximo).padStart(4, "0"), nextSeries: { prefixo: ds.prefixo || "FT", ano, proximo: proximo + 1 } };
-}
 
 salesRouter.post("/sales", async (req, res) => {
   const parsed = saleSchema.safeParse(req.body);

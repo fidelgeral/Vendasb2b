@@ -1,6 +1,7 @@
 import { fmtMT, saveBlob } from "./utils.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./theme.js";
 import { code128SVG } from "./barcode.js";
+import { computeIva } from "./iva.js";
 
 // Bibliotecas pesadas (jsPDF ~1 MB, XLSX) carregadas só quando é preciso gerar
 // um PDF ou um Excel — assim não pesam no arranque da aplicação.
@@ -17,11 +18,9 @@ export function imprimirReciboTermico(sale, store, clientes) {
   const largura = (store.config.impressao && store.config.impressao.papel) === "58mm" ? 58 : 80;
   const emp = store.config.empresa || {};
   const iva = store.config.iva || {};
-  const taxa = iva.isento ? 0 : sale.ivaTaxa != null ? Number(sale.ivaTaxa) : Number(iva.taxa) || 0;
   const cli = clientes.find((c) => c.id === sale.clientId);
   const bruto = sale.total;
-  const base = iva.precosIncluemIva && taxa ? bruto / (1 + taxa / 100) : bruto;
-  const valorIva = iva.precosIncluemIva && taxa ? bruto - base : bruto * (taxa / 100);
+  const { taxa, base, valor: valorIva } = computeIva(bruto, iva, sale.ivaTaxa);
   const esc = (t) => String(t == null ? "" : t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
   const linhas = sale.items
     .map(
@@ -70,8 +69,8 @@ export async function gerarReciboPDF(sale, store, clientes) {
   try {
     const emp = store.config.empresa || {};
     const iva = store.config.iva || {};
-    const taxa = iva.isento ? 0 : sale.ivaTaxa != null ? Number(sale.ivaTaxa) : Number(iva.taxa) || 0;
     const cli = clientes.find((c) => c.id === sale.clientId);
+    const { taxa, base, valor: valorIva } = computeIva(sale.total, iva, sale.ivaTaxa);
     const { jsPDF, autoTable } = await loadPdf();
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     let y = 42;
@@ -125,9 +124,6 @@ export async function gerarReciboPDF(sale, store, clientes) {
     });
     y = doc.lastAutoTable.finalY + 18;
 
-    const bruto = sale.total;
-    const base = iva.precosIncluemIva && taxa ? bruto / (1 + taxa / 100) : bruto;
-    const valorIva = iva.precosIncluemIva && taxa ? bruto - base : bruto * (taxa / 100);
     doc.setFontSize(10);
     doc.setTextColor(20, 20, 20);
     const right = doc.internal.pageSize.getWidth() - 40;
@@ -135,7 +131,7 @@ export async function gerarReciboPDF(sale, store, clientes) {
       ["Base tributável", fmtMT(base)],
       ["IVA (" + taxa + "%)", fmtMT(valorIva)],
       sale.discount ? ["Desconto", "-" + fmtMT(sale.discount)] : null,
-      ["TOTAL A PAGAR", fmtMT(bruto)],
+      ["TOTAL A PAGAR", fmtMT(sale.total)],
     ].filter(Boolean);
     linhasTotais.forEach(([k, v], i) => {
       const bold = i === linhasTotais.length - 1;
