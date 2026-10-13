@@ -349,7 +349,24 @@ function VendasReports({ store, sales, report, meta }) {
     );
     const list = Object.entries(agg).sort((a, b) => b[1].fat - a[1].fat);
     const rows = list.map(([name, v], i) => ["#" + (i + 1), name, prodCat(name), v.qty, fmtMT(v.fat), fmtMT(v.luc), (v.fat ? ((v.luc / v.fat) * 100).toFixed(1) : "0") + "%"]);
-    return <ReportTable title="Top Produtos" columns={["#", "Produto", "Categoria", "Qtd", "Facturação", "Lucro", "Margem"]} rows={rows} meta={meta} align={["l", "l", "l", "r", "r", "r", "r"]} />;
+    const topFat = list.reduce((a, [, v]) => a + v.fat, 0);
+    const topLuc = list.reduce((a, [, v]) => a + v.luc, 0);
+    return (
+      <ReportTable
+        title="Top Produtos"
+        columns={["#", "Produto", "Categoria", "Qtd", "Facturação", "Lucro", "Margem"]}
+        rows={rows}
+        meta={{ ...meta,
+          kpis: [
+            { label: "Produtos vendidos", value: String(list.length) },
+            { label: "Facturação", value: fmtMT(topFat) },
+            { label: "Lucro", value: fmtMT(topLuc), color: "green" },
+          ],
+          charts: list.length ? [{ type: "hbar", title: "Top produtos por facturação", data: list.slice(0, 6).map(([name, v]) => ({ label: name, value: v.fat })) }] : [],
+        }}
+        align={["l", "l", "l", "r", "r", "r", "r"]}
+      />
+    );
   }
 
   if (report === "abc") {
@@ -381,7 +398,7 @@ function VendasReports({ store, sales, report, meta }) {
           <StatCard label="Classe B" value={contB} sub="próximos 15%" />
           <StatCard label="Classe C" value={contC} sub="últimos 5%" />
         </div>
-        <ReportTable title="Curva ABC de Produtos" note="A = onde está o seu dinheiro: nunca deixe faltar. C = candidatos a descontinuar." columns={["#", "Produto", "Classe", "Qtd", "Facturação", "Peso", "Acumulado", "Lucro"]} rows={rows} meta={meta} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
+        <ReportTable title="Curva ABC de Produtos" note="A = onde está o seu dinheiro: nunca deixe faltar. C = candidatos a descontinuar." columns={["#", "Produto", "Classe", "Qtd", "Facturação", "Peso", "Acumulado", "Lucro"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Classe A", value: String(contA) }, { label: "Classe B", value: String(contB) }, { label: "Classe C", value: String(contC) }, { label: "Facturação", value: fmtMT(grand) }] }} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
       </div>
     );
   }
@@ -402,7 +419,7 @@ function VendasReports({ store, sales, report, meta }) {
     const rows = list.map(([c, v], i) => ["#" + (i + 1), c, v.qty, fmtMT(v.fat), fmtMT(v.luc), (v.fat ? ((v.luc / v.fat) * 100).toFixed(1) : "0") + "%", (grand ? ((v.fat / grand) * 100).toFixed(1) : "0") + "%"]);
     return (
       <div className="space-y-3">
-        <ReportTable title="Desempenho por Categoria" columns={["#", "Categoria", "Itens", "Facturação", "Lucro", "Margem", "Quota"]} rows={rows} meta={meta} align={["l", "l", "r", "r", "r", "r", "r"]} />
+        <ReportTable title="Desempenho por Categoria" columns={["#", "Categoria", "Itens", "Facturação", "Lucro", "Margem", "Quota"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Categorias", value: String(list.length) }, { label: "Facturação", value: fmtMT(grand) }, { label: "Lucro", value: fmtMT(list.reduce((a, [, v]) => a + v.luc, 0)), color: "green" }], charts: list.length ? [{ type: "hbar", title: "Facturação por categoria", data: list.slice(0, 6).map(([c, v]) => ({ label: c, value: v.fat })) }] : [] }} align={["l", "l", "r", "r", "r", "r", "r"]} />
         <ReportBlock title="Ranking por categoria">
           {list.length === 0 && <EmptyNote text="Sem vendas no período." />}
           {list.slice(0, 8).map(([c, v]) => (
@@ -422,13 +439,31 @@ function VendasReports({ store, sales, report, meta }) {
       agg[k].fat += s.total;
       agg[k].luc += lucro(s);
     });
-    const rows = Object.entries(agg)
-      .sort((a, b) => b[1].fat - a[1].fat)
-      .map(([id, v]) => {
-        const e = store.employees.find((x) => x.id === id) || {};
-        return [e.name || "—", ROLE_LABELS[e.role] || "—", v.qtd, fmtMT(v.fat), fmtMT(v.luc)];
-      });
-    return <ReportTable title="Performance por Funcionário" columns={["Funcionário", "Função", "Vendas", "Facturado", "Lucro"]} rows={rows} meta={meta} align={["l", "l", "r", "r", "r"]} />;
+    const ordenado = Object.entries(agg).sort((a, b) => b[1].fat - a[1].fat);
+    const rows = ordenado.map(([id, v]) => {
+      const e = store.employees.find((x) => x.id === id) || {};
+      return [e.name || "—", ROLE_LABELS[e.role] || "—", v.qtd, fmtMT(v.fat), fmtMT(v.luc)];
+    });
+    const chartData = ordenado.slice(0, 6).map(([id, v]) => {
+      const e = store.employees.find((x) => x.id === id) || {};
+      return { label: e.name || "—", value: v.fat };
+    });
+    return (
+      <ReportTable
+        title="Performance por Funcionário"
+        columns={["Funcionário", "Função", "Vendas", "Facturado", "Lucro"]}
+        rows={rows}
+        meta={{ ...meta,
+          kpis: [
+            { label: "Funcionários", value: String(ordenado.length) },
+            { label: "Facturado", value: fmtMT(ordenado.reduce((a, [, v]) => a + v.fat, 0)) },
+            { label: "Lucro", value: fmtMT(ordenado.reduce((a, [, v]) => a + v.luc, 0)), color: "green" },
+          ],
+          charts: chartData.length ? [{ type: "hbar", title: "Facturado por funcionário", data: chartData }] : [],
+        }}
+        align={["l", "l", "r", "r", "r"]}
+      />
+    );
   }
 
   if (report === "clientes") {
@@ -450,7 +485,8 @@ function VendasReports({ store, sales, report, meta }) {
         const divida = (c.debts || []).reduce((a, d) => a + d.amount, 0);
         return ["#" + (i + 1), c.name || "Consumidor Final", c.phone || "—", fav ? fav[0] : "—", v.compras, fmtMT(v.gasto), fmtMT(v.luc), fmtMT(divida), new Date(v.last).toLocaleDateString("pt-PT")];
       });
-    return <ReportTable title="Comportamento de Clientes (CRM)" note="Ranking por volume e lucratividade" columns={["#", "Cliente", "Contacto", "Favorito", "Compras", "Gasto Total", "Lucro", "Dívida", "Últ. Compra"]} rows={rows} meta={meta} align={["l", "l", "l", "l", "r", "r", "r", "r", "l"]} />;
+    const totGasto = Object.values(agg).reduce((a, v) => a + v.gasto, 0);
+    return <ReportTable title="Comportamento de Clientes (CRM)" note="Ranking por volume e lucratividade" columns={["#", "Cliente", "Contacto", "Favorito", "Compras", "Gasto Total", "Lucro", "Dívida", "Últ. Compra"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Clientes", value: String(rows.length) }, { label: "Gasto total", value: fmtMT(totGasto) }, { label: "Compras", value: String(Object.values(agg).reduce((a, v) => a + v.compras, 0)) }] }} align={["l", "l", "l", "l", "r", "r", "r", "r", "l"]} />;
   }
 
   if (report === "horarios") {
@@ -467,9 +503,25 @@ function VendasReports({ store, sales, report, meta }) {
       .sort((a, b) => b[1] - a[1])
       .map(([h, v]) => [String(h).padStart(2, "0") + ":00 - " + String(Number(h) + 1).padStart(2, "0") + ":00", fmtMT(v)]);
     const dayRows = Object.entries(byDay).sort((a, b) => b[1] - a[1]);
+    // Série por hora ordenada cronologicamente, para o gráfico.
+    const horasCrono = Object.entries(byHour).sort((a, b) => Number(a[0]) - Number(b[0]));
+    const totalDia = Object.values(byHour).reduce((a, v) => a + v, 0);
     return (
       <div className="space-y-3">
-        <ReportTable title="Facturação por Hora" columns={["Faixa horária", "Facturação"]} rows={rows} meta={meta} align={["l", "r"]} />
+        <ReportTable
+          title="Facturação por Hora"
+          columns={["Faixa horária", "Facturação"]}
+          rows={rows}
+          meta={{ ...meta,
+            kpis: [
+              { label: "Facturação", value: fmtMT(totalDia) },
+              { label: "Hora de pico", value: rows[0] ? rows[0][0].slice(0, 5) : "—" },
+              { label: "Melhor dia", value: dayRows[0] ? dias[dayRows[0][0]] : "—" },
+            ],
+            charts: horasCrono.length ? [{ type: "bar", title: "Facturação por hora do dia", labels: horasCrono.map(([h]) => String(h).padStart(2, "0") + "h"), values: horasCrono.map(([, v]) => v) }] : [],
+          }}
+          align={["l", "r"]}
+        />
         <ReportBlock title="Melhores dias da semana">
           {dayRows.length === 0 && <EmptyNote text="Sem vendas no período." />}
           {dayRows.map(([d, v]) => (
@@ -590,7 +642,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
           <StatCard label="Total de despesas" value={fmtMT(totalSaidas)} />
           <StatCard label="Categorias usadas" value={list.length} />
         </div>
-        <ReportTable title="Movimentos por Categoria" columns={["Categoria", "Total"]} rows={rows} meta={meta} align={["l", "r"]} />
+        <ReportTable title="Movimentos por Categoria" columns={["Categoria", "Total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Total de despesas", value: fmtMT(totalSaidas) }, { label: "Entradas extra", value: fmtMT(movs.filter((m) => m.type === "entrada").reduce((a, m) => a + m.amount, 0)) }, { label: "Categorias", value: String(list.length) }], charts: list.length ? [{ type: "hbar", title: "Peso de cada categoria", data: list.slice(0, 6).map(([k, v]) => ({ label: k, value: v })), color: [190, 30, 45] }] : [] }} align={["l", "r"]} />
         <ReportBlock title="Peso de cada categoria">
           {list.length === 0 && <EmptyNote text="Sem movimentos no período." />}
           {list.map(([k, v]) => (
@@ -628,7 +680,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
           Ficheiro pronto a entregar ao contabilista: uma linha por documento, com base tributável, IVA e total. Exporte em Excel e envie mensalmente.
           Empresa: {emp.nome || store.config.businessName} {emp.nuit ? "· NUIT " + emp.nuit : ""}
         </div>
-        <ReportTable title="Mapa de Vendas para Contabilidade" columns={["Documento", "Data", "Cliente", "NUIT", "Base", "Taxa", "IVA", "Total", "Meio pgto"]} rows={rows} meta={meta} align={["l", "l", "l", "l", "r", "r", "r", "r", "l"]} />
+        <ReportTable title="Mapa de Vendas para Contabilidade" columns={["Documento", "Data", "Cliente", "NUIT", "Base", "Taxa", "IVA", "Total", "Meio pgto"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Documentos", value: String(rows.length) }, { label: "Base tributável", value: fmtMT(rows.reduce((a, r) => a + Number(r[4]), 0)) }, { label: "IVA total", value: fmtMT(rows.reduce((a, r) => a + Number(r[6]), 0)) }, { label: "Total", value: fmtMT(rows.reduce((a, r) => a + Number(r[7]), 0)) }] }} align={["l", "l", "l", "l", "r", "r", "r", "r", "l"]} />
       </div>
     );
   }
@@ -647,7 +699,9 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
         dif === null ? "Aberto" : dif === 0 ? "Certo" : dif > 0 ? "Sobra" : "Quebra",
       ];
     });
-    return <ReportTable title="Fecho de Caixa" columns={["Abertura", "Fecho", "Fundo inicial", "Esperado", "Contado", "Diferença", "Estado"]} rows={rows} meta={meta} align={["l", "l", "r", "r", "r", "r", "l"]} />;
+    const totalDif = shifts.filter((s) => s.closedAt).reduce((a, s) => a + ((s.closingCash || 0) - (s.expectedCash || 0)), 0);
+    const fechados = shifts.filter((s) => s.closedAt).length;
+    return <ReportTable title="Fecho de Caixa" columns={["Abertura", "Fecho", "Fundo inicial", "Esperado", "Contado", "Diferença", "Estado"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Turnos", value: String(shifts.length) }, { label: "Fechados", value: String(fechados) }, { label: "Diferença total", value: (totalDif > 0 ? "+" : "") + fmtMT(totalDif), color: totalDif < 0 ? "red" : totalDif > 0 ? "green" : undefined }] }} align={["l", "l", "r", "r", "r", "r", "l"]} />;
   }
 
   if (report === "iva") {
@@ -668,7 +722,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
           <StatCard label="Taxa aplicada" value={iva.isento ? "Isento" : taxa + "%"} sub={iva.precosIncluemIva ? "preços com IVA incluído" : "IVA acrescido"} />
           <StatCard label="IVA do período" value={fmtMT(totalIva)} />
         </div>
-        <ReportTable title="Mapa Fiscal (IVA)" note="Valores calculados pelo sistema — confirme sempre com o seu contabilista antes de submeter à Autoridade Tributária." columns={["Documento", "Data", "Base tributável", "Taxa", "IVA", "Total"]} rows={rows} meta={meta} align={["l", "l", "r", "r", "r", "r"]} />
+        <ReportTable title="Mapa Fiscal (IVA)" note="Valores calculados pelo sistema — confirme sempre com o seu contabilista antes de submeter à Autoridade Tributária." columns={["Documento", "Data", "Base tributável", "Taxa", "IVA", "Total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Taxa aplicada", value: iva.isento ? "Isento" : taxa + "%" }, { label: "IVA do período", value: fmtMT(totalIva) }, { label: "Documentos", value: String(rows.length) }] }} align={["l", "l", "r", "r", "r", "r"]} />
       </div>
     );
   }
@@ -687,7 +741,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
           <StatCard label="Total saídas" value={fmtMT(saidas)} />
           <StatCard label="Saldo do período" value={fmtMT(entradas - saidas)} />
         </div>
-        <ReportTable title="Recebimentos por Forma de Pagamento" columns={["Forma de pagamento", "Total recebido"]} rows={metodoRows} meta={meta} align={["l", "r"]} />
+        <ReportTable title="Recebimentos por Forma de Pagamento" columns={["Forma de pagamento", "Total recebido"]} rows={metodoRows} meta={{ ...meta, kpis: [{ label: "Total entradas", value: fmtMT(entradas), color: "green" }, { label: "Total saídas", value: fmtMT(saidas), color: "red" }, { label: "Saldo do período", value: fmtMT(entradas - saidas) }], charts: metodoRows.length ? [{ type: "hbar", title: "Recebido por forma de pagamento", data: Object.entries(vendasPorMetodo).map(([k, v]) => ({ label: k, value: v })), color: [16, 122, 72] }] : [] }} align={["l", "r"]} />
         <ReportTable title="Extrato de Movimentos de Caixa" columns={["Data", "Descrição", "Tipo", "Valor"]} rows={rows} meta={meta} align={["l", "l", "l", "r"]} />
       </div>
     );
@@ -711,7 +765,7 @@ function EstoqueReports({ store, report, meta, from, to }) {
           <StatCard label="Venda potencial" value={fmtMT(vendaPot)} sub="se vender tudo" />
           <StatCard label="Margem potencial" value={fmtMT(vendaPot - custoTotal)} />
         </div>
-        <ReportTable title="Posição de Inventário" columns={["Produto", "Categoria", "Estado", "Stock", "Custo un.", "Preço un.", "Custo total", "Venda total"]} rows={rows} meta={meta} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
+        <ReportTable title="Posição de Inventário" columns={["Produto", "Categoria", "Estado", "Stock", "Custo un.", "Preço un.", "Custo total", "Venda total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Custo do stock", value: fmtMT(custoTotal) }, { label: "Venda potencial", value: fmtMT(vendaPot) }, { label: "Margem potencial", value: fmtMT(vendaPot - custoTotal), color: "green" }, { label: "Produtos", value: String(store.products.length) }] }} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
       </div>
     );
   }
@@ -748,7 +802,7 @@ function EstoqueReports({ store, report, meta, from, to }) {
           <StatCard label="Produtos em risco" value={criticos} sub="acabam em menos de 3 dias" />
           <StatCard label="Produtos analisados" value={rows.length} sub="com vendas nos últimos 30 dias" />
         </div>
-        <ReportTable title="Previsão de Ruptura de Stock" note="Baseado na média de consumo dos últimos 30 dias. Produtos sem vendas recentes não aparecem." columns={["Produto", "Categoria", "Stock", "Consumo/dia", "Dura", "Acaba em", "Estado"]} rows={rows} meta={meta} align={["l", "l", "r", "r", "r", "l", "l"]} />
+        <ReportTable title="Previsão de Ruptura de Stock" note="Baseado na média de consumo dos últimos 30 dias. Produtos sem vendas recentes não aparecem." columns={["Produto", "Categoria", "Stock", "Consumo/dia", "Dura", "Acaba em", "Estado"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Em risco (<3 dias)", value: String(criticos), color: criticos ? "red" : undefined }, { label: "Produtos analisados", value: String(rows.length) }] }} align={["l", "l", "r", "r", "r", "l", "l"]} />
       </div>
     );
   }
@@ -761,7 +815,8 @@ function EstoqueReports({ store, report, meta, from, to }) {
         const f = store.suppliers.find((s) => s.id === c.supplierId) || {};
         return [new Date(c.date).toLocaleDateString("pt-PT"), p.name || "—", f.name || "—", c.qty, fmtMT(c.cost), fmtMT(c.total)];
       });
-    return <ReportTable title="Histórico de Compras e Preços" note="Compare o custo unitário ao longo do tempo para detectar subidas de preço dos fornecedores." columns={["Data", "Produto", "Fornecedor", "Qtd", "Custo un.", "Total"]} rows={rows} meta={meta} align={["l", "l", "l", "r", "r", "r"]} />;
+    const totalCompras = store.purchases.reduce((a, c) => a + (c.total || 0), 0);
+    return <ReportTable title="Histórico de Compras e Preços" note="Compare o custo unitário ao longo do tempo para detectar subidas de preço dos fornecedores." columns={["Data", "Produto", "Fornecedor", "Qtd", "Custo un.", "Total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Compras registadas", value: String(rows.length) }, { label: "Total gasto", value: fmtMT(totalCompras), color: "red" }] }} align={["l", "l", "l", "r", "r", "r"]} />;
   }
 
   if (report === "log") {
@@ -773,7 +828,7 @@ function EstoqueReports({ store, report, meta, from, to }) {
           <StatCard label="Registos no período" value={registos.length} />
           <StatCard label="Cancelamentos" value={registos.filter((a) => a.acao === "CANCELAMENTO").length} />
         </div>
-        <ReportTable title="Registo de Auditoria" note="Quem fez o quê e quando: vendas, cancelamentos, descontos, quebras e movimentos de caixa." columns={["Data/Hora", "Utilizador", "Acção", "Detalhe", "Valor"]} rows={rows} meta={meta} align={["l", "l", "l", "l", "r"]} />
+        <ReportTable title="Registo de Auditoria" note="Quem fez o quê e quando: vendas, cancelamentos, descontos, quebras e movimentos de caixa." columns={["Data/Hora", "Utilizador", "Acção", "Detalhe", "Valor"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Registos", value: String(registos.length) }, { label: "Cancelamentos", value: String(registos.filter((a) => a.acao === "CANCELAMENTO").length) }] }} align={["l", "l", "l", "l", "r"]} />
       </div>
     );
   }
@@ -791,7 +846,7 @@ function EstoqueReports({ store, report, meta, from, to }) {
           <StatCard label="Ocorrências" value={quebras.length} />
           <StatCard label="Perda total" value={fmtMT(total)} />
         </div>
-        <ReportTable title="Auditoria de Quebras e Perdas" columns={["Data/Hora", "Produto", "Categoria", "Motivo", "Qtd", "Custo"]} rows={rows} meta={meta} align={["l", "l", "l", "l", "r", "r"]} />
+        <ReportTable title="Auditoria de Quebras e Perdas" columns={["Data/Hora", "Produto", "Categoria", "Motivo", "Qtd", "Custo"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Ocorrências", value: String(quebras.length) }, { label: "Perda total", value: fmtMT(total), color: "red" }] }} align={["l", "l", "l", "l", "r", "r"]} />
       </div>
     );
   }
@@ -813,7 +868,7 @@ function EstoqueReports({ store, report, meta, from, to }) {
           <StatCard label="Produtos a repor" value={list.length} />
           <StatCard label="Investimento estimado" value={fmtMT(investimento)} />
         </div>
-        <ReportTable title="Sugestão de Reposição" note="Quantidade sugerida = o dobro do stock mínimo, menos o que resta." columns={["Produto", "Categoria", "Stock actual", "Stock mínimo", "Comprar", "Custo estimado"]} rows={rows} meta={meta} align={["l", "l", "r", "r", "r", "r"]} />
+        <ReportTable title="Sugestão de Reposição" note="Quantidade sugerida = o dobro do stock mínimo, menos o que resta." columns={["Produto", "Categoria", "Stock actual", "Stock mínimo", "Comprar", "Custo estimado"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Produtos a repor", value: String(list.length) }, { label: "Investimento estimado", value: fmtMT(investimento), color: "red" }] }} align={["l", "l", "r", "r", "r", "r"]} />
       </div>
     );
   }
