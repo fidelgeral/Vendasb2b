@@ -84,12 +84,14 @@ function ImpressaoConfig({ store, setStore, api }) {
   const [proximo, setProximo] = useState(ds.proximo || 1);
   const [papel, setPapel] = useState(store.config.impressao.papel);
   const [visorCliente, setVisorCliente] = useState(store.config.impressao.visorCliente);
+  const [imprimirAoFinalizar, setImprimirAoFinalizar] = useState(!!store.config.impressao.imprimirAoFinalizar);
+  const [scannerUsb, setScannerUsb] = useState(store.config.impressao.scannerUsb !== false);
   const [mensagem, setMensagem] = useState(store.config.receiptMessage);
   const save = async () =>
     setStore(
       await api.patchConfig({
         receiptMessage: mensagem,
-        impressao: { ...store.config.impressao, papel, visorCliente },
+        impressao: { ...store.config.impressao, papel, visorCliente, imprimirAoFinalizar, scannerUsb },
         docSeries: { prefixo: (prefixo || "FT").toUpperCase(), ano: new Date().getFullYear(), proximo: Number(proximo) || 1 },
       })
     );
@@ -106,6 +108,15 @@ function ImpressaoConfig({ store, setStore, api }) {
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={visorCliente} onChange={(e) => setVisorCliente(e.target.checked)} /> Tenho um visor voltado para o cliente
       </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={imprimirAoFinalizar} onChange={(e) => setImprimirAoFinalizar(e.target.checked)} /> Imprimir a factura automaticamente ao finalizar a venda
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={scannerUsb} onChange={(e) => setScannerUsb(e.target.checked)} /> Usar leitor de código de barras USB (máquina de scanner tipo supermercado)
+      </label>
+      <div className="text-xs" style={{ color: MUTED }}>
+        A impressão usa o diálogo do seu aparelho — as impressoras térmicas de recibos ligadas por USB ou Bluetooth (com o controlador instalado) aparecem nessa lista.
+      </div>
       <label className="text-xs" style={{ color: MUTED }}>
         Série de documentos (facturas/recibos)
       </label>
@@ -128,10 +139,32 @@ function ImpressaoConfig({ store, setStore, api }) {
 }
 
 function IvaConfig({ store, setStore, api }) {
-  const [taxa, setTaxa] = useState(store.config.iva.taxa);
   const [precosIncluemIva, setPrecosIncluemIva] = useState(store.config.iva.precosIncluemIva);
   const [isento, setIsento] = useState(store.config.iva.isento);
-  const save = async () => setStore(await api.patchConfig({ iva: { taxa: Number(taxa) || 0, precosIncluemIva, isento } }));
+  const [taxas, setTaxas] = useState(
+    Array.isArray(store.config.iva.taxas) && store.config.iva.taxas.length ? [...store.config.iva.taxas] : [Number(store.config.iva.taxa) || 0]
+  );
+  const [padrao, setPadrao] = useState(Number(store.config.iva.taxa) || 0);
+  const [nova, setNova] = useState("");
+
+  const addTaxa = () => {
+    const n = Number(nova);
+    if (isNaN(n) || n < 0) return;
+    if (!taxas.includes(n)) setTaxas((t) => [...t, n].sort((a, b) => a - b));
+    setNova("");
+  };
+  const removeTaxa = (n) => {
+    const next = taxas.filter((t) => t !== n);
+    setTaxas(next);
+    if (padrao === n && next.length) setPadrao(next[0]);
+  };
+
+  const save = async () => {
+    const lista = taxas.length ? taxas : [0];
+    const def = lista.includes(padrao) ? padrao : lista[0];
+    setStore(await api.patchConfig({ iva: { taxa: Number(def) || 0, taxas: lista, precosIncluemIva, isento } }));
+  };
+
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-semibold">IVA</div>
@@ -141,9 +174,41 @@ function IvaConfig({ store, setStore, api }) {
       {!isento && (
         <>
           <label className="text-xs" style={{ color: MUTED }}>
-            Taxa de IVA (%)
+            Taxas de IVA que quer usar nas vendas (%)
           </label>
-          <input type="number" value={taxa} onChange={(e) => setTaxa(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+          <div className="flex flex-wrap gap-1.5">
+            {taxas.map((t) => (
+              <span key={t} style={{ borderColor: BORDER, background: "#F1F5F9" }} className="border rounded-full pl-2.5 pr-1.5 py-1 text-xs flex items-center gap-1.5">
+                {t}%
+                <button onClick={() => removeTaxa(t)} title="Remover" style={{ color: "#B91C1C" }} className="font-bold leading-none px-1">
+                  ×
+                </button>
+              </span>
+            ))}
+            {taxas.length === 0 && <span className="text-xs" style={{ color: MUTED }}>Nenhuma taxa — adicione pelo menos uma.</span>}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={nova}
+              onChange={(e) => setNova(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTaxa()}
+              placeholder="Ex.: 16"
+              style={{ borderColor: BORDER }}
+              className="border rounded-lg px-2 py-1.5 text-sm w-28"
+            />
+            <button onClick={addTaxa} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-3 py-1.5 text-sm">
+              Adicionar taxa
+            </button>
+          </div>
+          <label className="text-xs" style={{ color: MUTED }}>
+            Taxa padrão (usada por defeito em cada venda)
+          </label>
+          <select value={padrao} onChange={(e) => setPadrao(Number(e.target.value))} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
+            {taxas.map((t) => (
+              <option key={t} value={t}>{t}%</option>
+            ))}
+          </select>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={precosIncluemIva} onChange={(e) => setPrecosIncluemIva(e.target.checked)} /> Os preços já incluem IVA
           </label>
@@ -153,7 +218,7 @@ function IvaConfig({ store, setStore, api }) {
         Guardar
       </button>
       <div className="text-xs" style={{ color: MUTED }}>
-        Acredito que a taxa padrão em Moçambique tem sido 16%, mas confirme sempre o valor actual junto da Autoridade Tributária — esta taxa pode mudar.
+        No ecrã de Vender só aparecem as taxas que configurar aqui. Acredito que a taxa padrão em Moçambique tem sido 16%, mas confirme sempre o valor actual junto da Autoridade Tributária — pode mudar.
       </div>
     </div>
   );

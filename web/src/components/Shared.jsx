@@ -548,13 +548,24 @@ export function CategoriasModal({ categories, onAdd, onRemove, onRename, onClose
 }
 
 // ================= Checkout partilhado =================
-export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, label = "Total", paymentMethods, ivaConfig, config }) {
+export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config }) {
   const [discount, setDiscount] = useState(0);
   const [clientId, setClientId] = useState("");
   const [recebido, setRecebido] = useState("");
   const [usarPontos, setUsarPontos] = useState(false);
   const [split, setSplit] = useState(false);
   const [splitLines, setSplitLines] = useState([{ method: "dinheiro", amount: "" }]);
+  const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0]?.id || "dinheiro");
+
+  // IVA: só as taxas configuradas no Config aparecem como opção
+  const taxasDisponiveis = Array.isArray(ivaConfig?.taxas) && ivaConfig.taxas.length ? ivaConfig.taxas : [Number(ivaConfig?.taxa) || 0];
+  const [ivaRateSel, setIvaRateSel] = useState(Number(ivaConfig?.taxa) || taxasDisponiveis[0] || 0);
+
+  // Cliente novo (criar sem sair do ecrã de venda)
+  const [novoCliente, setNovoCliente] = useState(false);
+  const [ncNome, setNcNome] = useState("");
+  const [ncTel, setNcTel] = useState("");
+  const [ncBusy, setNcBusy] = useState(false);
 
   const cliente = clients.find((c) => c.id === clientId);
   const valorPorPonto = (config && config.valorPorPonto) || 1;
@@ -564,7 +575,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const descontoPontos = usarPontos ? Math.min(pontosDisponiveis * valorPorPonto, subtotal + serviceCharge) : 0;
   const pontosUsados = usarPontos ? Math.ceil(descontoPontos / valorPorPonto) : 0;
   const afterDiscount = Math.max(0, subtotal + serviceCharge - Number(discount || 0) - descontoPontos);
-  const ivaRate = ivaConfig?.isento ? 0 : Number(ivaConfig?.taxa) || 0;
+  const ivaRate = ivaConfig?.isento ? 0 : Number(ivaRateSel) || 0;
   const ivaOnTop = !ivaConfig?.isento && ivaRate > 0 && !ivaConfig?.precosIncluemIva;
   const ivaAmount = ivaOnTop ? afterDiscount * (ivaRate / 100) : 0;
   const ivaIncluded = !ivaConfig?.isento && ivaRate > 0 && ivaConfig?.precosIncluemIva;
@@ -574,29 +585,48 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const updateSplitLine = (i, field, val) => setSplitLines((s) => s.map((l, idx) => (idx === i ? { ...l, [field]: val } : l)));
   const removeSplitLine = (i) => setSplitLines((s) => s.filter((_, idx) => idx !== i));
   const splitSum = splitLines.reduce((s, l) => s + Number(l.amount || 0), 0);
-  const needsClient = split ? splitLines.some((l) => l.method === "fiado") : false;
+  const needsClient = split ? splitLines.some((l) => l.method === "fiado") : selectedMethod === "fiado";
 
   const dividaActual = cliente ? (cliente.debts || []).reduce((a, d) => a + d.amount, 0) : 0;
   const limite = cliente ? cliente.creditLimit || 0 : 0;
   const fiadoBloqueado = !!cliente && limite > 0 && dividaActual + total > limite;
   const trocoDevido = Number(recebido || 0) - total;
 
-  const confirmSingle = (methodId) => {
-    if (methodId === "fiado" && !clientId) return;
-    if (methodId === "fiado" && fiadoBloqueado) return;
-    onConfirm({ total, discount: Number(discount || 0), payments: [{ method: methodId, amount: total }], clientId: clientId || null, pontosUsados });
+  const finalizar = () => {
+    if (items.length === 0) return;
+    if (split) {
+      if (Math.round(splitSum) !== Math.round(total)) return;
+      if (needsClient && !clientId) return;
+      onConfirm({
+        total,
+        discount: Number(discount || 0),
+        payments: splitLines.map((l) => ({ method: l.method, amount: Number(l.amount || 0) })),
+        clientId: clientId || null,
+        pontosUsados,
+      });
+      return;
+    }
+    if (selectedMethod === "fiado" && (!clientId || fiadoBloqueado)) return;
+    onConfirm({ total, discount: Number(discount || 0), payments: [{ method: selectedMethod, amount: total }], clientId: clientId || null, pontosUsados });
   };
-  const confirmSplit = () => {
-    if (Math.round(splitSum) !== Math.round(total)) return;
-    if (needsClient && !clientId) return;
-    onConfirm({
-      total,
-      discount: Number(discount || 0),
-      payments: splitLines.map((l) => ({ method: l.method, amount: Number(l.amount || 0) })),
-      clientId: clientId || null,
-      pontosUsados,
-    });
+
+  const criarCliente = async () => {
+    if (!onAddClient || !ncNome.trim()) return;
+    setNcBusy(true);
+    try {
+      const novoId = await onAddClient({ name: ncNome.trim(), phone: ncTel.trim() });
+      if (novoId) setClientId(novoId);
+      setNovoCliente(false);
+      setNcNome("");
+      setNcTel("");
+    } finally {
+      setNcBusy(false);
+    }
   };
+
+  const finalizarDisabled =
+    items.length === 0 ||
+    (split ? Math.round(splitSum) !== Math.round(total) || (needsClient && !clientId) : selectedMethod === "fiado" && (!clientId || fiadoBloqueado));
 
   return (
     <div>
@@ -619,8 +649,18 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
           />
         </div>
       )}
+      {!ivaConfig?.isento && taxasDisponiveis.length > 0 && (
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-sm" style={{ color: MUTED }}>IVA</span>
+          <select value={ivaRateSel} onChange={(e) => setIvaRateSel(Number(e.target.value))} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
+            {taxasDisponiveis.map((t) => (
+              <option key={t} value={t}>{t}%</option>
+            ))}
+          </select>
+        </div>
+      )}
       {ivaOnTop && (
-        <div className="flex justify-between text-xs mb-1" style={{ color: MUTED }}>
+        <div className="flex justify-between text-sm mb-1" style={{ color: MUTED }}>
           <span>IVA ({ivaRate}%)</span>
           <span>+{fmtMT(ivaAmount)}</span>
         </div>
@@ -630,19 +670,42 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
           IVA incluído ({ivaRate}%)
         </div>
       )}
-      <div className="flex justify-between text-base font-semibold mb-2">
-        <span>{label}</span>
-        <span style={{ color: TEAL }}>{fmtMT(total)}</span>
+      <div className="flex justify-between items-baseline mb-3">
+        <span className="text-lg font-semibold">{label}</span>
+        <span style={{ color: TEAL }} className="text-3xl sm:text-4xl font-extrabold tracking-tight">{fmtMT(total)}</span>
       </div>
 
-      <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mb-2">
-        <option value="">Cliente (necessário para fiado / pontos)</option>
-        {clients.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      {!novoCliente ? (
+        <div className="flex items-center gap-2 mb-2">
+          <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="flex-1 border rounded-lg px-2 py-1.5 text-sm">
+            <option value="">Cliente (necessário para fiado / pontos)</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {onAddClient && (
+            <button onClick={() => setNovoCliente(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap">
+              + Novo
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ borderColor: BORDER }} className="border rounded-lg p-2 mb-2 space-y-1.5">
+          <div className="text-xs font-semibold">Novo cliente</div>
+          <input autoFocus value={ncNome} onChange={(e) => setNcNome(e.target.value)} placeholder="Nome do cliente" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+          <input value={ncTel} onChange={(e) => setNcTel(e.target.value)} placeholder="Telefone (opcional)" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+          <div className="flex gap-1.5">
+            <button onClick={criarCliente} disabled={!ncNome.trim() || ncBusy} style={{ background: TEAL, color: "#fff" }} className="flex-1 rounded-lg py-1.5 text-sm disabled:opacity-40">
+              {ncBusy ? "A guardar…" : "Adicionar"}
+            </button>
+            <button onClick={() => setNovoCliente(false)} style={{ borderColor: BORDER, color: MUTED }} className="border rounded-lg px-3 py-1.5 text-sm">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {cliente && pontosDisponiveis > 0 && (
         <label className="flex items-center gap-2 text-xs mb-2" style={{ color: TEAL }}>
@@ -693,29 +756,39 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
       </button>
 
       {!split && (
-        <div className="grid grid-cols-2 gap-1.5">
-          {paymentMethods.map((p) => {
-            const Icon = p.icon;
-            const disabled = items.length === 0 || (p.id === "fiado" && (!clientId || fiadoBloqueado));
-            return (
-              <button
-                key={p.id}
-                onClick={() => confirmSingle(p.id)}
-                disabled={disabled}
-                id={p.id === "dinheiro" ? "pdv-finalizar-dinheiro" : undefined}
-                style={{ background: PAYMENT_COLORS[p.id] || TEAL, color: "#fff", boxShadow: disabled ? "none" : "0 4px 10px rgba(15,23,42,0.15)" }}
-                className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-40"
-              >
-                <Icon size={13} />
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <div className="text-xs font-medium mb-1.5" style={{ color: MUTED }}>
+            Método de pagamento
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 mb-3">
+            {paymentMethods.map((p) => {
+              const Icon = p.icon;
+              const disabled = p.id === "fiado" && (!clientId || fiadoBloqueado);
+              const sel = selectedMethod === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedMethod(p.id)}
+                  disabled={disabled}
+                  style={{
+                    background: sel ? PAYMENT_COLORS[p.id] || TEAL : "#fff",
+                    color: sel ? "#fff" : INK,
+                    borderColor: sel ? PAYMENT_COLORS[p.id] || TEAL : BORDER,
+                    boxShadow: sel ? "0 4px 10px rgba(15,23,42,0.15)" : "none",
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold border-2 disabled:opacity-40"
+                >
+                  <Icon size={13} />
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {split && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 mb-3">
           {splitLines.map((l, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <select value={l.method} onChange={(e) => updateSplitLine(i, "method", e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-1.5 py-1 text-xs">
@@ -744,16 +817,30 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
           <div className="text-xs" style={{ color: Math.round(splitSum) === Math.round(total) ? MUTED : BRICK }}>
             Somado: {fmtMT(splitSum)} / {fmtMT(total)}
           </div>
-          <button
-            onClick={confirmSplit}
-            disabled={Math.round(splitSum) !== Math.round(total) || (needsClient && !clientId)}
-            style={{ background: TEAL, color: "#fff" }}
-            className="w-full rounded-lg py-2 text-xs font-medium disabled:opacity-40"
-          >
-            Confirmar pagamento dividido
-          </button>
         </div>
       )}
+
+      <div className="flex gap-1.5">
+        <button
+          id="pdv-finalizar-venda"
+          onClick={finalizar}
+          disabled={finalizarDisabled}
+          style={{ background: TEAL, color: "#fff", boxShadow: finalizarDisabled ? "none" : "0 4px 10px rgba(15,23,42,0.15)" }}
+          className="flex-1 rounded-xl py-3 text-base font-bold disabled:opacity-40"
+        >
+          Finalizar Venda
+        </button>
+        {onPark && (
+          <button
+            onClick={onPark}
+            disabled={items.length === 0}
+            style={{ borderColor: TEAL, color: TEAL, background: "#fff" }}
+            className="rounded-xl py-3 px-4 text-sm font-semibold border-2 disabled:opacity-40 whitespace-nowrap"
+          >
+            {guardarLabel}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock, uid } from "../lib/utils.js";
 import { ProductCard, CheckoutPanel } from "../components/Shared.jsx";
-import { Minus, Plus, Trash2, PauseCircle, PlayCircle } from "../lib/icons.jsx";
+import { Minus, Plus, Trash2, PlayCircle } from "../lib/icons.jsx";
 import BarcodeScanner from "../components/BarcodeScanner.jsx";
 
 export default function VenderTab({ store, setStore, api, finalizeSale, voidSale, shiftOpen, canDiscount, canVoid, showToast, paymentMethods }) {
@@ -159,6 +159,14 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     setCart([]);
     showToast("Venda colocada em espera");
   };
+  const addClientInline = async ({ name, phone }) => {
+    const prevIds = new Set(store.clients.map((c) => c.id));
+    const next = await api.createClient({ name, phone });
+    setStore(next);
+    const created = next.clients.find((c) => !prevIds.has(c.id));
+    showToast("Cliente adicionado");
+    return created ? created.id : "";
+  };
   const resumeSale = async (parked) => {
     setCart(parked.cart);
     const next = await api.resumeSale(parked.id);
@@ -201,7 +209,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
       }
       if (e.key === "F2") {
         e.preventDefault();
-        const btn = document.getElementById("pdv-finalizar-dinheiro");
+        const btn = document.getElementById("pdv-finalizar-venda");
         if (btn) btn.click();
         return;
       }
@@ -289,11 +297,6 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
         <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-4 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <div className="text-base font-semibold">Venda actual</div>
-            {cart.length > 0 && (
-              <button onClick={parkSale} style={{ color: MUTED }} className="text-xs flex items-center gap-1">
-                <PauseCircle size={13} /> Colocar em espera
-              </button>
-            )}
           </div>
           <div className="space-y-2.5 overflow-auto" style={{ maxHeight: "45vh" }}>
             {cart.length === 0 && (
@@ -325,7 +328,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             ))}
           </div>
           <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-2 mt-2">
-            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
+            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
           </div>
         </div>
       </div>

@@ -9,14 +9,14 @@ const DEFAULT_CONFIG = {
   businessName: "",
   modules: { mercearia: true, restaurante: false, bar: false, roupa: false, padaria: false },
   receiptMessage: "Obrigado pela preferência! Volte sempre.",
-  impressao: { papel: "80mm", visorCliente: false },
-  iva: { taxa: 16, precosIncluemIva: true, isento: false },
+  impressao: { papel: "80mm", visorCliente: false, imprimirAoFinalizar: false, scannerUsb: true },
+  iva: { taxa: 16, precosIncluemIva: true, isento: false, taxas: [0, 5, 16] },
   contas: {
     dinheiro: { activo: true },
     mpesa: { activo: true, numero: "", titular: "" },
     emola: { activo: true, numero: "", titular: "" },
   },
-  empresa: { nome: "", nuit: "", endereco: "", cidade: "", contacto: "", email: "", regime: "Geral" },
+  empresa: { nome: "", nuit: "", endereco: "", cidade: "", contacto: "", email: "", regime: "Geral", logo: "" },
   docSeries: { prefixo: "FT", ano: new Date().getFullYear(), proximo: 1 },
   pontosPorMT: 50,
 };
