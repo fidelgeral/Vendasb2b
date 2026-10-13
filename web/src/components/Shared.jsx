@@ -548,7 +548,7 @@ export function CategoriasModal({ categories, onAdd, onRemove, onRename, onClose
 }
 
 // ================= Checkout partilhado =================
-export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config }) {
+export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, mesas = null, onGuardarMesa, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config }) {
   const [discount, setDiscount] = useState(0);
   const [clientId, setClientId] = useState("");
   const [recebido, setRecebido] = useState("");
@@ -556,6 +556,8 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const [split, setSplit] = useState(false);
   const [splitLines, setSplitLines] = useState([{ method: "dinheiro", amount: "" }]);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0]?.id || "dinheiro");
+  const [guardarOpen, setGuardarOpen] = useState(false);
+  const temMesas = Array.isArray(mesas);
 
   // IVA: só as taxas configuradas no Config aparecem como opção
   const taxasDisponiveis = Array.isArray(ivaConfig?.taxas) && ivaConfig.taxas.length ? ivaConfig.taxas : [Number(ivaConfig?.taxa) || 0];
@@ -832,15 +834,58 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         </button>
         {onPark && (
           <button
-            onClick={onPark}
+            onClick={() => (temMesas ? setGuardarOpen((o) => !o) : onPark())}
             disabled={items.length === 0}
             style={{ borderColor: TEAL, color: TEAL, background: "#fff" }}
             className="rounded-xl py-3 px-4 text-sm font-semibold border-2 disabled:opacity-40 whitespace-nowrap"
           >
-            {guardarLabel}
+            {temMesas ? "Guardar pedido" : guardarLabel}
           </button>
         )}
       </div>
+
+      {onPark && temMesas && guardarOpen && items.length > 0 && (
+        <div style={{ borderColor: BORDER }} className="border rounded-lg p-2 mt-2 space-y-2">
+          <div className="text-xs font-semibold">Guardar este pedido…</div>
+          <button
+            onClick={() => {
+              onPark();
+              setGuardarOpen(false);
+            }}
+            style={{ borderColor: BORDER, color: INK }}
+            className="w-full border rounded-lg px-2 py-1.5 text-sm text-left"
+          >
+            Em espera (sem mesa)
+          </button>
+          {mesas.length > 0 && (
+            <>
+              <div className="text-xs" style={{ color: MUTED }}>
+                Ou numa mesa:
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {mesas.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      onGuardarMesa && onGuardarMesa(m.id);
+                      setGuardarOpen(false);
+                    }}
+                    style={{ borderColor: GOLD, background: SOFTGOLD, color: INK }}
+                    className="border rounded-lg px-1.5 py-1.5 text-xs font-medium truncate"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {mesas.length === 0 && (
+            <div className="text-xs" style={{ color: MUTED }}>
+              Ainda não há mesas criadas. Crie mesas na aba "Mesas".
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

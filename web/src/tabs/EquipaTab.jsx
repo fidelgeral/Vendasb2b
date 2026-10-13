@@ -4,6 +4,7 @@ import { ROLE_LABELS } from "../lib/utils.js";
 import { AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 
 export default function EquipaTab({ store, setStore, api }) {
+  const restauranteAtivo = !!(store.config.modules.restaurante || store.config.modules.bar);
   const blank = { name: "", email: "", phone: "", password: "", role: "caixa", docId: "" };
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
@@ -83,7 +84,7 @@ export default function EquipaTab({ store, setStore, api }) {
               <option value="dono">Administrador</option>
               <option value="gerente">Gerente</option>
               <option value="caixa">Operador de Caixa</option>
-              <option value="cozinha">Cozinha / Bar</option>
+              {(restauranteAtivo || form.role === "cozinha") && <option value="cozinha">Cozinha / Bar</option>}
             </select>
           </div>
           <div>

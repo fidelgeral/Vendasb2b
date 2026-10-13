@@ -5,7 +5,7 @@ import { ProductCard, CheckoutPanel } from "../components/Shared.jsx";
 import { Minus, Plus, Trash2, PlayCircle } from "../lib/icons.jsx";
 import BarcodeScanner from "../components/BarcodeScanner.jsx";
 
-export default function VenderTab({ store, setStore, api, finalizeSale, voidSale, shiftOpen, canDiscount, canVoid, showToast, paymentMethods }) {
+export default function VenderTab({ store, setStore, api, finalizeSale, voidSale, shiftOpen, canDiscount, canVoid, showToast, paymentMethods, restauranteAtivo }) {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
   const [variantPicker, setVariantPicker] = useState(null);
@@ -159,6 +159,26 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     setCart([]);
     showToast("Venda colocada em espera");
   };
+  const guardarEmMesa = async (tableId) => {
+    if (cart.length === 0) return;
+    let next = store;
+    if (!store.comandas.find((c) => c.tableId === tableId)) {
+      next = await api.openComanda(tableId);
+      setStore(next);
+    }
+    const comanda = next.comandas.find((c) => c.tableId === tableId);
+    const merged = (comanda?.items || []).map((it) => ({ ...it }));
+    for (const l of cart) {
+      const found = merged.find((it) => it.productId === l.productId && it.name === l.name);
+      if (found) found.qty += l.qty;
+      else merged.push({ productId: l.productId, name: l.name, price: l.price, cost: l.cost, qty: l.qty });
+    }
+    setStore(await api.setComandaItems(tableId, merged));
+    setCart([]);
+    const mesa = store.tables.find((t) => t.id === tableId);
+    showToast("Pedido guardado em " + (mesa ? mesa.label : "mesa"));
+  };
+
   const addClientInline = async ({ name, phone }) => {
     const prevIds = new Set(store.clients.map((c) => c.id));
     const next = await api.createClient({ name, phone });
@@ -328,7 +348,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             ))}
           </div>
           <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-2 mt-2">
-            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
+            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
           </div>
         </div>
       </div>

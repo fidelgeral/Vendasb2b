@@ -412,6 +412,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             canVoid={canVoid}
             showToast={showToast}
             paymentMethods={paymentMethods}
+            restauranteAtivo={modules.restaurante || modules.bar}
           />
         )}
         {tab === "mesas" && (
