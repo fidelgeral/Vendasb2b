@@ -1,5 +1,6 @@
 import { fmtMT, saveBlob } from "./utils.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./theme.js";
+import { code128SVG } from "./barcode.js";
 
 // Bibliotecas pesadas (jsPDF ~1 MB, XLSX) carregadas só quando é preciso gerar
 // um PDF ou um Excel — assim não pesam no arranque da aplicação.
@@ -239,7 +240,7 @@ export function imprimirEtiquetas(produtos, empresaNome) {
   const cells = produtos
     .map(
       (p) => '<div class="et"><div class="nome">' + String(p.name).replace(/</g, "&lt;") + "</div>" +
-        (p.codigo ? '<div class="cod">' + String(p.codigo).replace(/</g, "&lt;") + "</div>" : '<div class="cod">&nbsp;</div>') +
+        (p.codigo ? '<div class="bc">' + code128SVG(p.codigo, { height: 34, moduleWidth: 1.4, textSize: 9 }) + "</div>" : '<div class="cod">&nbsp;</div>') +
         '<div class="preco">' + fmtMT(p.price) + "</div></div>"
     )
     .join("");
@@ -250,6 +251,7 @@ export function imprimirEtiquetas(produtos, empresaNome) {
       ".et{border:1px solid #bbb;border-radius:3mm;padding:3mm;text-align:center;page-break-inside:avoid;}" +
       ".nome{font-size:9pt;font-weight:600;min-height:9mm;}" +
       ".cod{font-size:7pt;color:#666;font-family:monospace;margin:1mm 0;}" +
+      ".bc{margin:1.5mm 0;}.bc svg{max-width:100%;height:auto;}" +
       ".preco{font-size:15pt;font-weight:800;color:#059669;}" +
       "@media print{ @page{margin:8mm;} }" +
       "</style></head><body><h1>" + String(empresaNome || "").replace(/</g, "&lt;") + " — etiquetas de preço</h1><div class=\"grid\">" + cells + "</div>" +
