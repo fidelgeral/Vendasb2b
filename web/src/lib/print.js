@@ -289,34 +289,80 @@ export async function exportReportPDF(title, columns, rows, meta) {
     const { jsPDF, autoTable } = await loadPdf();
     const doc = new jsPDF({ orientation: columns.length > 6 ? "landscape" : "portrait", unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
+    const emp = (meta && meta.empresa) || {};
+
+    // Logótipo da empresa (canto superior direito), proporcional.
+    if (emp.logo) {
+      try {
+        const props = doc.getImageProperties(emp.logo);
+        const maxW = 120;
+        const maxH = 54;
+        const r = Math.min(maxW / props.width, maxH / props.height);
+        const lw = props.width * r;
+        const lh = props.height * r;
+        doc.addImage(emp.logo, "PNG", pageW - 40 - lw, 30, lw, lh);
+      } catch (e) {
+        /* logótipo inválido: ignora */
+      }
+    }
+
+    // Cabeçalho com os dados da empresa.
+    let y = 44;
     doc.setFontSize(15);
-    doc.setTextColor(79, 70, 229);
-    doc.text(BRAND_NAME, 40, 40);
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text(BRAND_TAGLINE, 40, 54);
-    doc.setFontSize(13);
     doc.setTextColor(20, 20, 20);
-    doc.text(title, 40, 82);
-    doc.setFontSize(9);
+    doc.text(emp.nome || (meta && meta.business) || BRAND_NAME, 40, y);
+    y += 14;
+    doc.setFontSize(8);
+    doc.setTextColor(110, 110, 110);
+    [
+      [emp.endereco, emp.bairro, emp.cidade, emp.provincia].filter(Boolean).join(", "),
+      emp.nuit ? "NUIT: " + emp.nuit : "",
+      [emp.contacto, emp.contacto2, emp.email].filter(Boolean).join(" · "),
+    ]
+      .filter(Boolean)
+      .forEach((l) => { doc.text(String(l), 40, y); y += 11; });
+
+    // Linha divisória.
+    y += 4;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(40, y, pageW - 40, y);
+    y += 16;
+
+    // Título do relatório + metadados.
+    doc.setFontSize(13);
+    doc.setTextColor(30, 91, 168);
+    doc.text(title, 40, y);
+    y += 14;
+    doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
-    const sub = [meta && meta.business, meta && meta.period, "Emitido em " + new Date().toLocaleString("pt-PT")].filter(Boolean).join("   ·   ");
-    doc.text(sub, 40, 96);
+    const sub = [meta && meta.period, "Emitido em " + new Date().toLocaleString("pt-PT"), BRAND_NAME].filter(Boolean).join("   ·   ");
+    doc.text(sub, 40, y);
+    y += 10;
+
     autoTable(doc, {
       head: [columns],
       body: rows.map((r) => r.map((v) => (v === null || v === undefined ? "" : String(v)))),
-      startY: 112,
+      startY: y,
       styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: [30, 91, 168], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [244, 248, 246] },
       margin: { left: 40, right: 40 },
+      // Valores negativos a vermelho (saídas de caixa, prejuízos, dívidas) —
+      // igual aos relatórios de referência.
+      didParseCell: (data) => {
+        if (data.section === "body" && /^-\s*[\d.,]/.test(String(data.cell.raw).trim())) {
+          data.cell.styles.textColor = [190, 30, 45];
+        }
+      },
     });
     const total = doc.internal.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
-      doc.text(BRAND_NAME + " — página " + i + " de " + total, pageW / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
+      const footY = doc.internal.pageSize.getHeight() - 20;
+      doc.text("Gerado pelo Sistema " + BRAND_NAME, 40, footY);
+      doc.text("Página " + i + " de " + total, pageW - 40, footY, { align: "right" });
     }
     saveBlob(title.replace(/[^\w-]+/g, "_").toLowerCase() + ".pdf", doc.output("blob"));
     return true;

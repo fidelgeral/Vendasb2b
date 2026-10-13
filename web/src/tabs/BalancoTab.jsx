@@ -148,7 +148,7 @@ export default function BalancoTab({ store, api }) {
   const data = { ...store, ...hist };
   const sales = hist.sales.filter((s) => s.status !== "void" && inPeriod(s.date, from, to));
   const periodLabel = from || to ? "Período: " + (from || "início") + " a " + (to || "hoje") : "Período: todo o histórico";
-  const meta = { business: store.config.businessName, period: periodLabel };
+  const meta = { business: store.config.businessName, period: periodLabel, empresa: store.config.empresa };
 
   const groups = [
     { id: "vendas", label: "VENDAS", color: "#7C3AED" },
