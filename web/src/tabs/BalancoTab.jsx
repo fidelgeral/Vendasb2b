@@ -274,7 +274,18 @@ function VendasReports({ store, sales, report, meta }) {
             <DonutChart data={donutPagamentos} size={120} />
           </div>
         )}
-        <ReportTable title="Extrato de Vendas" columns={["ID", "Data", "Cliente", "Vendedor", "Desconto", "Total", "Lucro", "Pagamento"]} rows={rows} meta={meta} align={["l", "l", "l", "l", "r", "r", "r", "l"]} />
+        <ReportTable
+          title="Extrato de Vendas"
+          columns={["ID", "Data", "Cliente", "Vendedor", "Desconto", "Total", "Lucro", "Pagamento"]}
+          rows={rows}
+          meta={{ ...meta, kpis: [
+            { label: "Nº de vendas", value: String(sales.length) },
+            { label: "Facturação", value: fmtMT(totalFat) },
+            { label: "Descontos", value: fmtMT(totalDesc) },
+            { label: "Lucro", value: fmtMT(totalLucro), color: "green" },
+          ] }}
+          align={["l", "l", "l", "l", "r", "r", "r", "l"]}
+        />
       </div>
     );
   }

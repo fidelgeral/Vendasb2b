@@ -337,7 +337,31 @@ export async function exportReportPDF(title, columns, rows, meta) {
     doc.setTextColor(120, 120, 120);
     const sub = [meta && meta.period, "Emitido em " + new Date().toLocaleString("pt-PT"), BRAND_NAME].filter(Boolean).join("   ·   ");
     doc.text(sub, 40, y);
-    y += 10;
+    y += 12;
+
+    // Cartões de KPI no topo (resumo), como nos relatórios de referência.
+    const kpis = (meta && Array.isArray(meta.kpis) ? meta.kpis : []).slice(0, 4);
+    if (kpis.length) {
+      const gap = 10;
+      const cardW = (pageW - 80 - gap * (kpis.length - 1)) / kpis.length;
+      const cardH = 46;
+      kpis.forEach((k, i) => {
+        const cx = 40 + i * (cardW + gap);
+        doc.setFillColor(245, 247, 250);
+        doc.roundedRect(cx, y, cardW, cardH, 6, 6, "F");
+        doc.setFontSize(7.5);
+        doc.setTextColor(120, 120, 120);
+        doc.text(String(k.label || "").toUpperCase(), cx + 10, y + 16);
+        const val = String(k.value == null ? "" : k.value);
+        const neg = k.color === "red" || /^-\s*[\d.,]/.test(val.trim());
+        doc.setFontSize(13);
+        if (k.color === "green") doc.setTextColor(16, 122, 72);
+        else if (neg) doc.setTextColor(190, 30, 45);
+        else doc.setTextColor(30, 91, 168);
+        doc.text(val, cx + 10, y + 35);
+      });
+      y += cardH + 14;
+    }
 
     autoTable(doc, {
       head: [columns],
