@@ -98,10 +98,14 @@ export function NotificationBell({ alerts, onGo }) {
 }
 
 // Foto de produto: comprimida no browser e guardada como data URL (sem serviço de storage à parte).
-export function PhotoPicker({ value, onChange }) {
+export function PhotoPicker({ value, onChange, api }) {
   const [mode, setMode] = useState("upload");
   const [urlInput, setUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [resultados, setResultados] = useState(null); // null = ainda não pesquisou
+  const [aPesquisar, setAPesquisar] = useState(false);
+  const [erroBusca, setErroBusca] = useState("");
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -116,48 +120,89 @@ export function PhotoPicker({ value, onChange }) {
     setUploading(false);
   };
 
+  const pesquisar = async () => {
+    const q = busca.trim();
+    if (!q || !api || aPesquisar) return;
+    setAPesquisar(true);
+    setErroBusca("");
+    try {
+      const r = await api.searchImages(q);
+      setResultados(r);
+      if (!r.length) setErroBusca("Nenhuma imagem encontrada. Tente outro nome.");
+    } catch (e) {
+      setResultados([]);
+      setErroBusca("Não foi possível pesquisar imagens agora.");
+    }
+    setAPesquisar(false);
+  };
+
+  const Tab = ({ id, children }) => (
+    <button type="button" onClick={() => setMode(id)} style={{ color: mode === id ? TEAL : MUTED }} className="text-xs font-medium flex items-center gap-1">
+      {children}
+    </button>
+  );
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-start gap-2">
       {value ? (
-        <img src={value} alt="" style={{ borderColor: BORDER }} className="w-12 h-12 rounded-lg object-cover border" />
+        <img src={value} alt="" style={{ borderColor: BORDER }} className="w-12 h-12 rounded-lg object-cover border shrink-0" />
       ) : (
-        <div style={{ background: BG, borderColor: BORDER }} className="w-12 h-12 rounded-lg border flex items-center justify-center">
+        <div style={{ background: BG, borderColor: BORDER }} className="w-12 h-12 rounded-lg border flex items-center justify-center shrink-0">
           <ImageOff size={16} style={{ color: MUTED }} />
         </div>
       )}
-      <div className="flex-1">
-        <div className="flex gap-2 mb-1">
-          <button type="button" onClick={() => setMode("upload")} style={{ color: mode === "upload" ? TEAL : MUTED }} className="text-xs font-medium">
-            Carregar do PC
-          </button>
-          <span style={{ color: MUTED }} className="text-xs">
-            ·
-          </span>
-          <button type="button" onClick={() => setMode("url")} style={{ color: mode === "url" ? TEAL : MUTED }} className="text-xs font-medium flex items-center gap-1">
-            <Link2 size={11} /> Usar URL
-          </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex gap-2 mb-1 flex-wrap items-center">
+          <Tab id="upload">Carregar do PC</Tab>
+          <span style={{ color: MUTED }} className="text-xs">·</span>
+          <Tab id="url"><Link2 size={11} /> Usar URL</Tab>
+          {api && <><span style={{ color: MUTED }} className="text-xs">·</span><Tab id="busca">🔍 Pesquisar imagem</Tab></>}
         </div>
-        {mode === "upload" ? (
+        {mode === "upload" && (
           <>
             <input type="file" accept="image/*" onChange={handleFile} className="text-xs w-full" disabled={uploading} />
-            {uploading && (
-              <div className="text-xs" style={{ color: MUTED }}>
-                A carregar…
+            {uploading && <div className="text-xs" style={{ color: MUTED }}>A carregar…</div>}
+          </>
+        )}
+        {mode === "url" && (
+          <div className="flex gap-1">
+            <input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://…" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1 text-xs flex-1" />
+            <button type="button" onClick={() => onChange(urlInput)} style={{ color: TEAL }} className="text-xs font-medium">Usar</button>
+          </div>
+        )}
+        {mode === "busca" && (
+          <div>
+            <div className="flex gap-1">
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); pesquisar(); } }}
+                placeholder="Ex: pão francês, coca-cola…"
+                style={{ borderColor: BORDER }}
+                className="border rounded-lg px-2 py-1 text-xs flex-1"
+              />
+              <button type="button" onClick={pesquisar} disabled={aPesquisar} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-50">
+                {aPesquisar ? "…" : "Pesquisar"}
+              </button>
+            </div>
+            <div className="text-[10px] mt-1" style={{ color: MUTED }}>Só imagens livres de direitos de autor (Openverse / Creative Commons).</div>
+            {erroBusca && <div className="text-[11px] mt-1" style={{ color: MUTED }}>{erroBusca}</div>}
+            {resultados && resultados.length > 0 && (
+              <div className="grid grid-cols-5 gap-1 mt-2 max-h-40 overflow-auto">
+                {resultados.map((img) => (
+                  <button
+                    key={img.id}
+                    type="button"
+                    onClick={() => onChange(img.thumbnail || img.url)}
+                    title={[img.title, img.license ? "Licença " + img.license : ""].filter(Boolean).join(" · ")}
+                    style={{ borderColor: value === (img.thumbnail || img.url) ? TEAL : BORDER }}
+                    className="border rounded-lg overflow-hidden aspect-square hover:opacity-80"
+                  >
+                    <img src={img.thumbnail || img.url} alt={img.title} loading="lazy" className="w-full h-full object-cover" />
+                  </button>
+                ))}
               </div>
             )}
-          </>
-        ) : (
-          <div className="flex gap-1">
-            <input
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://…"
-              style={{ borderColor: BORDER }}
-              className="border rounded-lg px-2 py-1 text-xs flex-1"
-            />
-            <button type="button" onClick={() => onChange(urlInput)} style={{ color: TEAL }} className="text-xs font-medium">
-              Usar
-            </button>
           </div>
         )}
       </div>

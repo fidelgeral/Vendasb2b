@@ -294,6 +294,34 @@ storeRouter.get("/audit-entidade", async (req, res) => {
   res.json({ movimentos });
 });
 
+// Pesquisa de imagens livres de direitos de autor (proxy para a API do
+// Openverse). Só devolve imagens com licença que permite uso comercial e
+// modificação, para serem seguras num negócio. Sem chave de API.
+storeRouter.get("/image-search", async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  if (!q) return res.json({ results: [] });
+  try {
+    const url =
+      "https://api.openverse.org/v1/images/?" +
+      new URLSearchParams({ q, license_type: "commercial,modification", page_size: "20", mature: "false" }).toString();
+    const r = await fetch(url, { headers: { "User-Agent": "VENDASB2B/1.0 (POS)" } });
+    if (!r.ok) return res.status(502).json({ error: "Não foi possível pesquisar imagens agora.", results: [] });
+    const data = await r.json();
+    const results = (data.results || []).map((it) => ({
+      id: it.id,
+      thumbnail: it.thumbnail || it.url,
+      url: it.url,
+      title: it.title || "",
+      source: it.source || "",
+      license: (it.license || "").toUpperCase(),
+      creator: it.creator || "",
+    }));
+    res.json({ results });
+  } catch (e) {
+    res.status(502).json({ error: "Não foi possível pesquisar imagens agora.", results: [] });
+  }
+});
+
 storeRouter.get("/history", async (req, res) => {
   const businessId = req.params.businessId;
   const from = req.query.from || "1900-01-01";

@@ -432,7 +432,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
 
           <div className="mb-3">
             <label className="text-xs block mb-1" style={{ color: MUTED }}>Imagem do produto</label>
-            <PhotoPicker value={form.foto} onChange={(v) => set("foto", v)} />
+            <PhotoPicker value={form.foto} onChange={(v) => set("foto", v)} api={api} />
           </div>
 
           {erro && (
