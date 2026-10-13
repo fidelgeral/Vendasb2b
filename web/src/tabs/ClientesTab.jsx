@@ -191,23 +191,23 @@ export default function ClientesTab({ store, setStore, api }) {
         <DetalhesModal
           title={verCliente.name}
           linhas={[
-            ["Tipo", verCliente.tipo || "—"],
-            ["Telefone", verCliente.phone || "—"],
-            ["Email", verCliente.email || "—"],
-            ["NUIT", verCliente.nuit || "—"],
-            ["Endereço", verCliente.endereco || "—"],
-            ["Cidade / Província", verCliente.cidade || "—"],
-            ["Limite de crédito", verCliente.creditLimit > 0 ? fmtMT(verCliente.creditLimit) : "—"],
-            ["Dívida atual", fmtMT((verCliente.debts || []).reduce((s, d) => s + d.amount, 0))],
-            ["Pontos de fidelidade", String(verCliente.points || 0)],
-            ["Notas", verCliente.notas || "—"],
+            { label: "Tipo", value: verCliente.tipo },
+            { label: "Telefone", value: verCliente.phone },
+            { label: "Email", value: verCliente.email },
+            { label: "NUIT", value: verCliente.nuit },
+            { label: "Endereço", value: verCliente.endereco },
+            { label: "Cidade / Província", value: verCliente.cidade },
+            { label: "Limite de crédito", value: verCliente.creditLimit > 0 ? fmtMT(verCliente.creditLimit) : "—" },
+            { label: "Dívida atual", value: fmtMT((verCliente.debts || []).reduce((s, d) => s + d.amount, 0)) },
+            { label: "Pontos de fidelidade", value: String(verCliente.points || 0) },
+            { label: "Notas", value: verCliente.notas },
           ]}
           onClose={() => setVerCliente(null)}
         />
       )}
       {histCliente && (
         <HistoricoEntidadeModal
-          title={`Histórico — ${histCliente.name}`}
+          title={histCliente.name}
           api={api}
           tipo="cliente"
           id={histCliente.id}

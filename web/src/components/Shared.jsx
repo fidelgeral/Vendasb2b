@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, BG, PRICE_GREEN, GREEN, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock, isLowStock, compressImageFile } from "../lib/utils.js";
-import { Bell, AlertTriangle, ImageOff, Link2, Package, Percent, Split, X, Settings, Scale, Trash2 } from "../lib/icons.jsx";
+import { Bell, AlertTriangle, ImageOff, Link2, Package, Percent, Split, X, Trash2 } from "../lib/icons.jsx";
 
 const PAYMENT_COLORS = { dinheiro: "#10B981", mpesa: "#DC2626", emola: "#EA580C", fiado: "#7C3AED" };
 
@@ -243,6 +243,27 @@ function EyeIcon({ size = 14 }) {
   );
 }
 
+// Ícone de "editar" (lápis).
+export function PencilIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+// Ícone de "histórico" (relógio com seta).
+export function ClockIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v5h5" />
+      <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
+      <path d="M12 7v5l4 2" />
+    </svg>
+  );
+}
+
 // Conjunto reutilizável de acções por entidade: Visualizar, Editar, Histórico,
 // Apagar. Cada botão só aparece se a respectiva função for passada.
 export function AcoesEntidade({ onVer, onEditar, onHistorico, onApagar, size = "sm" }) {
@@ -254,9 +275,9 @@ export function AcoesEntidade({ onVer, onEditar, onHistorico, onApagar, size = "
   );
   return (
     <div className="flex items-center gap-1">
-      {onVer && <Btn title="Visualizar" onClick={onVer}><EyeIcon size={14} /></Btn>}
-      {onEditar && <Btn title="Editar" onClick={onEditar}><Settings size={13} /></Btn>}
-      {onHistorico && <Btn title="Histórico (quem alterou e quando)" onClick={onHistorico}><Scale size={13} /></Btn>}
+      {onVer && <Btn title="Visualizar" onClick={onVer} color={TEAL}><EyeIcon size={14} /></Btn>}
+      {onEditar && <Btn title="Editar" onClick={onEditar} color={TEAL}><PencilIcon size={13} /></Btn>}
+      {onHistorico && <Btn title="Histórico (quem alterou e quando)" onClick={onHistorico} color={INK}><ClockIcon size={13} /></Btn>}
       {onApagar && <Btn title="Apagar" onClick={onApagar} color={BRICK}><Trash2 size={13} /></Btn>}
     </div>
   );

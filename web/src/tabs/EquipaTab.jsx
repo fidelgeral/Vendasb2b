@@ -155,18 +155,18 @@ export default function EquipaTab({ store, setStore, api }) {
         <DetalhesModal
           title={verFunc.name}
           linhas={[
-            ["Email", verFunc.email || "—"],
-            ["Telefone", verFunc.phone || "—"],
-            ["Função", ROLE_LABELS[verFunc.role] || verFunc.role],
-            ["Nº de documento", verFunc.docId || "—"],
-            ["Estado", verFunc.active !== false ? "Ativo" : "Inativo"],
+            { label: "Email", value: verFunc.email },
+            { label: "Telefone", value: verFunc.phone },
+            { label: "Função", value: ROLE_LABELS[verFunc.role] || verFunc.role },
+            { label: "Nº de documento", value: verFunc.docId },
+            { label: "Estado", value: verFunc.active !== false ? "Ativo" : "Inativo" },
           ]}
           onClose={() => setVerFunc(null)}
         />
       )}
       {histFunc && (
         <HistoricoEntidadeModal
-          title={`Histórico — ${histFunc.name}`}
+          title={histFunc.name}
           api={api}
           tipo="funcionario"
           id={histFunc.id}

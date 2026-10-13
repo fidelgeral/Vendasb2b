@@ -2,9 +2,9 @@ import { useMemo, useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK, INK } from "../lib/theme.js";
 import { fmtMT, getStock, daysUntil, todayStr, mapImportRow } from "../lib/utils.js";
 import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
-import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, Settings, ArrowDownCircle, PackageX, Scale, X } from "../lib/icons.jsx";
+import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, ArrowDownCircle, PackageX, X } from "../lib/icons.jsx";
 import { getSession } from "../lib/api.js";
-import { SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
+import { SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal, PencilIcon, ClockIcon } from "../components/Shared.jsx";
 
 const GOLD = "#F59E0B";
 
@@ -438,8 +438,8 @@ function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, on
           {isLote ? (
             <>
               <IconBtn title="Entrada (adicionar quantidade)" onClick={onEntrada} color={GREEN}><ArrowDownCircle size={14} /></IconBtn>
-              <IconBtn title="Editar lote" onClick={onEditar}><Settings size={13} /></IconBtn>
-              <IconBtn title="Histórico" onClick={onHistorico}><Scale size={13} /></IconBtn>
+              <IconBtn title="Editar lote" onClick={onEditar} color={TEAL}><PencilIcon size={13} /></IconBtn>
+              <IconBtn title="Histórico" onClick={onHistorico}><ClockIcon size={13} /></IconBtn>
               <IconBtn title="Quebra" onClick={onQuebra} color={GOLD}><PackageX size={13} /></IconBtn>
               <IconBtn title="Apagar lote" onClick={onApagar} color={BRICK}><Trash2 size={13} /></IconBtn>
             </>

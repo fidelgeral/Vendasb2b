@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK } from "../lib/theme.js";
+import { CARD, BORDER, MUTED, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, getStock, UNIDADES, IVA_TAXAS } from "../lib/utils.js";
-import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar } from "../components/Shared.jsx";
+import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 import { Plus, X, Package } from "../lib/icons.jsx";
 
 export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
@@ -37,6 +37,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
   const [showCategorias, setShowCategorias] = useState(false);
   const [ingSel, setIngSel] = useState({ productId: "", qty: "" });
   const [erro, setErro] = useState("");
+  const [verProduto, setVerProduto] = useState(null);
+  const [histProduto, setHistProduto] = useState(null);
+
+  const nomeFornecedor = useMemo(() => Object.fromEntries((store.suppliers || []).map((s) => [s.id, s.name])), [store.suppliers]);
 
   const categories = store.categories && store.categories.length ? store.categories : [...new Set(store.products.map((p) => p.category).filter(Boolean))].sort();
   const activeCount = store.products.filter((p) => p.active !== false).length;
@@ -127,9 +131,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
     setErro("");
   };
 
-  const removeProduct = async (id) => {
+  const removeProduct = async (p) => {
+    if (!window.confirm(`Apagar o produto "${p.name}"? Esta ação não pode ser desfeita.`)) return;
     try {
-      setStore(await api.deleteProduct(id));
+      setStore(await api.deleteProduct(p.id));
     } catch (e) {
       setErro(e.message);
     }
@@ -489,8 +494,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             key={p.id}
             p={p}
             produtos={store.products}
-            onRemove={() => removeProduct(p.id)}
+            onRemove={() => removeProduct(p)}
             onEdit={() => startEdit(p)}
+            onVer={() => setVerProduto(p)}
+            onHistorico={() => setHistProduto(p)}
             onToggleActive={() => updateProduct(p.id, { active: p.active === false })}
           />
         ))}
@@ -512,11 +519,34 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           onClose={() => setShowCategorias(false)}
         />
       )}
+
+      {verProduto && (
+        <DetalhesModal
+          title={verProduto.name}
+          onClose={() => setVerProduto(null)}
+          linhas={[
+            { label: "Tipo", value: verProduto.tipo === "variacao" ? "Variação" : verProduto.tipo === "composicao" ? "Composição" : "Simples" },
+            { label: "Categoria", value: verProduto.category },
+            { label: "Código", value: verProduto.codigo },
+            { label: "Unidade", value: verProduto.unit },
+            { label: "Preço de venda", value: fmtMT(verProduto.price) },
+            { label: "Custo unitário", value: fmtMT(verProduto.cost) },
+            { label: "Margem", value: fmtMT((verProduto.price || 0) - (verProduto.cost || 0)) },
+            { label: "Stock actual", value: `${getStock(verProduto, store.products)} ${verProduto.unit || "un"}` },
+            { label: "Stock mínimo", value: String(verProduto.minStock || 0) },
+            { label: "Fornecedor", value: nomeFornecedor[verProduto.fornecedorId] },
+            { label: "Estado", value: verProduto.active === false ? "Inativo" : "Activo" },
+          ]}
+        />
+      )}
+      {histProduto && (
+        <HistoricoEntidadeModal title={histProduto.name} api={api} tipo="produto" id={histProduto.id} onClose={() => setHistProduto(null)} />
+      )}
     </div>
   );
 }
 
-function ProdutoRow({ p, produtos, onRemove, onEdit, onToggleActive }) {
+function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggleActive }) {
   const active = p.active !== false;
   const stock = getStock(p, produtos);
   const tipoInfo =
@@ -565,12 +595,7 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onToggleActive }) {
           <button onClick={onToggleActive} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
             {active ? "Desativar" : "Ativar"}
           </button>
-          <button onClick={onEdit} style={{ color: TEAL }} className="text-xs font-medium">
-            Editar
-          </button>
-          <button onClick={onRemove}>
-            <X size={15} style={{ color: BRICK }} />
-          </button>
+          <AcoesEntidade onVer={onVer} onEditar={onEdit} onHistorico={onHistorico} onApagar={onRemove} />
         </div>
       </div>
     </div>
