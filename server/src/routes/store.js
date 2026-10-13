@@ -10,7 +10,7 @@ const DEFAULT_CONFIG = {
   modules: { mercearia: true, restaurante: false, bar: false, roupa: false, padaria: false },
   receiptMessage: "Obrigado pela preferência! Volte sempre.",
   impressao: { papel: "80mm", visorCliente: false, imprimirAoFinalizar: false, scannerUsb: true },
-  iva: { taxa: 16, precosIncluemIva: true, isento: false, taxas: [0, 5, 16] },
+  iva: { taxa: 0, precosIncluemIva: true, isento: false, taxas: [] },
   contas: {
     dinheiro: { activo: true },
     mpesa: { activo: true, numero: "", titular: "" },

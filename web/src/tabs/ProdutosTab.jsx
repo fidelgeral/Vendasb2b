@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CARD, BORDER, MUTED, GREEN, BRICK } from "../lib/theme.js";
-import { fmtMT, getStock, UNIDADES, IVA_TAXAS } from "../lib/utils.js";
+import { fmtMT, getStock, UNIDADES } from "../lib/utils.js";
 import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 import { Plus, X, Package } from "../lib/icons.jsx";
 
@@ -343,8 +343,8 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Taxa de IVA</label>
               <select value={form.ivaTaxa} onChange={(e) => set("ivaTaxa", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
-                <option value="">Usar a do sistema</option>
-                {IVA_TAXAS.map((t) => (
+                <option value="">Usar a taxa padrão da venda</option>
+                {(store.config.iva.taxas || []).map((t) => (
                   <option key={t} value={t}>
                     {t}%
                   </option>

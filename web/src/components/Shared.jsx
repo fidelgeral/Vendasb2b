@@ -559,9 +559,12 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const [guardarOpen, setGuardarOpen] = useState(false);
   const temMesas = Array.isArray(mesas);
 
-  // IVA: só as taxas configuradas no Config aparecem como opção
-  const taxasDisponiveis = Array.isArray(ivaConfig?.taxas) && ivaConfig.taxas.length ? ivaConfig.taxas : [Number(ivaConfig?.taxa) || 0];
-  const [ivaRateSel, setIvaRateSel] = useState(Number(ivaConfig?.taxa) || taxasDisponiveis[0] || 0);
+  // IVA: só as taxas que o utilizador criou no Config aparecem como opção.
+  // Sem taxas configuradas, não se aplica IVA (nada vem predefinido do sistema).
+  const taxasDisponiveis = Array.isArray(ivaConfig?.taxas) ? ivaConfig.taxas : [];
+  const [ivaRateSel, setIvaRateSel] = useState(
+    taxasDisponiveis.includes(Number(ivaConfig?.taxa)) ? Number(ivaConfig?.taxa) : taxasDisponiveis[0] || 0
+  );
 
   // Cliente novo (criar sem sair do ecrã de venda)
   const [novoCliente, setNovoCliente] = useState(false);

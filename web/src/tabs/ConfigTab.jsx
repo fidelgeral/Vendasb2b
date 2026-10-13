@@ -142,9 +142,7 @@ function ImpressaoConfig({ store, setStore, api }) {
 function IvaConfig({ store, setStore, api }) {
   const [precosIncluemIva, setPrecosIncluemIva] = useState(store.config.iva.precosIncluemIva);
   const [isento, setIsento] = useState(store.config.iva.isento);
-  const [taxas, setTaxas] = useState(
-    Array.isArray(store.config.iva.taxas) && store.config.iva.taxas.length ? [...store.config.iva.taxas] : [Number(store.config.iva.taxa) || 0]
-  );
+  const [taxas, setTaxas] = useState(Array.isArray(store.config.iva.taxas) ? [...store.config.iva.taxas] : []);
   const [padrao, setPadrao] = useState(Number(store.config.iva.taxa) || 0);
   const [nova, setNova] = useState("");
 
@@ -161,8 +159,8 @@ function IvaConfig({ store, setStore, api }) {
   };
 
   const save = async () => {
-    const lista = taxas.length ? taxas : [0];
-    const def = lista.includes(padrao) ? padrao : lista[0];
+    const lista = taxas;
+    const def = lista.includes(padrao) ? padrao : lista[0] || 0;
     setStore(await api.patchConfig({ iva: { taxa: Number(def) || 0, taxas: lista, precosIncluemIva, isento } }));
   };
 
