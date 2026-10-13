@@ -82,6 +82,26 @@ function inPeriod(dateIso, from, to) {
   return true;
 }
 
+// Período imediatamente anterior, com a mesma duração do período escolhido —
+// para a comparação "Atual vs Anterior". Só existe quando há uma data inicial.
+function periodoAnterior(from, to) {
+  if (!from) return null;
+  const f = new Date(from + "T00:00:00");
+  const t = to ? new Date(to + "T00:00:00") : new Date();
+  const dias = Math.max(1, Math.round((t - f) / 86400000) + 1);
+  const prevTo = new Date(f.getTime() - 86400000);
+  const prevFrom = new Date(prevTo.getTime() - (dias - 1) * 86400000);
+  return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
+}
+
+// Variação percentual entre dois valores, formatada (com sinal). "—" quando o
+// anterior é zero (não há base de comparação).
+function variacao(atual, anterior) {
+  if (!anterior) return "—";
+  const v = ((atual - anterior) / Math.abs(anterior)) * 100;
+  return (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+}
+
 const REPORTS = {
   vendas: [
     { id: "detalhado", label: "Detalhado" },
@@ -116,6 +136,7 @@ export default function BalancoTab({ store, api }) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [history, setHistory] = useState(null);
+  const [histPrev, setHistPrev] = useState(null);
   const [loadingHist, setLoadingHist] = useState(true);
 
   // Carrega o histórico completo do período só quando o Balanço está aberto — o
@@ -133,6 +154,26 @@ export default function BalancoTab({ store, api }) {
       .finally(() => {
         if (!cancel) setLoadingHist(false);
       });
+    return () => {
+      cancel = true;
+    };
+  }, [api, from, to]);
+
+  // Histórico do período anterior (para a comparação Atual vs Anterior).
+  useEffect(() => {
+    if (!api) return;
+    const prev = periodoAnterior(from, to);
+    if (!prev) {
+      setHistPrev(null);
+      return;
+    }
+    let cancel = false;
+    api
+      .getHistory(prev.from, prev.to)
+      .then((h) => {
+        if (!cancel) setHistPrev({ ...h, from: prev.from, to: prev.to });
+      })
+      .catch(() => {});
     return () => {
       cancel = true;
     };
@@ -216,7 +257,7 @@ export default function BalancoTab({ store, api }) {
       </div>
 
       {group === "vendas" && <VendasReports store={data} sales={sales} report={report} meta={meta} />}
-      {group === "financeiro" && <FinanceiroReports store={data} sales={sales} report={report} meta={meta} from={from} to={to} />}
+      {group === "financeiro" && <FinanceiroReports store={data} sales={sales} report={report} meta={meta} from={from} to={to} histPrev={histPrev} />}
       {group === "estoque" && <EstoqueReports store={data} report={report} meta={meta} from={from} to={to} sales={sales} />}
     </div>
   );
@@ -278,12 +319,18 @@ function VendasReports({ store, sales, report, meta }) {
           title="Extrato de Vendas"
           columns={["ID", "Data", "Cliente", "Vendedor", "Desconto", "Total", "Lucro", "Pagamento"]}
           rows={rows}
-          meta={{ ...meta, kpis: [
-            { label: "Nº de vendas", value: String(sales.length) },
-            { label: "Facturação", value: fmtMT(totalFat) },
-            { label: "Descontos", value: fmtMT(totalDesc) },
-            { label: "Lucro", value: fmtMT(totalLucro), color: "green" },
-          ] }}
+          meta={{ ...meta,
+            kpis: [
+              { label: "Nº de vendas", value: String(sales.length) },
+              { label: "Facturação", value: fmtMT(totalFat) },
+              { label: "Descontos", value: fmtMT(totalDesc) },
+              { label: "Lucro", value: fmtMT(totalLucro), color: "green" },
+            ],
+            charts: [
+              { type: "bar", title: "Facturação (últimos 14 dias)", labels: serieRot, values: serieFat },
+              ...(donutPagamentos.length ? [{ type: "hbar", title: "Formas de pagamento", data: donutPagamentos, color: [16, 122, 72] }] : []),
+            ],
+          }}
           align={["l", "l", "l", "l", "r", "r", "r", "l"]}
         />
       </div>
@@ -435,7 +482,7 @@ function VendasReports({ store, sales, report, meta }) {
   return null;
 }
 
-function FinanceiroReports({ store, sales, report, meta, from, to }) {
+function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
   const lucro = (s) => s.items.reduce((a, it) => a + (it.price - it.cost) * it.qty, 0);
   const movs = store.movimentosCaixa.filter((m) => inPeriod(m.date, from, to));
   const quebras = store.quebras.filter((q) => inPeriod(q.date, from, to));
@@ -459,14 +506,42 @@ function FinanceiroReports({ store, sales, report, meta, from, to }) {
       }
       return { fat, luc, rot };
     })();
+    // Métricas do período anterior (quando há comparação disponível).
+    const prev = histPrev
+      ? (() => {
+          const pSales = (histPrev.sales || []).filter((s) => s.status !== "void" && inPeriod(s.date, histPrev.from, histPrev.to));
+          const pQuebras = (histPrev.quebras || []).filter((q) => inPeriod(q.date, histPrev.from, histPrev.to));
+          const pMovs = (histPrev.movimentosCaixa || []).filter((m) => inPeriod(m.date, histPrev.from, histPrev.to));
+          const fat = pSales.reduce((a, s) => a + s.total, 0);
+          const lb = pSales.reduce((a, s) => a + lucro(s), 0);
+          const pd = pQuebras.reduce((a, q) => a + q.custoImpacto, 0);
+          const sd = pMovs.filter((m) => m.type === "saida").reduce((a, m) => a + m.amount, 0);
+          const en = pMovs.filter((m) => m.type === "entrada").reduce((a, m) => a + m.amount, 0);
+          return { fat, lb, pd, sd, en, real: lb - pd - sd + en };
+        })()
+      : null;
+
+    // Com comparação: 4 colunas (Rubrica | Atual | Anterior | Var %).
+    const linha = (label, atual, ant, sinal = "") => {
+      const f = (v) => (sinal === "-" ? "-" : sinal === "+" ? "+" : "") + fmtMT(v);
+      return prev ? [label, f(atual), f(ant), variacao(atual, ant)] : [label, f(atual)];
+    };
     const rows = [
-      ["Facturação total", fmtMT(faturamento)],
-      ["Lucro bruto (receita − custo)", fmtMT(lucroBruto)],
-      ["Quebras / perdas de stock", "-" + fmtMT(perdas)],
-      ["Saídas de caixa (despesas)", "-" + fmtMT(saidas)],
-      ["Entradas extra de caixa", "+" + fmtMT(entradas)],
-      ["Resultado líquido estimado", fmtMT(lucroReal)],
-      ["Dívidas de clientes (a receber)", fmtMT(dividas)],
+      linha("Facturação total", faturamento, prev && prev.fat),
+      linha("Lucro bruto (receita − custo)", lucroBruto, prev && prev.lb),
+      linha("Quebras / perdas de stock", perdas, prev && prev.pd, "-"),
+      linha("Saídas de caixa (despesas)", saidas, prev && prev.sd, "-"),
+      linha("Entradas extra de caixa", entradas, prev && prev.en, "+"),
+      linha("Resultado líquido estimado", lucroReal, prev && prev.real),
+      prev ? ["Dívidas de clientes (a receber)", fmtMT(dividas), "—", "—"] : ["Dívidas de clientes (a receber)", fmtMT(dividas)],
+    ];
+    const dreColumns = prev ? ["Rubrica", "Atual", "Anterior", "Var %"] : ["Rubrica", "Valor"];
+    const dreAlign = prev ? ["l", "r", "r", "r"] : ["l", "r"];
+    const dreKpis = [
+      { label: "Resultado líquido", value: fmtMT(lucroReal), color: lucroReal >= 0 ? "green" : "red" },
+      { label: "Facturação", value: fmtMT(faturamento) },
+      { label: "Lucro bruto", value: fmtMT(lucroBruto), color: "green" },
+      prev ? { label: "Var. resultado", value: variacao(lucroReal, prev.real) } : { label: "A receber", value: fmtMT(dividas) },
     ];
     return (
       <div className="space-y-3">
@@ -495,7 +570,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to }) {
             size={120}
           />
         </div>
-        <ReportTable title="Demonstração de Resultados" columns={["Rubrica", "Valor"]} rows={rows} meta={meta} align={["l", "r"]} />
+        <ReportTable title="Demonstração de Resultados" columns={dreColumns} rows={rows} meta={{ ...meta, kpis: dreKpis, period: prev ? meta.period + " (vs período anterior)" : meta.period }} align={dreAlign} />
       </div>
     );
   }

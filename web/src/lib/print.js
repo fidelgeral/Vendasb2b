@@ -275,6 +275,93 @@ export async function downloadWorkbook(rows, filename) {
   }
 }
 
+// ---- Gráficos simples para os relatórios PDF (desenhados com o jsPDF) ----
+const CHART_BLUE = [30, 91, 168];
+const CHART_GREEN = [16, 122, 72];
+
+function chartFrame(doc, x, y, w, h, title) {
+  doc.setDrawColor(228, 230, 235);
+  doc.setFillColor(250, 251, 253);
+  doc.roundedRect(x, y, w, h, 5, 5, "FD");
+  if (title) {
+    doc.setFontSize(9);
+    doc.setTextColor(40, 40, 40);
+    doc.text(String(title), x + 10, y + 16);
+  }
+}
+
+// Gráfico de barras verticais. c = { title, labels:[], values:[], color }
+function drawBarChart(doc, x, y, w, h, c) {
+  chartFrame(doc, x, y, w, h, c.title);
+  const padL = 12, padR = 12, padT = 26, padB = 20;
+  const plotX = x + padL, plotY = y + padT;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const vals = c.values || [];
+  const max = Math.max(1, ...vals);
+  const n = vals.length || 1;
+  const gap = Math.min(6, plotW / n / 3);
+  const bw = (plotW - gap * (n - 1)) / n;
+  const col = c.color || CHART_BLUE;
+  doc.setDrawColor(235, 235, 235);
+  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
+  vals.forEach((v, i) => {
+    const bh = max > 0 ? (v / max) * plotH : 0;
+    const bx = plotX + i * (bw + gap);
+    const by = plotY + plotH - bh;
+    doc.setFillColor(col[0], col[1], col[2]);
+    doc.rect(bx, by, bw, bh, "F");
+  });
+  // Rótulos (mostra alguns para não sobrepor).
+  doc.setFontSize(5.5);
+  doc.setTextColor(130, 130, 130);
+  const step = Math.ceil(n / 7);
+  (c.labels || []).forEach((lab, i) => {
+    if (i % step !== 0) return;
+    const bx = plotX + i * (bw + gap) + bw / 2;
+    doc.text(String(lab), bx, plotY + plotH + 10, { align: "center" });
+  });
+  doc.setFontSize(6.5);
+  doc.setTextColor(120, 120, 120);
+  doc.text(fmtMT(max), plotX, plotY - 4);
+}
+
+// Gráfico de barras horizontais. c = { title, data:[{label,value}], color }
+function drawHBarChart(doc, x, y, w, h, c) {
+  chartFrame(doc, x, y, w, h, c.title);
+  const data = (c.data || []).slice(0, 6);
+  const padL = 12, padT = 28, padB = 10;
+  const rowH = Math.min(22, (h - padT - padB) / Math.max(1, data.length));
+  const labelW = 90;
+  const barX = x + padL + labelW;
+  const barMaxW = w - padL - labelW - 60;
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const col = c.color || CHART_BLUE;
+  data.forEach((d, i) => {
+    const ry = y + padT + i * rowH;
+    doc.setFontSize(7);
+    doc.setTextColor(70, 70, 70);
+    doc.text(String(d.label).slice(0, 22), x + padL, ry + rowH / 2 + 2);
+    const bw = max > 0 ? (d.value / max) * barMaxW : 0;
+    doc.setFillColor(col[0], col[1], col[2]);
+    doc.roundedRect(barX, ry + 3, Math.max(1, bw), rowH - 7, 2, 2, "F");
+    doc.setFontSize(7);
+    doc.setTextColor(60, 60, 60);
+    doc.text(fmtMT(d.value), barX + bw + 4, ry + rowH / 2 + 2);
+  });
+}
+
+function renderCharts(doc, charts, x, yStart, pageW) {
+  let y = yStart;
+  for (const c of charts) {
+    const w = pageW - 80;
+    const h = c.type === "hbar" ? Math.min(130, 44 + ((c.data || []).length || 1) * 20) : 120;
+    if (c.type === "hbar") drawHBarChart(doc, x, y, w, h, c);
+    else drawBarChart(doc, x, y, w, h, c);
+    y += h + 12;
+  }
+  return y;
+}
+
 export async function exportReportExcel(title, columns, rows) {
   const data = rows.map((r) => {
     const o = {};
@@ -361,6 +448,13 @@ export async function exportReportPDF(title, columns, rows, meta) {
         doc.text(val, cx + 10, y + 35);
       });
       y += cardH + 14;
+    }
+
+    // Gráficos (quando o relatório os fornece).
+    const charts = meta && Array.isArray(meta.charts) ? meta.charts : [];
+    if (charts.length) {
+      y = renderCharts(doc, charts, 40, y, pageW);
+      y += 4;
     }
 
     autoTable(doc, {
