@@ -1,0 +1,51 @@
+name: Testes
+
+# Corre os testes automaticamente a cada push e em cada Pull Request para a
+# branch main. Se algum teste falhar (ou o build do frontend partir), o commit
+# fica marcado com ❌ e o Pull Request não pode ser fundido.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  web:
+    name: Frontend (web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Testes
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  server:
+    name: Backend (server)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      # Segredo só para os testes correrem (o jwt.js exige JWT_SECRET definido).
+      # Não é o segredo de produção — esse vive apenas no Render.
+      JWT_SECRET: ci-apenas-para-testes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Testes
+        run: npm test
