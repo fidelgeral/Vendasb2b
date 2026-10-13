@@ -498,15 +498,15 @@ function NovoLoteModal({ store, produtoInicial, onAdd, onClose, onCreateSupplier
   const [productId, setProductId] = useState(produtoInicial?.id || produtos[0]?.id || "");
   const [name, setName] = useState("");
   const [qty, setQty] = useState("");
-  const [costTotal, setCostTotal] = useState("");
+  const [custoUnit, setCustoUnit] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const prod = produtos.find((p) => p.id === productId);
-  const unit = Number(qty) > 0 && Number(costTotal) > 0 ? Number(costTotal) / Number(qty) : 0;
+  const total = (Number(qty) || 0) * (Number(custoUnit) || 0);
 
   const submit = () => {
     if (!productId || !(Number(qty) >= 0)) return;
-    onAdd({ productId, name: name || null, qty: Number(qty), costTotal: Number(costTotal) || 0, expiryDate: expiryDate || null, supplierId: supplierId || null });
+    onAdd({ productId, name: name || null, qty: Number(qty), costTotal: total, expiryDate: expiryDate || null, supplierId: supplierId || null });
   };
 
   return (
@@ -552,14 +552,14 @@ function NovoLoteModal({ store, produtoInicial, onAdd, onClose, onCreateSupplier
               <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
             </div>
             <div>
-              <label className="text-xs" style={{ color: MUTED }}>Preço Total de Custo *</label>
-              <input type="number" value={costTotal} onChange={(e) => setCostTotal(e.target.value)} placeholder="Ex: 100" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+              <label className="text-xs" style={{ color: MUTED }}>Custo de Compra por Unidade *</label>
+              <input type="number" value={custoUnit} onChange={(e) => setCustoUnit(e.target.value)} placeholder="Ex: 35" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
             </div>
           </div>
           <div style={{ background: "#F1F5F9" }} className="rounded-lg p-2.5 text-sm">
             <div className="flex justify-between"><span style={{ color: MUTED }}>Quantidade:</span><span>{Number(qty) || 0} Unidades</span></div>
-            <div className="flex justify-between"><span style={{ color: MUTED }}>Preço Unitário:</span><span>{fmtMT(unit)}</span></div>
-            <div className="flex justify-between font-semibold"><span>Preço Total:</span><span>{fmtMT(Number(costTotal) || 0)}</span></div>
+            <div className="flex justify-between"><span style={{ color: MUTED }}>Custo por Unidade:</span><span>{fmtMT(Number(custoUnit) || 0)}</span></div>
+            <div className="flex justify-between font-semibold"><span>Custo Total (calculado):</span><span>{fmtMT(total)}</span></div>
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} style={{ background: "#475569", color: "#fff" }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Cancelar</button>
@@ -574,14 +574,14 @@ function NovoLoteModal({ store, produtoInicial, onAdd, onClose, onCreateSupplier
 function MultiplosLotesModal({ store, onAdd, onClose, onCreateSupplier }) {
   const produtos = store.products.filter((p) => p.tipo === "simples" && !(p.variants && p.variants.length));
   const [supplierId, setSupplierId] = useState("");
-  const linhaVazia = () => ({ productId: "", qty: "", costTotal: "", expiryDate: "" });
+  const linhaVazia = () => ({ productId: "", qty: "", custoUnit: "", expiryDate: "" });
   const [linhas, setLinhas] = useState([linhaVazia(), linhaVazia(), linhaVazia()]);
   const set = (i, campo, val) => setLinhas((ls) => ls.map((l, idx) => (idx === i ? { ...l, [campo]: val } : l)));
   const validas = linhas.filter((l) => l.productId && Number(l.qty) >= 0 && l.qty !== "");
 
   const submit = () => {
     if (!validas.length) return;
-    onAdd({ supplierId: supplierId || null, lotes: validas.map((l) => ({ productId: l.productId, qty: Number(l.qty), costTotal: Number(l.costTotal) || 0, expiryDate: l.expiryDate || null })) });
+    onAdd({ supplierId: supplierId || null, lotes: validas.map((l) => ({ productId: l.productId, qty: Number(l.qty), costTotal: (Number(l.qty) || 0) * (Number(l.custoUnit) || 0), expiryDate: l.expiryDate || null })) });
   };
 
   return (
@@ -602,23 +602,25 @@ function MultiplosLotesModal({ store, onAdd, onClose, onCreateSupplier }) {
         </div>
         <div className="space-y-2">
           <div className="grid grid-cols-12 gap-1.5 text-[11px] font-semibold" style={{ color: MUTED }}>
-            <div className="col-span-5">PRODUTO *</div>
+            <div className="col-span-4">PRODUTO *</div>
             <div className="col-span-2">QTD *</div>
-            <div className="col-span-2">CUSTO TOTAL *</div>
-            <div className="col-span-2">VALIDADE</div>
+            <div className="col-span-2">CUSTO/UNID *</div>
+            <div className="col-span-2 text-right">TOTAL</div>
+            <div className="col-span-1">VAL.</div>
             <div className="col-span-1"></div>
           </div>
           {linhas.map((l, i) => (
             <div key={i} className="grid grid-cols-12 gap-1.5 items-center">
-              <select value={l.productId} onChange={(e) => set(i, "productId", e.target.value)} style={{ borderColor: BORDER }} className="col-span-5 border rounded-lg px-2 py-1.5 text-sm">
+              <select value={l.productId} onChange={(e) => set(i, "productId", e.target.value)} style={{ borderColor: BORDER }} className="col-span-4 border rounded-lg px-2 py-1.5 text-sm">
                 <option value="">Pesquisar Produto…</option>
                 {produtos.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
               <input type="number" value={l.qty} onChange={(e) => set(i, "qty", e.target.value)} placeholder="Ex: 10" style={{ borderColor: BORDER }} className="col-span-2 border rounded-lg px-2 py-1.5 text-sm" />
-              <input type="number" value={l.costTotal} onChange={(e) => set(i, "costTotal", e.target.value)} placeholder="Ex: 1500" style={{ borderColor: BORDER }} className="col-span-2 border rounded-lg px-2 py-1.5 text-sm" />
-              <input type="date" value={l.expiryDate} onChange={(e) => set(i, "expiryDate", e.target.value)} style={{ borderColor: BORDER }} className="col-span-2 border rounded-lg px-1 py-1.5 text-xs" />
+              <input type="number" value={l.custoUnit} onChange={(e) => set(i, "custoUnit", e.target.value)} placeholder="Ex: 35" style={{ borderColor: BORDER }} className="col-span-2 border rounded-lg px-2 py-1.5 text-sm" />
+              <div className="col-span-2 text-right text-sm" style={{ color: MUTED }}>{fmtMT((Number(l.qty) || 0) * (Number(l.custoUnit) || 0))}</div>
+              <input type="date" value={l.expiryDate} onChange={(e) => set(i, "expiryDate", e.target.value)} style={{ borderColor: BORDER }} className="col-span-1 border rounded-lg px-1 py-1.5 text-xs" />
               <button onClick={() => setLinhas((ls) => ls.filter((_, idx) => idx !== i))} style={{ color: BRICK }} className="col-span-1 flex justify-center"><Trash2 size={14} /></button>
             </div>
           ))}
@@ -670,17 +672,20 @@ function EntradaLoteModal({ lote, onSubmit, onClose }) {
 }
 
 function EditarLoteModal({ lote, store, onSubmit, onClose, onCreateSupplier }) {
+  const baseQtd = Number(lote.initialQty) > 0 ? Number(lote.initialQty) : Number(lote.qty) || 0;
+  const custoUnitInicial = baseQtd > 0 ? (Number(lote.custoTotal) || 0) / baseQtd : 0;
   const [name, setName] = useState(lote.nome || "");
   const [expiryDate, setExpiryDate] = useState(toInputDate(lote.expiry));
-  const [costTotal, setCostTotal] = useState(String(lote.custoTotal || ""));
+  const [custoUnit, setCustoUnit] = useState(custoUnitInicial ? String(Number(custoUnitInicial.toFixed(2))) : "");
   const [qty, setQty] = useState(String(lote.qty));
   const [supplierId, setSupplierId] = useState(lote.supplierId || "");
   const [motivo, setMotivo] = useState("");
   const mudouQty = Number(qty) !== lote.qty;
+  const total = (Number(qty) || 0) * (Number(custoUnit) || 0);
 
   const submit = () => {
     if (mudouQty && !motivo.trim()) return;
-    onSubmit({ name, expiryDate: expiryDate || null, costTotal: Number(costTotal) || 0, qty: Number(qty), supplierId: supplierId || null, motivo });
+    onSubmit({ name, expiryDate: expiryDate || null, costTotal: total, qty: Number(qty), supplierId: supplierId || null, motivo });
   };
 
   return (
@@ -719,9 +724,13 @@ function EditarLoteModal({ lote, store, onSubmit, onClose, onCreateSupplier }) {
             <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
           </div>
           <div>
-            <label className="text-xs" style={{ color: MUTED }}>Preço Total de Custo</label>
-            <input type="number" value={costTotal} onChange={(e) => setCostTotal(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
+            <label className="text-xs" style={{ color: MUTED }}>Custo de Compra por Unidade</label>
+            <input type="number" value={custoUnit} onChange={(e) => setCustoUnit(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" />
           </div>
+        </div>
+        <div style={{ background: "#F1F5F9" }} className="rounded-lg p-2 text-xs flex justify-between">
+          <span style={{ color: MUTED }}>Custo total do lote (calculado):</span>
+          <span className="font-semibold">{fmtMT(total)}</span>
         </div>
         {mudouQty && (
           <div>
@@ -959,7 +968,7 @@ function BulkImportExport({ products, onImport }) {
       {aberto && (
         <div className="space-y-2 mt-2">
           <div className="text-xs" style={{ color: MUTED }}>
-            Colunas: Nome, Categoria, Unidade, Preço, Custo, Stock, Stock Mínimo. Se o produto já existir (mesmo nome), a quantidade é somada; senão, cria um produto novo.
+            Colunas: Nome, Categoria, Unidade, Preço, Custo (por unidade), Stock, Stock Mínimo. O "Custo" é o preço de compra de cada unidade — o sistema calcula o custo total do estoque. Se o produto já existir (mesmo nome), a quantidade é somada; senão, cria um produto novo.
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={downloadTemplate} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-3 py-1.5 text-xs font-medium">Descarregar modelo</button>

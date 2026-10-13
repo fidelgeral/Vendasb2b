@@ -24,7 +24,6 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
     ingredientes: [],
     addEstoque: false,
     estoqueQtd: "",
-    estoqueCustoTotal: "",
     estoqueValidade: "",
     estoqueFornecedor: "",
   };
@@ -400,8 +399,8 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
                     <input type="number" value={form.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="EX: 100" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
                   </div>
                   <div>
-                    <label className="text-xs" style={{ color: MUTED }}>Preço de custo total *</label>
-                    <input type="number" value={form.estoqueCustoTotal} onChange={(e) => set("estoqueCustoTotal", e.target.value)} placeholder="1500" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+                    <label className="text-xs" style={{ color: MUTED }}>Custo de compra por unidade *</label>
+                    <input type="number" value={form.cost} onChange={(e) => set("cost", e.target.value)} placeholder="EX: 35" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
                   </div>
                   <div>
                     <label className="text-xs" style={{ color: MUTED }}>Data de validade</label>
@@ -420,10 +419,10 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
                       />
                     </div>
                   </div>
-                  {Number(form.estoqueQtd) > 0 && Number(form.estoqueCustoTotal) > 0 && (
+                  {Number(form.estoqueQtd) > 0 && Number(form.cost) > 0 && (
                     <div className="sm:col-span-4 text-xs" style={{ color: GREEN }}>
-                      Custo unitário calculado: {fmtMT(Number(form.estoqueCustoTotal) / Number(form.estoqueQtd))}
-                      {Number(form.price) > 0 && " · Margem: " + fmtMT(Number(form.price) - Number(form.estoqueCustoTotal) / Number(form.estoqueQtd))}
+                      Custo total do estoque (calculado): {fmtMT(Number(form.estoqueQtd) * Number(form.cost))}
+                      {Number(form.price) > 0 && " · Margem por unidade: " + fmtMT(Number(form.price) - Number(form.cost))}
                     </div>
                   )}
                 </div>
