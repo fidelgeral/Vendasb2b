@@ -692,7 +692,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
 
       {!novoCliente ? (
         <div className="flex items-center gap-2 mb-2">
-          <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="flex-1 border rounded-lg px-2 py-1.5 text-sm">
+          <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="flex-1 min-w-0 border rounded-lg px-2 py-1.5 text-sm">
             <option value="">Cliente (necessário para fiado / pontos)</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
@@ -701,7 +701,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
             ))}
           </select>
           {onAddClient && (
-            <button onClick={() => setNovoCliente(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap">
+            <button onClick={() => setNovoCliente(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap shrink-0">
               + Novo
             </button>
           )}

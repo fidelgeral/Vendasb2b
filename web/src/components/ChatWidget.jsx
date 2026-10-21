@@ -19,7 +19,10 @@ export default function ChatWidget({ messages, onSend, loading, placeholder, emp
   };
 
   return (
-    <div className="flex flex-col h-full">
+    // flex-1 + min-h-0 em vez de h-full: o painel já tem um cabeçalho acima, por
+    // isso o widget deve ocupar só o espaço restante — senão a barra de escrever
+    // fica cortada para fora do painel (não dava para fazer mais perguntas).
+    <div className="flex flex-col flex-1 min-h-0">
       <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 p-3">
         {messages.length === 0 && (
           <div className="text-xs text-center py-6" style={{ color: MUTED }}>
@@ -44,7 +47,7 @@ export default function ChatWidget({ messages, onSend, loading, placeholder, emp
           </div>
         )}
       </div>
-      <div style={{ borderTop: `1px solid ${BORDER}` }} className="p-2 flex gap-1.5">
+      <div style={{ borderTop: `1px solid ${BORDER}` }} className="p-2 flex gap-1.5 shrink-0">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}

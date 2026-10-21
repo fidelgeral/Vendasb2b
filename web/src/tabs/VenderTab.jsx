@@ -293,7 +293,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
   return (
     <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
       <div className="sm:col-span-2">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <input
             id="pdv-busca"
             value={query}
@@ -325,9 +325,6 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
           />
           <button onClick={() => setShowScanner(true)} style={{ borderColor: BORDER, color: TEAL, background: CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap" title="Ler com a câmara do telefone">
             📷 Câmara
-          </button>
-          <button onClick={() => setVendaRapida((v) => !v)} style={{ borderColor: vendaRapida ? GOLD : BORDER, color: vendaRapida ? GOLD : MUTED, background: vendaRapida ? SOFTGOLD : CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap">
-            Venda rápida
           </button>
           {store.parkedSales.length > 0 && (
             <button onClick={() => setShowParked(true)} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-2.5 py-2 text-xs flex items-center gap-1">
