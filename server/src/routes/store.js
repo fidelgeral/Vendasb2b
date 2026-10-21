@@ -307,25 +307,47 @@ storeRouter.get("/audit-entidade", async (req, res) => {
 // Pesquisa de imagens livres de direitos de autor (proxy para a API do
 // Openverse). Só devolve imagens com licença que permite uso comercial e
 // modificação, para serem seguras num negócio. Sem chave de API.
+// Pesquisa de imagens livres de direitos, via Wikimedia Commons (gratuito, sem
+// chave de API; o Commons só aloja ficheiros com licença livre). Devolve
+// miniaturas grandes (400px) para a pessoa escolher.
 storeRouter.get("/image-search", async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json({ results: [] });
   try {
     const url =
-      "https://api.openverse.org/v1/images/?" +
-      new URLSearchParams({ q, license_type: "commercial,modification", page_size: "20", mature: "false" }).toString();
-    const r = await fetch(url, { headers: { "User-Agent": "VENDASB2B/1.0 (POS)" } });
+      "https://commons.wikimedia.org/w/api.php?" +
+      new URLSearchParams({
+        action: "query",
+        format: "json",
+        generator: "search",
+        gsrsearch: `filetype:bitmap ${q}`,
+        gsrnamespace: "6", // ficheiros
+        gsrlimit: "24",
+        prop: "imageinfo",
+        iiprop: "url|extmetadata",
+        iiurlwidth: "400", // miniatura grande
+      }).toString();
+    const r = await fetch(url, { headers: { "User-Agent": "VENDASB2B/1.0 (POS; https://vendasb2b.vercel.app)" } });
     if (!r.ok) return res.status(502).json({ error: "Não foi possível pesquisar imagens agora.", results: [] });
     const data = await r.json();
-    const results = (data.results || []).map((it) => ({
-      id: it.id,
-      thumbnail: it.thumbnail || it.url,
-      url: it.url,
-      title: it.title || "",
-      source: it.source || "",
-      license: (it.license || "").toUpperCase(),
-      creator: it.creator || "",
-    }));
+    const pages = data.query && data.query.pages ? Object.values(data.query.pages) : [];
+    const results = pages
+      .filter((p) => p.imageinfo && p.imageinfo[0] && p.imageinfo[0].thumburl)
+      .sort((a, b) => (a.index || 0) - (b.index || 0)) // mantém a ordem de relevância da pesquisa
+      .map((p) => {
+        const ii = p.imageinfo[0];
+        const meta = ii.extmetadata || {};
+        const limpa = (v) => String(v || "").replace(/<[^>]+>/g, "").trim();
+        return {
+          id: String(p.pageid),
+          thumbnail: ii.thumburl,
+          url: ii.url,
+          title: (p.title || "").replace(/^File:/i, ""),
+          source: "Wikimedia Commons",
+          license: limpa(meta.LicenseShortName && meta.LicenseShortName.value),
+          creator: limpa(meta.Artist && meta.Artist.value),
+        };
+      });
     res.json({ results });
   } catch (e) {
     res.status(502).json({ error: "Não foi possível pesquisar imagens agora.", results: [] });

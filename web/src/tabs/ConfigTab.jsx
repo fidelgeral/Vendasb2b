@@ -99,18 +99,23 @@ function ImpressaoConfig({ store, setStore, api }) {
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-semibold">Impressão e visor</div>
-      <label className="text-xs" style={{ color: MUTED }}>
-        Largura do papel do recibo
-      </label>
-      <select value={papel} onChange={(e) => setPapel(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
-        <option value="58mm">58mm</option>
-        <option value="80mm">80mm</option>
-      </select>
+      <div style={{ borderColor: BORDER, background: "#F8FAFC" }} className="border rounded-lg p-2.5 space-y-2">
+        <label className="text-xs font-semibold" style={{ color: "#0F172A" }}>
+          Impressora térmica — tamanho do papel
+        </label>
+        <select value={papel} onChange={(e) => setPapel(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-2 text-sm font-medium">
+          <option value="58mm">58mm (impressora pequena)</option>
+          <option value="80mm">80mm (impressora grande)</option>
+        </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={imprimirAoFinalizar} onChange={(e) => setImprimirAoFinalizar(e.target.checked)} /> Imprimir a factura automaticamente ao finalizar a venda
+        </label>
+        <div className="text-[11px]" style={{ color: MUTED }}>
+          O recibo é impresso no tamanho escolhido aqui. As impressoras térmicas comuns são de <b>58mm</b> (mais pequena) ou <b>80mm</b> (mais larga).
+        </div>
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={visorCliente} onChange={(e) => setVisorCliente(e.target.checked)} /> Tenho um visor voltado para o cliente
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={imprimirAoFinalizar} onChange={(e) => setImprimirAoFinalizar(e.target.checked)} /> Imprimir a factura automaticamente ao finalizar a venda
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={scannerUsb} onChange={(e) => setScannerUsb(e.target.checked)} /> Usar leitor de código de barras USB (máquina de scanner tipo supermercado)

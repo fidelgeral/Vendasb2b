@@ -185,22 +185,30 @@ export function PhotoPicker({ value, onChange, api }) {
                 {aPesquisar ? "…" : "Pesquisar"}
               </button>
             </div>
-            <div className="text-[10px] mt-1" style={{ color: MUTED }}>Só imagens livres de direitos de autor (Openverse / Creative Commons).</div>
+            <div className="text-[10px] mt-1" style={{ color: MUTED }}>Só imagens livres de direitos de autor (Wikimedia Commons).</div>
             {erroBusca && <div className="text-[11px] mt-1" style={{ color: MUTED }}>{erroBusca}</div>}
+            {aPesquisar && <div className="text-xs mt-2 text-center py-3" style={{ color: MUTED }}>A procurar imagens…</div>}
+            {!aPesquisar && resultados && resultados.length === 0 && (
+              <div className="text-xs mt-2 text-center py-3" style={{ color: MUTED }}>Nenhuma imagem encontrada. Tente outro nome.</div>
+            )}
             {resultados && resultados.length > 0 && (
-              <div className="grid grid-cols-5 gap-1 mt-2 max-h-40 overflow-auto">
-                {resultados.map((img) => (
-                  <button
-                    key={img.id}
-                    type="button"
-                    onClick={() => onChange(img.thumbnail || img.url)}
-                    title={[img.title, img.license ? "Licença " + img.license : ""].filter(Boolean).join(" · ")}
-                    style={{ borderColor: value === (img.thumbnail || img.url) ? TEAL : BORDER }}
-                    className="border rounded-lg overflow-hidden aspect-square hover:opacity-80"
-                  >
-                    <img src={img.thumbnail || img.url} alt={img.title} loading="lazy" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-2 mt-2 max-h-80 overflow-auto">
+                {resultados.map((img) => {
+                  const src = img.thumbnail || img.url;
+                  const sel = value === src;
+                  return (
+                    <button
+                      key={img.id}
+                      type="button"
+                      onClick={() => onChange(src)}
+                      title={[img.title, img.license ? "Licença " + img.license : ""].filter(Boolean).join(" · ")}
+                      style={{ borderColor: sel ? TEAL : BORDER, boxShadow: sel ? "0 0 0 2px " + TEAL : "none", background: "#fff" }}
+                      className="border-2 rounded-lg overflow-hidden aspect-square hover:opacity-90"
+                    >
+                      <img src={src} alt={img.title} loading="lazy" className="w-full h-full object-contain" />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
