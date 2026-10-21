@@ -3,6 +3,7 @@ import { CARD, BORDER, MUTED, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, getStock, UNIDADES } from "../lib/utils.js";
 import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 import { Plus, X, Package } from "../lib/icons.jsx";
+import BarcodeScanner from "../components/BarcodeScanner.jsx";
 
 export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
   const blank = {
@@ -36,6 +37,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
   const [showCategorias, setShowCategorias] = useState(false);
   const [ingSel, setIngSel] = useState({ productId: "", qty: "" });
   const [erro, setErro] = useState("");
+  const [codScanner, setCodScanner] = useState(false);
   const [verProduto, setVerProduto] = useState(null);
   const [histProduto, setHistProduto] = useState(null);
 
@@ -248,7 +250,27 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             </div>
             <div>
               <label className="text-xs" style={{ color: MUTED }}>Código do produto (barras)</label>
-              <input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="EX: 4589641235498" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+              <div className="flex gap-1.5 mt-1">
+                <input
+                  value={form.codigo}
+                  onChange={(e) => set("codigo", e.target.value)}
+                  placeholder="EX: 4589641235498"
+                  style={{ borderColor: BORDER }}
+                  className="flex-1 border rounded-lg px-2.5 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCodScanner(true)}
+                  style={{ borderColor: BORDER, color: GREEN }}
+                  className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap"
+                  title="Ler o código com a câmara do telefone"
+                >
+                  📷 Câmara
+                </button>
+              </div>
+              <div className="text-[11px] mt-1" style={{ color: MUTED }}>
+                Use a câmara do telefone (📷) ou aponte a <b>pistola de código de barras</b> para este campo (lê direto).
+              </div>
             </div>
           </div>
 
@@ -509,6 +531,15 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
         )}
       </div>
 
+      {codScanner && (
+        <BarcodeScanner
+          onDetected={(code) => {
+            set("codigo", String(code));
+            setCodScanner(false);
+          }}
+          onClose={() => setCodScanner(false)}
+        />
+      )}
       {showCategorias && (
         <CategoriasModal
           categories={categories}

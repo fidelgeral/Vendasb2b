@@ -298,12 +298,33 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             id="pdv-busca"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Procurar produto ou ler código de barras… (F3)"
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              const termo = query.trim();
+              if (!termo) return;
+              // Serve para a pistola de código de barras (aponta ao campo e dá
+              // Enter) e para quem digita o código/nome e carrega Enter: procura
+              // pelo código exacto; senão, se houver um único resultado, usa-o.
+              const porCodigo = store.products.find((p) => (p.codigo || "").toLowerCase() === termo.toLowerCase());
+              const alvo = porCodigo || (filtered.length === 1 ? filtered[0] : null);
+              if (alvo) {
+                if (getStock(alvo, store.products) <= 0) {
+                  showToast(alvo.name + " sem stock", "warn");
+                } else {
+                  vendaRapida ? vendaImediata(alvo) : addToCart(alvo);
+                  if (!vendaRapida) showToast(alvo.name + " adicionado");
+                }
+                setQuery("");
+              } else {
+                showToast("Produto/código não encontrado: " + termo, "warn");
+              }
+            }}
+            placeholder="Procurar, ou ler código com pistola/telefone… (F3)"
             style={{ borderColor: BORDER, background: CARD }}
             className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none"
           />
-          <button onClick={() => setShowScanner(true)} style={{ borderColor: BORDER, color: TEAL, background: CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap">
-            📷 Ler código
+          <button onClick={() => setShowScanner(true)} style={{ borderColor: BORDER, color: TEAL, background: CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap" title="Ler com a câmara do telefone">
+            📷 Câmara
           </button>
           <button onClick={() => setVendaRapida((v) => !v)} style={{ borderColor: vendaRapida ? GOLD : BORDER, color: vendaRapida ? GOLD : MUTED, background: vendaRapida ? SOFTGOLD : CARD }} className="border rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap">
             Venda rápida

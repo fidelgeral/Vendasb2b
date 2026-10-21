@@ -37,7 +37,11 @@ app.use(
 );
 app.use(express.json({ limit: "5mb" }));
 
-app.get("/api/health", (req, res) => res.json({ ok: true }));
+// Health check com a versão implantada — o Render define RENDER_GIT_COMMIT a
+// cada deploy, o que permite confirmar que versão do backend está realmente no ar.
+app.get("/api/health", (req, res) =>
+  res.json({ ok: true, commit: (process.env.RENDER_GIT_COMMIT || "dev").slice(0, 7), at: new Date().toISOString() })
+);
 
 app.use("/api", authRouter);
 app.use("/api/super/businesses", businessesRouter);

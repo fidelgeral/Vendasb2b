@@ -732,28 +732,33 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-2">
-        <input
-          type="number"
-          value={recebido}
-          onChange={(e) => setRecebido(e.target.value)}
-          placeholder="Valor recebido (MT)"
-          style={{ borderColor: BORDER }}
-          className="border rounded-lg px-2 py-1.5 text-sm flex-1"
-        />
-        {recebido !== "" && (
-          <div className="text-right shrink-0">
-            <div className="text-[10px]" style={{ color: MUTED }}>
-              Troco
+      <div className="mb-2">
+        <label className="text-sm font-medium block mb-1" style={{ color: MUTED }}>
+          Valor recebido (MT)
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={recebido}
+            onChange={(e) => setRecebido(e.target.value)}
+            placeholder="0"
+            style={{ borderColor: BORDER }}
+            className="border rounded-lg px-3 py-2.5 text-2xl font-bold flex-1 w-full"
+          />
+          {recebido !== "" && (
+            <div className="text-right shrink-0">
+              <div className="text-xs" style={{ color: MUTED }}>
+                Troco
+              </div>
+              <div style={{ color: trocoDevido < 0 ? BRICK : GREEN }} className="text-3xl sm:text-4xl font-extrabold leading-none tracking-tight">
+                {fmtMT(Math.max(0, trocoDevido))}
+              </div>
             </div>
-            <div style={{ color: trocoDevido < 0 ? BRICK : GREEN }} className="text-lg font-bold leading-none">
-              {fmtMT(Math.max(0, trocoDevido))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {recebido !== "" && trocoDevido < 0 && (
-        <div className="text-xs mb-2" style={{ color: BRICK }}>
+        <div className="text-base font-semibold mb-2" style={{ color: BRICK }}>
           Faltam {fmtMT(-trocoDevido)}
         </div>
       )}
