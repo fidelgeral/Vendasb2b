@@ -6,7 +6,7 @@ import { Plus, X, Package } from "../lib/icons.jsx";
 import BarcodeScanner from "../components/BarcodeScanner.jsx";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
 
-export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
+export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = () => true }) {
   const blank = {
     tipo: "simples",
     vendaDirecta: true,
@@ -192,24 +192,30 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
           <div className="text-base font-semibold">Gestão de Produtos</div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowCategorias(true)} style={{ background: "#F97316", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
-            Categorias
-          </button>
-          <button onClick={onGoEstoque} style={{ background: "#7C3AED", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
-            Importar
-          </button>
-          <button
-            onClick={() => {
-              setShowForm((s) => !s);
-              setEditingId(null);
-              setForm(blank);
-              setErro("");
-            }}
-            style={{ background: GREEN, color: "#fff" }}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1"
-          >
-            <Plus size={13} /> Novo produto
-          </button>
+          {can("categoriaAdicionar") && (
+            <button onClick={() => setShowCategorias(true)} style={{ background: "#F97316", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
+              Categorias
+            </button>
+          )}
+          {can("produtoAdicionar") && (
+            <button onClick={onGoEstoque} style={{ background: "#7C3AED", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
+              Importar
+            </button>
+          )}
+          {can("produtoAdicionar") && (
+            <button
+              onClick={() => {
+                setShowForm((s) => !s);
+                setEditingId(null);
+                setForm(blank);
+                setErro("");
+              }}
+              style={{ background: GREEN, color: "#fff" }}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1"
+            >
+              <Plus size={13} /> Novo produto
+            </button>
+          )}
         </div>
       </div>
 
@@ -520,11 +526,11 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
             key={p.id}
             p={p}
             produtos={store.products}
-            onRemove={() => removeProduct(p)}
-            onEdit={() => startEdit(p)}
-            onVer={() => setVerProduto(p)}
+            onRemove={can("produtoApagar") ? () => removeProduct(p) : undefined}
+            onEdit={can("produtoEditar") ? () => startEdit(p) : undefined}
+            onVer={can("produtoVer") ? () => setVerProduto(p) : undefined}
             onHistorico={() => setHistProduto(p)}
-            onToggleActive={() => updateProduct(p.id, { active: p.active === false })}
+            onToggleActive={can("produtoEditar") ? () => updateProduct(p.id, { active: p.active === false }) : undefined}
           />
         ))}
         {filteredProducts.length === 0 && (
@@ -627,9 +633,11 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggl
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={onToggleActive} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
-            {active ? "Desativar" : "Ativar"}
-          </button>
+          {onToggleActive && (
+            <button onClick={onToggleActive} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
+              {active ? "Desativar" : "Ativar"}
+            </button>
+          )}
           <AcoesEntidade onVer={onVer} onEditar={onEdit} onHistorico={onHistorico} onApagar={onRemove} />
         </div>
       </div>

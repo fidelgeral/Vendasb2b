@@ -33,7 +33,7 @@ function statusDe(l) {
   return { k: "normal", label: "Normal", color: GREEN };
 }
 
-export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras }) {
+export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras, can = () => true }) {
   const confirmar = useConfirm();
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -168,12 +168,16 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
           <div className="text-base font-semibold">Gestão de Stock</div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setShowSaida(true)} style={{ background: BRICK, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
-            − Saída Estoque
-          </button>
-          <button onClick={() => setShowTipoAdicao(true)} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
-            + Novo Lote
-          </button>
+          {can("quebras") && (
+            <button onClick={() => setShowSaida(true)} style={{ background: BRICK, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
+              − Saída Estoque
+            </button>
+          )}
+          {can("loteNovo") && (
+            <button onClick={() => setShowTipoAdicao(true)} style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
+              + Novo Lote
+            </button>
+          )}
           <button onClick={onGoCompras} style={{ background: "#2563EB", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             Fornecedores
           </button>

@@ -5,7 +5,7 @@ import { StatCard, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "
 import { useConfirm } from "../components/ConfirmProvider.jsx";
 import { Plus } from "../lib/icons.jsx";
 
-export default function ClientesTab({ store, setStore, api }) {
+export default function ClientesTab({ store, setStore, api, can = () => true }) {
   const confirmar = useConfirm();
   const blank = { name: "", tipo: "Particular", phone: "", email: "", nuit: "", endereco: "", cidade: "", creditLimit: "", notas: "" };
   const [form, setForm] = useState(blank);
@@ -68,9 +68,11 @@ export default function ClientesTab({ store, setStore, api }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-base font-semibold">Gestão de Clientes</div>
-        <button onClick={() => { setShowForm((s) => !s); setEditingId(null); setForm(blank); }} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
-          <Plus size={13} /> Novo cliente
-        </button>
+        {can("clienteGerir") && (
+          <button onClick={() => { setShowForm((s) => !s); setEditingId(null); setForm(blank); }} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
+            <Plus size={13} /> Novo cliente
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -164,9 +166,9 @@ export default function ClientesTab({ store, setStore, api }) {
                 </div>
                 <AcoesEntidade
                   onVer={() => setVerCliente(c)}
-                  onEditar={() => startEdit(c)}
+                  onEditar={can("clienteGerir") ? () => startEdit(c) : undefined}
                   onHistorico={() => setHistCliente(c)}
-                  onApagar={() => removeClient(c)}
+                  onApagar={can("clienteApagar") ? () => removeClient(c) : undefined}
                 />
               </div>
 
@@ -177,7 +179,7 @@ export default function ClientesTab({ store, setStore, api }) {
                       Dívida: {fmtMT(total)} {c.creditLimit > 0 ? `(limite ${fmtMT(c.creditLimit)})` : ""}
                     </span>
                   </div>
-                  <PagamentoParcial cliente={c} total={total} onPay={(v) => payPartial(c.id, v)} />
+                  {can("fiadoReceber") && <PagamentoParcial cliente={c} total={total} onPay={(v) => payPartial(c.id, v)} />}
                 </div>
               )}
             </div>

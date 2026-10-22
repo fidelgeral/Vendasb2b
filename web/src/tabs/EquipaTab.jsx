@@ -60,9 +60,19 @@ export default function EquipaTab({ store, setStore, api }) {
   const cancelar = () => { setEditingId(null); setForm(blank); setError(""); setShowForm(false); };
   const removeEmployee = async (e) => {
     if (!(await confirmar({ title: "Remover funcionário?", message: `Vai remover "${e.name}". Esta acção não pode ser desfeita.`, confirmLabel: "Remover", danger: true }))) return;
-    setStore(await api.deleteEmployee(e.id));
+    try {
+      setStore(await api.deleteEmployee(e.id));
+    } catch (err) {
+      alert(err.message);
+    }
   };
-  const toggleActive = async (id) => setStore(await api.toggleEmployeeActive(id));
+  const toggleActive = async (id) => {
+    try {
+      setStore(await api.toggleEmployeeActive(id));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   const lista = [...store.employees]
     .filter((e) => e.name.toLowerCase().includes(busca.trim().toLowerCase()))
@@ -86,6 +96,25 @@ export default function EquipaTab({ store, setStore, api }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {/* CEO (administrador de todo o sistema) — permanente, não editável. */}
+        {!busca.trim() && (
+          <div style={{ background: "linear-gradient(135deg,#0F172A,#1E293B)", borderColor: "#334155" }} className="border rounded-xl p-3 flex flex-col text-white">
+            <div className="flex items-center gap-3">
+              <div style={{ background: "rgba(255,255,255,0.15)" }} className="w-12 h-12 rounded-full flex items-center justify-center text-lg shrink-0">👑</div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold truncate">CEO</div>
+                <div className="text-xs opacity-80">Administrador do sistema</div>
+                <div className="text-xs opacity-70 truncate">fidel@vendasb2b.co.mz</div>
+              </div>
+            </div>
+            <div className="mt-2">
+              <span style={{ background: "rgba(255,255,255,0.15)" }} className="rounded-full px-2 py-0.5 text-[11px] font-medium">🔒 Conta permanente</span>
+            </div>
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.15)" }} className="mt-3 pt-2.5 text-[11px] opacity-70">
+              Acesso total ao sistema · não pode ser editado nem removido.
+            </div>
+          </div>
+        )}
         {lista.map((e) => {
           const active = e.active !== false;
           const ehDono = e.role === "dono";
@@ -97,7 +126,7 @@ export default function EquipaTab({ store, setStore, api }) {
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate">{e.name}</div>
-                  <div className="text-xs" style={{ color: ROLE_COR[e.role] || MUTED }}>{ROLE_LABELS[e.role] || e.role}</div>
+                  <div className="text-xs" style={{ color: ROLE_COR[e.role] || MUTED }}>{ROLE_LABELS[e.role] || e.role}{ehDono ? " (acesso total)" : ""}</div>
                   {e.phone && <div className="text-xs" style={{ color: MUTED }}>{e.phone}</div>}
                 </div>
               </div>
@@ -105,19 +134,17 @@ export default function EquipaTab({ store, setStore, api }) {
                 <span style={{ background: active ? "#DCFCE7" : "#FEE2E2", color: active ? GREEN : BRICK }} className="rounded-full px-2 py-0.5 text-[11px] font-medium">
                   {active ? "Ativo" : "Inativo"}
                 </span>
-                {ehDono && <span style={{ color: MUTED }} className="text-[10px] ml-2">padrão — permanente</span>}
               </div>
               <div style={{ borderTop: `1px solid ${BORDER}` }} className="flex items-center gap-1.5 mt-3 pt-2.5 flex-wrap">
                 <IconBtn color={GREEN} title="Editar" onClick={() => startEdit(e)}><PencilIcon /></IconBtn>
                 <IconBtn color="#4F46E5" title="Ver detalhes" onClick={() => setVerFunc(e)}><EyeIcon /></IconBtn>
                 <IconBtn color="#64748B" title="Histórico" onClick={() => setHistFunc(e)}><ClockIcon /></IconBtn>
+                {/* Admins do negócio têm todas as permissões — não há o que configurar. */}
                 {!ehDono && <IconBtn color="#EA580C" title="Permissões" onClick={() => setPermFunc(e)}>🔑</IconBtn>}
-                {!ehDono && (
-                  <button onClick={() => toggleActive(e.id)} style={{ borderColor: BORDER, color: active ? MUTED : GREEN }} className="border rounded-lg px-2 py-1 text-[11px] font-medium">
-                    {active ? "Desativar" : "Ativar"}
-                  </button>
-                )}
-                {!ehDono && <IconBtn color={BRICK} title="Apagar" onClick={() => removeEmployee(e)}><Trash2 size={14} /></IconBtn>}
+                <button onClick={() => toggleActive(e.id)} style={{ borderColor: BORDER, color: active ? MUTED : GREEN }} className="border rounded-lg px-2 py-1 text-[11px] font-medium">
+                  {active ? "Desativar" : "Ativar"}
+                </button>
+                <IconBtn color={BRICK} title="Apagar" onClick={() => removeEmployee(e)}><Trash2 size={14} /></IconBtn>
               </div>
             </div>
           );

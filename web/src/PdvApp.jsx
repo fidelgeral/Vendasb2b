@@ -9,6 +9,7 @@ import { loadCachedStore, saveCachedStore } from "./lib/storeCache.js";
 import { isLowStock, getStock, nearExpiry } from "./lib/utils.js";
 import { getActivePaymentMethods } from "./lib/payments.jsx";
 import { imprimirReciboTermico } from "./lib/print.js";
+import { temPermissao } from "./lib/permissions.js";
 import HelpAssistant from "./components/HelpAssistant.jsx";
 import BillingPanel from "./components/BillingPanel.jsx";
 import { NotificationBell } from "./components/Shared.jsx";
@@ -207,10 +208,14 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
 
   const role = isSuperAdmin ? "dono" : session?.role || "dono";
   const employeeName = isSuperAdmin ? "Super-admin" : session?.employeeName || "";
-  const canSeeFinance = role === "dono" || role === "gerente";
+  // Funcionário com sessão iniciada e a sua função de verificar permissões.
+  const currentEmployee = store.employees.find((e) => e.id === session?.employeeId);
+  const me = currentEmployee || { role, permissions: {} };
+  const can = (perm) => isSuperAdmin || temPermissao(me, perm);
+  const canSeeFinance = can("verBalanco");
   const canDiscount = role === "dono" || role === "gerente";
-  const canVoid = role === "dono" || role === "gerente";
-  const canManageTeam = role === "dono";
+  const canVoid = can("quebras");
+  const canManageTeam = can("gerirEquipa");
 
   const modules = store.config.modules;
   const shiftOpen = !!store.currentShiftId;
@@ -225,9 +230,9 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     { id: "estoque", label: "Estoque", icon: Boxes, show: true },
     { id: "clientes", label: "Clientes", icon: Users, show: true },
     { id: "compras", label: "Compras", icon: Truck, show: true },
-    { id: "equipa", label: "Equipa", icon: UserCog, show: canManageTeam },
-    { id: "balanco", label: "Balanço", icon: Scale, show: canSeeFinance },
-    { id: "config", label: "Config", icon: Settings, show: canManageTeam },
+    { id: "equipa", label: "Equipa", icon: UserCog, show: can("gerirEquipa") },
+    { id: "balanco", label: "Balanço", icon: Scale, show: can("verBalanco") },
+    { id: "config", label: "Config", icon: Settings, show: can("gerirConfig") },
   ].filter((t) => t.show);
 
   const alerts = [
@@ -455,11 +460,11 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             canVoid={canVoid}
           />
         )}
-        {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} onGoEstoque={() => setTab("estoque")} />}
+        {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} can={can} onGoEstoque={() => setTab("estoque")} />}
         {tab === "estoque" && (
-          <EstoqueTab store={store} setStore={setStore} api={api} showToast={showToast} registerQuebra={registerQuebra} onGoCompras={() => setTab("compras")} />
+          <EstoqueTab store={store} setStore={setStore} api={api} showToast={showToast} registerQuebra={registerQuebra} can={can} onGoCompras={() => setTab("compras")} />
         )}
-        {tab === "clientes" && <ClientesTab store={store} setStore={setStore} api={api} />}
+        {tab === "clientes" && <ClientesTab store={store} setStore={setStore} api={api} can={can} />}
         {tab === "compras" && <ComprasTab store={store} setStore={setStore} api={api} />}
         {tab === "equipa" && <EquipaTab store={store} setStore={setStore} api={api} />}
         {tab === "balanco" && <BalancoTab store={store} api={api} />}
