@@ -3,6 +3,9 @@ import { CARD, BORDER, MUTED, TEAL, BRICK, GREEN } from "../lib/theme.js";
 import { ROLE_LABELS } from "../lib/utils.js";
 import { AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
+import { Plus } from "../lib/icons.jsx";
+
+const ROLE_COR = { dono: "#7C3AED", gerente: "#1E5BA8", caixa: "#0F766E", cozinha: "#B45309" };
 
 export default function EquipaTab({ store, setStore, api }) {
   const confirmar = useConfirm();
@@ -10,6 +13,7 @@ export default function EquipaTab({ store, setStore, api }) {
   const blank = { name: "", email: "", phone: "", password: "", role: "caixa", docId: "" };
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [verFunc, setVerFunc] = useState(null);
@@ -44,15 +48,29 @@ export default function EquipaTab({ store, setStore, api }) {
         setStore(await api.createEmployee(payload));
       }
       setForm(blank);
+      setShowForm(false);
     } catch (e) {
       setError(e.message);
     }
   };
 
+  const abrirNovo = () => {
+    setEditingId(null);
+    setForm(blank);
+    setError("");
+    setShowForm(true);
+  };
   const startEdit = (e) => {
     setEditingId(e.id);
     setForm({ name: e.name || "", email: e.email || "", phone: e.phone || "", password: "", role: e.role || "caixa", docId: e.docId || "" });
     setError("");
+    setShowForm(true);
+  };
+  const cancelar = () => {
+    setEditingId(null);
+    setForm(blank);
+    setError("");
+    setShowForm(false);
   };
   const removeEmployee = async (e) => {
     if (!(await confirmar({ title: "Remover utilizador?", message: `Vai remover "${e.name}". Esta acção não pode ser desfeita.`, confirmLabel: "Remover", danger: true }))) return;
@@ -62,6 +80,21 @@ export default function EquipaTab({ store, setStore, api }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-base font-semibold">Gestão de Equipa</div>
+          <div className="text-xs" style={{ color: MUTED }}>
+            {store.employees.length} utilizador(es) · só o Administrador pode gerir a equipa
+          </div>
+        </div>
+        {!showForm && (
+          <button onClick={abrirNovo} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
+            <Plus size={13} /> Novo funcionário
+          </button>
+        )}
+      </div>
+
+      {showForm && (
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-4">
         <div className="text-sm font-semibold mb-3">{editingId ? "Editar conta de utilizador" : "Nova conta de utilizador"}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -115,34 +148,44 @@ export default function EquipaTab({ store, setStore, api }) {
           <button onClick={submit} style={{ background: TEAL, color: "#fff" }} className="px-4 py-2 rounded-lg text-sm font-medium">
             {editingId ? "Guardar" : "Adicionar"}
           </button>
-          {editingId && (
-            <button onClick={() => { setEditingId(null); setForm(blank); setError(""); }} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-sm">
-              Cancelar
-            </button>
-          )}
+          <button onClick={cancelar} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-sm">
+            Cancelar
+          </button>
         </div>
       </div>
+      )}
 
       <div className="space-y-1.5">
-        {store.employees.map((e) => {
+        {[...store.employees]
+          .sort((a, b) => (a.role === "dono" ? -1 : b.role === "dono" ? 1 : (a.name || "").localeCompare(b.name || "")))
+          .map((e) => {
           const active = e.active !== false;
+          const ehDono = e.role === "dono";
           return (
-            <div key={e.id} style={{ background: CARD, borderColor: BORDER, opacity: active ? 1 : 0.6 }} className="border rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap">
+            <div key={e.id} style={{ background: CARD, borderColor: ehDono ? "#C4B5FD" : BORDER, opacity: active ? 1 : 0.6 }} className="border rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="min-w-0">
-                <div className="text-sm font-semibold">{e.name}</div>
+                <div className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+                  {e.name}
+                  <span style={{ background: (ROLE_COR[e.role] || TEAL) + "22", color: ROLE_COR[e.role] || TEAL }} className="rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                    {ROLE_LABELS[e.role] || e.role}
+                  </span>
+                  {ehDono && <span style={{ color: MUTED }} className="text-[10px]">(padrão — não pode ser removido)</span>}
+                </div>
                 <div className="text-xs" style={{ color: MUTED }}>
-                  {e.email} · {ROLE_LABELS[e.role] || e.role}
+                  {[e.email, e.phone].filter(Boolean).join(" · ")}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => toggleActive(e.id)} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
-                  {active ? "Desativar" : "Ativar"}
-                </button>
+                {!ehDono && (
+                  <button onClick={() => toggleActive(e.id)} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
+                    {active ? "Desativar" : "Ativar"}
+                  </button>
+                )}
                 <AcoesEntidade
                   onVer={() => setVerFunc(e)}
                   onEditar={() => startEdit(e)}
                   onHistorico={() => setHistFunc(e)}
-                  onApagar={() => removeEmployee(e)}
+                  onApagar={ehDono ? undefined : () => removeEmployee(e)}
                 />
               </div>
             </div>
