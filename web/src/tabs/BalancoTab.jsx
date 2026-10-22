@@ -391,7 +391,7 @@ function VendasReports({ store, sales, report, meta }) {
           <StatCard label="Classe B" value={contB} sub="próximos 15%" />
           <StatCard label="Classe C" value={contC} sub="últimos 5%" />
         </div>
-        <ReportTable title="Curva ABC de Produtos" note="A = onde está o seu dinheiro: nunca deixe faltar. C = candidatos a descontinuar." columns={["#", "Produto", "Classe", "Qtd", "Facturação", "Peso", "Acumulado", "Lucro"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Classe A", value: String(contA) }, { label: "Classe B", value: String(contB) }, { label: "Classe C", value: String(contC) }, { label: "Facturação", value: fmtMT(grand) }] }} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
+        <ReportTable title="Curva ABC de Produtos" note="A = onde está o seu dinheiro: nunca deixe faltar. C = candidatos a descontinuar." columns={["#", "Produto", "Classe", "Qtd", "Facturação", "Peso", "Acumulado", "Lucro"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Classe A", value: String(contA) }, { label: "Classe B", value: String(contB) }, { label: "Classe C", value: String(contC) }, { label: "Facturação", value: fmtMT(grand) }], charts: list.length ? [{ type: "hbar", title: "Top produtos por facturação", data: list.slice(0, 6).map(([name, v]) => ({ label: name, value: v.fat })) }] : [] }} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
       </div>
     );
   }
@@ -479,7 +479,7 @@ function VendasReports({ store, sales, report, meta }) {
         return ["#" + (i + 1), c.name || "Consumidor Final", c.phone || "—", fav ? fav[0] : "—", v.compras, fmtMT(v.gasto), fmtMT(v.luc), fmtMT(divida), new Date(v.last).toLocaleDateString("pt-PT")];
       });
     const totGasto = Object.values(agg).reduce((a, v) => a + v.gasto, 0);
-    return <ReportTable title="Comportamento de Clientes (CRM)" note="Ranking por volume e lucratividade" columns={["#", "Cliente", "Contacto", "Favorito", "Compras", "Gasto Total", "Lucro", "Dívida", "Últ. Compra"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Clientes", value: String(rows.length) }, { label: "Gasto total", value: fmtMT(totGasto) }, { label: "Compras", value: String(Object.values(agg).reduce((a, v) => a + v.compras, 0)) }] }} align={["l", "l", "l", "l", "r", "r", "r", "r", "l"]} />;
+    return <ReportTable title="Comportamento de Clientes (CRM)" note="Ranking por volume e lucratividade" columns={["#", "Cliente", "Contacto", "Favorito", "Compras", "Gasto Total", "Lucro", "Dívida", "Últ. Compra"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Clientes", value: String(rows.length) }, { label: "Gasto total", value: fmtMT(totGasto) }, { label: "Compras", value: String(Object.values(agg).reduce((a, v) => a + v.compras, 0)) }], charts: rows.length ? [{ type: "hbar", title: "Clientes que mais gastam", data: Object.entries(agg).map(([id, v]) => ({ label: (store.clients.find((c) => c.id === id) || {}).name || "Consumidor Final", value: v.gasto })).sort((a, b) => b.value - a.value).slice(0, 6) }] : [] }} align={["l", "l", "l", "l", "r", "r", "r", "r", "l"]} />;
   }
 
   if (report === "horarios") {
@@ -751,7 +751,7 @@ function EstoqueReports({ store, report, meta, from, to }) {
           <StatCard label="Venda potencial" value={fmtMT(vendaPot)} sub="se vender tudo" />
           <StatCard label="Margem potencial" value={fmtMT(vendaPot - custoTotal)} />
         </div>
-        <ReportTable title="Posição de Inventário" columns={["Produto", "Categoria", "Estado", "Stock", "Custo un.", "Preço un.", "Custo total", "Venda total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Custo do stock", value: fmtMT(custoTotal) }, { label: "Venda potencial", value: fmtMT(vendaPot) }, { label: "Margem potencial", value: fmtMT(vendaPot - custoTotal), color: "green" }, { label: "Produtos", value: String(store.products.length) }] }} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
+        <ReportTable title="Posição de Inventário" columns={["Produto", "Categoria", "Estado", "Stock", "Custo un.", "Preço un.", "Custo total", "Venda total"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Custo do stock", value: fmtMT(custoTotal) }, { label: "Venda potencial", value: fmtMT(vendaPot) }, { label: "Margem potencial", value: fmtMT(vendaPot - custoTotal), color: "green" }, { label: "Produtos", value: String(store.products.length) }], charts: [{ type: "hbar", title: "Valor em stock por produto (top)", data: store.products.map((p) => ({ label: p.name, value: (p.price || 0) * getStock(p, store.products) })).filter((d) => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 6) }] }} align={["l", "l", "l", "r", "r", "r", "r", "r"]} />
       </div>
     );
   }
