@@ -132,6 +132,33 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       showToast(e.message || "Ocorreu um erro", "warn");
     }
   };
+  // Gera um código interno (EAN-like de 13 dígitos, prefixo "20" de uso interno)
+  // para produtos que ainda não têm código, para a etiqueta ficar escaneável.
+  const gerarCodigoInterno = () => "20" + String(Date.now()).slice(-7) + Math.floor(1000 + Math.random() * 9000);
+  const imprimirEtiquetasComCodigo = async () => {
+    const produtos = linhas.map((l) => l.product);
+    const semCodigo = produtos.filter((p) => !(p.codigo || "").trim());
+    let lista = produtos;
+    if (semCodigo.length) {
+      const ok = await confirmar({
+        title: "Gerar códigos de barras?",
+        message: `${semCodigo.length} produto(s) não têm código. Gerar um código interno para eles, para a etiqueta ficar escaneável?`,
+        confirmLabel: "Gerar e imprimir",
+      });
+      if (ok) {
+        let st = store;
+        for (const p of semCodigo) {
+          // eslint-disable-next-line no-await-in-loop
+          st = await api.updateProduct(p.id, { codigo: gerarCodigoInterno() });
+        }
+        setStore(st);
+        const porId = Object.fromEntries(st.products.map((x) => [x.id, x]));
+        lista = produtos.map((p) => porId[p.id] || p);
+      }
+    }
+    imprimirEtiquetas(lista, store.config.businessName);
+  };
+
   const criarLote = async (payload) => {
     if (!(await confirmar({ title: "Guardar lote?", message: "Vai registar este lote no stock.", confirmLabel: "Guardar" }))) return;
     guard(() => api.createLote(payload), "Lote criado");
@@ -192,7 +219,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
               ⇄ Transferir p/ filial
             </button>
           )}
-          <button onClick={() => imprimirEtiquetas(linhas.map((l) => l.product), store.config.businessName)} style={{ borderColor: BORDER, color: INK }} className="border rounded-lg px-3 py-1.5 text-xs font-medium">
+          <button onClick={imprimirEtiquetasComCodigo} style={{ borderColor: BORDER, color: INK }} className="border rounded-lg px-3 py-1.5 text-xs font-medium">
             Imprimir etiquetas
           </button>
         </div>
