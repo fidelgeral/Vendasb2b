@@ -121,6 +121,7 @@ export function businessApi(businessId) {
     updateEmployee: (id, payload) => s(patch(`${base}/employees/${id}`, payload)),
     deleteEmployee: (id) => s(del(`${base}/employees/${id}`)),
     toggleEmployeeActive: (id) => s(post(`${base}/employees/${id}/toggle-active`)),
+    updateEmployeePermissions: (id, permissions) => s(patch(`${base}/employees/${id}/permissions`, { permissions })),
 
     openShift: (openingCash) => s(post(`${base}/shifts/open`, { openingCash })),
     closeShift: (closingCash) => s(post(`${base}/shifts/close`, { closingCash })),

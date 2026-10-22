@@ -108,6 +108,19 @@ employeesRouter.delete("/employees/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
+employeesRouter.patch("/employees/:id/permissions", async (req, res) => {
+  const { businessId, id } = req.params;
+  const perms = req.body && typeof req.body.permissions === "object" && req.body.permissions ? req.body.permissions : {};
+  // Só guarda valores booleanos (ignora lixo).
+  const limpo = {};
+  for (const [k, v] of Object.entries(perms)) if (typeof v === "boolean") limpo[String(k).slice(0, 60)] = v;
+  const row = (
+    await query("UPDATE employees SET permissions = $1::jsonb WHERE id = $2 AND business_id = $3 RETURNING name", [JSON.stringify(limpo), id, businessId])
+  ).rows[0];
+  if (row) await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Atualizou as permissões de "${row.name}"`, entityType: "funcionario", entityId: id });
+  await respond(res, businessId);
+});
+
 employeesRouter.post("/employees/:id/toggle-active", async (req, res) => {
   const { businessId, id } = req.params;
   const atual = (await query("SELECT role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];

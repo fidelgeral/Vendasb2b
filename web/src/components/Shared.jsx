@@ -287,7 +287,7 @@ export function SelectComCriar({ value, onChange, options, onCreate, placeholder
 }
 
 // Ícone simples de "ver" (olho).
-function EyeIcon({ size = 14 }) {
+export function EyeIcon({ size = 14 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />

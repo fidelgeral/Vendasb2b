@@ -107,7 +107,7 @@ export async function buildStore(businessId) {
       [businessId]
     ),
     query(
-      `SELECT id, name, email, phone, doc_id AS "docId", role, active, created_at AS "createdAt"
+      `SELECT id, name, email, phone, doc_id AS "docId", role, active, permissions, created_at AS "createdAt"
        FROM employees WHERE business_id = $1 ORDER BY name`,
       [businessId]
     ),
