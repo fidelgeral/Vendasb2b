@@ -8,24 +8,41 @@ import { inPeriod, periodoAnterior, variacao } from "../lib/periods.js";
 import { StatCard, ReportBlock, EmptyNote, BarRow } from "../components/Shared.jsx";
 
 function ExportButtons({ title, columns, rows, meta }) {
+  const [aGerar, setAGerar] = useState(null); // 'pdf' | 'excel' | null
   const disabled = !rows || rows.length === 0;
+  const gerar = async (tipo) => {
+    setAGerar(tipo);
+    try {
+      const ok = tipo === "pdf" ? await exportReportPDF(title, columns, rows, meta) : await exportReportExcel(title, columns, rows);
+      if (!ok) {
+        alert(
+          "Não foi possível gerar o " + (tipo === "pdf" ? "PDF" : "Excel") + " agora.\n\n" +
+            "Atualize a aplicação e tente de novo: feche e volte a abrir a app (ou no computador carregue Ctrl+Shift+R). Confirme também que tem internet."
+        );
+      }
+    } catch (e) {
+      alert("Erro ao gerar o ficheiro: " + (e && e.message ? e.message : e));
+    } finally {
+      setAGerar(null);
+    }
+  };
   return (
     <div className="flex gap-1.5">
       <button
-        onClick={() => exportReportExcel(title, columns, rows)}
-        disabled={disabled}
+        onClick={() => gerar("excel")}
+        disabled={disabled || aGerar}
         style={{ borderColor: BORDER, color: GREEN }}
         className="border rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-40"
       >
-        Excel
+        {aGerar === "excel" ? "…" : "Excel"}
       </button>
       <button
-        onClick={() => exportReportPDF(title, columns, rows, meta)}
-        disabled={disabled}
+        onClick={() => gerar("pdf")}
+        disabled={disabled || aGerar}
         style={{ background: BRICK, color: "#fff" }}
         className="rounded-lg px-2.5 py-1 text-xs font-medium disabled:opacity-40"
       >
-        PDF
+        {aGerar === "pdf" ? "A gerar…" : "PDF"}
       </button>
     </div>
   );
