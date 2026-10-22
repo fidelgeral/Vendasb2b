@@ -4,6 +4,7 @@ import { fmtMT, getStock, UNIDADES } from "../lib/utils.js";
 import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 import { Plus, X, Package } from "../lib/icons.jsx";
 import BarcodeScanner from "../components/BarcodeScanner.jsx";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 
 export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
   const blank = {
@@ -38,6 +39,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
   const [ingSel, setIngSel] = useState({ productId: "", qty: "" });
   const [erro, setErro] = useState("");
   const [codScanner, setCodScanner] = useState(false);
+  const confirmar = useConfirm();
   const [verProduto, setVerProduto] = useState(null);
   const [histProduto, setHistProduto] = useState(null);
 
@@ -96,6 +98,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
       return;
     }
     setErro("");
+    if (!(await confirmar({ title: editingId ? "Guardar alterações?" : "Guardar produto?", message: `Vai guardar o produto "${form.name.trim()}".`, confirmLabel: "Guardar" }))) return;
     const payload = buildPayload();
     if (editingId) {
       setStore(await api.updateProduct(editingId, payload));
@@ -133,7 +136,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque }) {
   };
 
   const removeProduct = async (p) => {
-    if (!window.confirm(`Apagar o produto "${p.name}"? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ title: "Apagar produto?", message: `Vai apagar "${p.name}". Esta acção não pode ser desfeita.`, confirmLabel: "Apagar", danger: true }))) return;
     try {
       setStore(await api.deleteProduct(p.id));
     } catch (e) {

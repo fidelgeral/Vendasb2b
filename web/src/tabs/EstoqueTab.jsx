@@ -5,6 +5,7 @@ import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
 import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, ArrowDownCircle, PackageX, X } from "../lib/icons.jsx";
 import { getSession } from "../lib/api.js";
 import { SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal, PencilIcon, ClockIcon } from "../components/Shared.jsx";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 
 const GOLD = "#F59E0B";
 
@@ -33,6 +34,7 @@ function statusDe(l) {
 }
 
 export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras }) {
+  const confirmar = useConfirm();
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
@@ -135,12 +137,12 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const entradaSubmit = (id, qty) => guard(() => api.loteEntrada(id, qty), "Entrada registada");
   const editarSubmit = (id, payload) => guard(() => api.updateLote(id, payload), "Lote actualizado");
   const quebraSubmit = (id, qty, motivo) => guard(() => api.loteQuebra(id, qty, motivo), "Quebra registada", "warn");
-  const apagarLote = (id) => {
-    if (!window.confirm("Apagar este lote? Esta acção não pode ser anulada.")) return;
+  const apagarLote = async (id) => {
+    if (!(await confirmar({ title: "Apagar lote?", message: "Vai apagar este lote. Esta acção não pode ser anulada.", confirmLabel: "Apagar", danger: true }))) return;
     guard(() => api.deleteLote(id), "Lote apagado", "warn");
   };
-  const apagarProduto = (p) => {
-    if (!window.confirm(`Apagar o produto "${p.name}"? Esta acção não pode ser anulada.`)) return;
+  const apagarProduto = async (p) => {
+    if (!(await confirmar({ title: "Apagar produto?", message: `Vai apagar "${p.name}". Esta acção não pode ser anulada.`, confirmLabel: "Apagar", danger: true }))) return;
     guard(() => api.deleteProduct(p.id), "Produto apagado", "warn");
   };
   // Criação rápida de fornecedor a partir dos seletores dos modais.

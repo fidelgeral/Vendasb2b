@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
 import { ALL_MODULES } from "../lib/utils.js";
 import { processarLogo } from "../lib/logoProcess.js";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 import { Settings, Percent, Wallet, Users, Lock, Banknote } from "../lib/icons.jsx";
 import BillingPanel from "../components/BillingPanel.jsx";
 
@@ -88,7 +89,9 @@ function ImpressaoConfig({ store, setStore, api }) {
   const [imprimirAoFinalizar, setImprimirAoFinalizar] = useState(!!store.config.impressao.imprimirAoFinalizar);
   const [scannerUsb, setScannerUsb] = useState(store.config.impressao.scannerUsb !== false);
   const [mensagem, setMensagem] = useState(store.config.receiptMessage);
-  const save = async () =>
+  const confirmar = useConfirm();
+  const save = async () => {
+    if (!(await confirmar({ title: "Guardar configurações de impressão?", message: "Vai guardar as definições de impressão, visor e série de documentos.", confirmLabel: "Guardar" }))) return;
     setStore(
       await api.patchConfig({
         receiptMessage: mensagem,
@@ -96,6 +99,7 @@ function ImpressaoConfig({ store, setStore, api }) {
         docSeries: { prefixo: (prefixo || "FT").toUpperCase(), ano: new Date().getFullYear(), proximo: Number(proximo) || 1 },
       })
     );
+  };
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
       <div className="text-sm font-semibold">Impressão e visor</div>
@@ -150,6 +154,7 @@ function IvaConfig({ store, setStore, api }) {
   const [taxas, setTaxas] = useState(Array.isArray(store.config.iva.taxas) ? [...store.config.iva.taxas] : []);
   const [padrao, setPadrao] = useState(Number(store.config.iva.taxa) || 0);
   const [nova, setNova] = useState("");
+  const confirmar = useConfirm();
 
   const addTaxa = () => {
     const n = Number(nova);
@@ -164,6 +169,7 @@ function IvaConfig({ store, setStore, api }) {
   };
 
   const save = async () => {
+    if (!(await confirmar({ title: "Guardar configuração de IVA?", message: "Vai guardar as taxas de IVA e a taxa padrão.", confirmLabel: "Guardar" }))) return;
     const lista = taxas;
     const def = lista.includes(padrao) ? padrao : lista[0] || 0;
     setStore(await api.patchConfig({ iva: { taxa: Number(def) || 0, taxas: lista, precosIncluemIva, isento } }));
@@ -230,8 +236,12 @@ function IvaConfig({ store, setStore, api }) {
 
 function ContasConfig({ store, setStore, api }) {
   const [contas, setContas] = useState(store.config.contas);
+  const confirmar = useConfirm();
   const update = (id, field, value) => setContas((c) => ({ ...c, [id]: { ...c[id], [field]: value } }));
-  const save = async () => setStore(await api.patchConfig({ contas }));
+  const save = async () => {
+    if (!(await confirmar({ title: "Guardar contas de pagamento?", message: "Vai guardar as formas de pagamento activas.", confirmLabel: "Guardar" }))) return;
+    setStore(await api.patchConfig({ contas }));
+  };
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-3">
       <div className="text-sm font-semibold">Contas de pagamento</div>
@@ -274,8 +284,12 @@ function EmpresaConfig({ store, setStore, api }) {
   const [businessName, setBusinessName] = useState(store.config.businessName);
   const [empresa, setEmpresa] = useState(store.config.empresa);
   const [logoBusy, setLogoBusy] = useState(false);
+  const confirmar = useConfirm();
   const update = (field, value) => setEmpresa((e) => ({ ...e, [field]: value }));
-  const save = async () => setStore(await api.patchConfig({ businessName, empresa }));
+  const save = async () => {
+    if (!(await confirmar({ title: "Guardar dados da empresa?", message: "Vai guardar o nome, logótipo e dados fiscais da empresa.", confirmLabel: "Guardar" }))) return;
+    setStore(await api.patchConfig({ businessName, empresa }));
+  };
 
   const onLogoFile = async (e) => {
     const file = e.target.files && e.target.files[0];

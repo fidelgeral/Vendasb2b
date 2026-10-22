@@ -3,8 +3,10 @@ import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK, GOLD } from "../lib/theme.js";
 import { fmtMT, todayStr, daysUntil, DESPESA_CATEGORIAS } from "../lib/utils.js";
 import { Plus, X } from "../lib/icons.jsx";
 import { StatCard, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 
 export default function ComprasTab({ store, setStore, api }) {
+  const confirmar = useConfirm();
   const [verForn, setVerForn] = useState(null);
   const [editForn, setEditForn] = useState(null);
   const [histForn, setHistForn] = useState(null);
@@ -17,6 +19,7 @@ export default function ComprasTab({ store, setStore, api }) {
 
   const addSupplier = async () => {
     if (!sup.name.trim()) return;
+    if (!(await confirmar({ title: "Guardar fornecedor?", message: `Vai guardar o fornecedor "${sup.name.trim()}".`, confirmLabel: "Guardar" }))) return;
     setStore(
       await api.createSupplier({
         name: sup.name.trim(), contacto: sup.contacto.trim(), phone: sup.phone.trim(), email: sup.email.trim(),
@@ -26,7 +29,7 @@ export default function ComprasTab({ store, setStore, api }) {
     setSup({ name: "", contacto: "", phone: "", email: "", nuit: "", endereco: "", prazo: "" });
   };
   const removeSupplier = async (s) => {
-    if (!window.confirm(`Apagar o fornecedor "${s.name}"?`)) return;
+    if (!(await confirmar({ title: "Apagar fornecedor?", message: `Vai apagar "${s.name}".`, confirmLabel: "Apagar", danger: true }))) return;
     setStore(await api.deleteSupplier(s.id));
   };
 
@@ -148,7 +151,7 @@ export default function ComprasTab({ store, setStore, api }) {
       {editForn && (
         <FornecedorEditModal
           fornecedor={editForn}
-          onSubmit={async (payload) => { setStore(await api.updateSupplier(editForn.id, payload)); setEditForn(null); }}
+          onSubmit={async (payload) => { if (!(await confirmar({ title: "Guardar alterações?", message: `Vai guardar o fornecedor "${(payload.name || editForn.name || "").trim()}".`, confirmLabel: "Guardar" }))) return; setStore(await api.updateSupplier(editForn.id, payload)); setEditForn(null); }}
           onClose={() => setEditForn(null)}
         />
       )}

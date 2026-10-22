@@ -2,8 +2,10 @@ import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK, GREEN } from "../lib/theme.js";
 import { ROLE_LABELS } from "../lib/utils.js";
 import { AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 
 export default function EquipaTab({ store, setStore, api }) {
+  const confirmar = useConfirm();
   const restauranteAtivo = !!(store.config.modules.restaurante || store.config.modules.bar);
   const blank = { name: "", email: "", phone: "", password: "", role: "caixa", docId: "" };
   const [form, setForm] = useState(blank);
@@ -29,6 +31,7 @@ export default function EquipaTab({ store, setStore, api }) {
       return;
     }
     setError("");
+    if (!(await confirmar({ title: editingId ? "Guardar alterações?" : "Guardar utilizador?", message: `Vai guardar o utilizador "${form.name.trim()}".`, confirmLabel: "Guardar" }))) return;
     const payload = {
       name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), role: form.role, docId: form.docId.trim(),
       ...(form.password ? { password: form.password } : {}),
@@ -52,7 +55,7 @@ export default function EquipaTab({ store, setStore, api }) {
     setError("");
   };
   const removeEmployee = async (e) => {
-    if (!window.confirm(`Remover o utilizador "${e.name}"? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ title: "Remover utilizador?", message: `Vai remover "${e.name}". Esta acção não pode ser desfeita.`, confirmLabel: "Remover", danger: true }))) return;
     setStore(await api.deleteEmployee(e.id));
   };
   const toggleActive = async (id) => setStore(await api.toggleEmployeeActive(id));

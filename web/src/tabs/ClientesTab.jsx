@@ -2,9 +2,11 @@ import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK, GREEN } from "../lib/theme.js";
 import { fmtMT, whatsappLink } from "../lib/utils.js";
 import { StatCard, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 import { Plus } from "../lib/icons.jsx";
 
 export default function ClientesTab({ store, setStore, api }) {
+  const confirmar = useConfirm();
   const blank = { name: "", tipo: "Particular", phone: "", email: "", nuit: "", endereco: "", cidade: "", creditLimit: "", notas: "" };
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
@@ -15,6 +17,7 @@ export default function ClientesTab({ store, setStore, api }) {
 
   const submit = async () => {
     if (!form.name.trim()) return;
+    if (!(await confirmar({ title: editingId ? "Guardar alterações?" : "Guardar cliente?", message: `Vai guardar o cliente "${form.name.trim()}".`, confirmLabel: "Guardar" }))) return;
     const payload = {
       name: form.name.trim(),
       tipo: form.tipo,
@@ -45,7 +48,7 @@ export default function ClientesTab({ store, setStore, api }) {
     setShowForm(true);
   };
   const removeClient = async (c) => {
-    if (!window.confirm(`Apagar o cliente "${c.name}"? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ title: "Apagar cliente?", message: `Vai apagar "${c.name}". Esta acção não pode ser desfeita.`, confirmLabel: "Apagar", danger: true }))) return;
     setStore(await api.deleteClient(c.id));
   };
   const payPartial = async (clientId, valor) => {
