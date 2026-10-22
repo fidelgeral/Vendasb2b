@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK, GREEN, INK } from "../lib/theme.js";
-import { ROLE_LABELS } from "../lib/utils.js";
+import { ROLE_LABELS, compressImageFile } from "../lib/utils.js";
 import { DetalhesModal, HistoricoEntidadeModal, PencilIcon, EyeIcon, ClockIcon } from "../components/Shared.jsx";
 import { Trash2, Plus } from "../lib/icons.jsx";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
@@ -11,7 +11,7 @@ const ROLE_COR = { dono: "#7C3AED", gerente: "#1E5BA8", caixa: "#0F766E", cozinh
 export default function EquipaTab({ store, setStore, api }) {
   const confirmar = useConfirm();
   const restauranteAtivo = !!(store.config.modules.restaurante || store.config.modules.bar);
-  const blank = { name: "", email: "", phone: "", password: "", role: "caixa", docId: "" };
+  const blank = { name: "", email: "", phone: "", password: "", role: "caixa", docId: "", genero: "", foto: "", garcom: false };
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -38,6 +38,7 @@ export default function EquipaTab({ store, setStore, api }) {
     if (!(await confirmar({ title: editingId ? "Guardar alterações?" : "Guardar funcionário?", message: `Vai guardar "${form.name.trim()}".`, confirmLabel: "Guardar" }))) return;
     const payload = {
       name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), role: form.role, docId: form.docId.trim(),
+      genero: form.genero || "", foto: form.foto || "", garcom: !!form.garcom,
       ...(form.password ? { password: form.password } : {}),
     };
     try {
@@ -53,7 +54,7 @@ export default function EquipaTab({ store, setStore, api }) {
   const abrirNovo = () => { setEditingId(null); setForm(blank); setError(""); setShowForm(true); };
   const startEdit = (e) => {
     setEditingId(e.id);
-    setForm({ name: e.name || "", email: e.email || "", phone: e.phone || "", password: "", role: e.role || "caixa", docId: e.docId || "" });
+    setForm({ name: e.name || "", email: e.email || "", phone: e.phone || "", password: "", role: e.role || "caixa", docId: e.docId || "", genero: e.genero || "", foto: e.foto || "", garcom: !!e.garcom });
     setError("");
     setShowForm(true);
   };
@@ -121,8 +122,8 @@ export default function EquipaTab({ store, setStore, api }) {
           return (
             <div key={e.id} style={{ background: CARD, borderColor: ehDono ? "#C4B5FD" : BORDER, opacity: active ? 1 : 0.6 }} className="border rounded-xl p-3 flex flex-col">
               <div className="flex items-center gap-3">
-                <div style={{ background: (ROLE_COR[e.role] || TEAL) + "22", color: ROLE_COR[e.role] || TEAL }} className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shrink-0">
-                  {(e.name || "?").charAt(0).toUpperCase()}
+                <div style={{ background: (ROLE_COR[e.role] || TEAL) + "22", color: ROLE_COR[e.role] || TEAL }} className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shrink-0 overflow-hidden">
+                  {e.foto ? <img src={e.foto} alt="" className="w-full h-full object-cover" /> : (e.name || "?").charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate">{e.name}</div>
@@ -181,6 +182,8 @@ export default function EquipaTab({ store, setStore, api }) {
             { label: "Email", value: verFunc.email },
             { label: "Telefone", value: verFunc.phone },
             { label: "Função", value: ROLE_LABELS[verFunc.role] || verFunc.role },
+            { label: "Género", value: verFunc.genero },
+            { label: "Garçom", value: verFunc.garcom ? "Sim" : "Não" },
             { label: "Nº de documento", value: verFunc.docId },
             { label: "Estado", value: verFunc.active !== false ? "Ativo" : "Inativo" },
           ]}
@@ -210,10 +213,29 @@ function FuncionarioModal({ form, setForm, editingId, error, showPw, setShowPw, 
           <button onClick={onClose} style={{ color: MUTED }} className="text-lg leading-none px-1">✕</button>
         </div>
         <div className="space-y-2.5">
+          <div className="flex items-center gap-3">
+            <div style={{ borderColor: BORDER, background: "#F1F5F9" }} className="w-16 h-16 rounded-full border overflow-hidden flex items-center justify-center shrink-0">
+              {form.foto ? <img src={form.foto} alt="" className="w-full h-full object-cover" /> : <span className="text-2xl">👤</span>}
+            </div>
+            <div className="space-y-1">
+              <label style={{ borderColor: TEAL, color: TEAL }} className="border rounded-lg px-3 py-1.5 text-xs cursor-pointer inline-block">
+                {form.foto ? "Mudar foto" : "Carregar foto"}
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files && e.target.files[0]; e.target.value = ""; if (file) { try { set("foto", await compressImageFile(file, 160, 0.7)); } catch (x) {} } }} />
+              </label>
+              {form.foto && <button type="button" onClick={() => set("foto", "")} style={{ color: BRICK }} className="block text-xs">Remover foto</button>}
+            </div>
+          </div>
           <Campo label="Nome completo *">
             <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex: Maria João Cossa" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
           </Campo>
           <div className="grid grid-cols-2 gap-2.5">
+            <Campo label="Género">
+              <select value={form.genero} onChange={(e) => set("genero", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm">
+                <option value="">—</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+              </select>
+            </Campo>
             <Campo label="Função">
               <select value={form.role} onChange={(e) => set("role", e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm">
                 <option value="dono">Administrador</option>
@@ -238,6 +260,12 @@ function FuncionarioModal({ form, setForm, editingId, error, showPw, setShowPw, 
               <button type="button" onClick={() => setShowPw((s) => !s)} style={{ borderColor: BORDER, color: MUTED }} className="border rounded-lg px-2 text-xs">{showPw ? "Ocultar" : "Ver"}</button>
             </div>
           </Campo>
+          {restauranteAtivo && (
+            <label style={{ background: "#F8FAFC", borderColor: BORDER }} className="border rounded-lg px-3 py-2 flex items-center justify-between gap-2 cursor-pointer">
+              <span className="text-sm">Garçom / empregado de mesa?</span>
+              <Switch on={!!form.garcom} onChange={(v) => set("garcom", v)} />
+            </label>
+          )}
           {error && <div className="text-xs" style={{ color: BRICK }}>{error}</div>}
         </div>
         <div className="flex gap-2 mt-4">

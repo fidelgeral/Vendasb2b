@@ -28,6 +28,9 @@ const employeeSchema = z.object({
   role: z.enum(["dono", "gerente", "caixa", "cozinha"]).default("caixa"),
   docId: z.string().optional().default(""),
   password: z.string().min(4).optional(),
+  genero: z.string().optional().default(""),
+  foto: z.string().optional().default(""),
+  garcom: z.boolean().optional().default(false),
 });
 
 employeesRouter.post("/employees", requirePermission("gerirEquipa"), async (req, res) => {
@@ -44,8 +47,8 @@ employeesRouter.post("/employees", requirePermission("gerirEquipa"), async (req,
   const passwordHash = await hashPassword(f.password);
   const novo = (
     await query(
-      "INSERT INTO employees (business_id, name, email, phone, role, doc_id, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
-      [businessId, f.name, f.email.toLowerCase(), f.phone, f.role, f.docId, passwordHash]
+      "INSERT INTO employees (business_id, name, email, phone, role, doc_id, password_hash, genero, foto, garcom) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
+      [businessId, f.name, f.email.toLowerCase(), f.phone, f.role, f.docId, passwordHash, f.genero, f.foto, f.garcom]
     )
   ).rows[0];
   await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Adicionou o utilizador "${f.name}" (${f.role})`, entityType: "funcionario", entityId: novo.id });
@@ -59,6 +62,9 @@ const employeePatchSchema = z.object({
   role: z.enum(["dono", "gerente", "caixa", "cozinha"]).optional(),
   docId: z.string().optional(),
   password: z.string().min(4).optional(),
+  genero: z.string().optional(),
+  foto: z.string().optional(),
+  garcom: z.boolean().optional(),
 });
 
 employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async (req, res) => {
@@ -83,10 +89,11 @@ employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async 
 
   const passwordHash = f.password ? await hashPassword(f.password) : existing.password_hash;
   await query(
-    "UPDATE employees SET name=$1, email=$2, phone=$3, role=$4, doc_id=$5, password_hash=$6 WHERE id = $7",
+    "UPDATE employees SET name=$1, email=$2, phone=$3, role=$4, doc_id=$5, password_hash=$6, genero=$7, foto=$8, garcom=$9 WHERE id = $10",
     [
       f.name ?? existing.name, (f.email ?? existing.email).toLowerCase(), f.phone ?? existing.phone,
-      f.role ?? existing.role, f.docId ?? existing.doc_id, passwordHash, id,
+      f.role ?? existing.role, f.docId ?? existing.doc_id, passwordHash,
+      f.genero ?? existing.genero, f.foto !== undefined ? f.foto : existing.foto, f.garcom ?? existing.garcom, id,
     ]
   );
   const campos = { name: "name", email: "email", phone: "phone", role: "role", docId: "doc_id" };
