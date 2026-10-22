@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { requirePermission } from "../permissions.js";
 
 export const lotesRouter = Router({ mergeParams: true });
 lotesRouter.use(requireAuth, requireBusiness);
@@ -69,6 +70,7 @@ const loteSchema = z.object({
 // Criar um lote individual.
 lotesRouter.post(
   "/lotes",
+  requirePermission("loteNovo"),
   wrap(async (req, res) => {
     const parsed = loteSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Dados do lote inválidos.", details: parsed.error.flatten() });
@@ -99,6 +101,7 @@ const bulkSchema = z.object({
 });
 lotesRouter.post(
   "/lotes/bulk",
+  requirePermission("loteNovo"),
   wrap(async (req, res) => {
     const parsed = bulkSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Dados inválidos.", details: parsed.error.flatten() });
@@ -131,6 +134,7 @@ lotesRouter.post(
 // Entrada: adicionar quantidade a um lote existente.
 lotesRouter.post(
   "/lotes/:id/entrada",
+  requirePermission("loteAdicionar"),
   wrap(async (req, res) => {
     const businessId = req.params.businessId;
     const qty = Number(req.body?.qty);
@@ -153,7 +157,7 @@ lotesRouter.post(
 // Editar um lote (nome, validade, custo, fornecedor, quantidade com motivo).
 lotesRouter.patch(
   "/lotes/:id",
-  requireRole("dono", "gerente"),
+  requirePermission("loteEditar"),
   wrap(async (req, res) => {
     const businessId = req.params.businessId;
     const b = req.body || {};
@@ -180,6 +184,7 @@ lotesRouter.patch(
 // Quebra num lote específico.
 lotesRouter.post(
   "/lotes/:id/quebra",
+  requirePermission("loteQuebra"),
   wrap(async (req, res) => {
     const businessId = req.params.businessId;
     const qty = Number(req.body?.qty);
@@ -206,7 +211,7 @@ lotesRouter.post(
 // Apagar um lote.
 lotesRouter.delete(
   "/lotes/:id",
-  requireRole("dono", "gerente"),
+  requirePermission("loteApagar"),
   wrap(async (req, res) => {
     const businessId = req.params.businessId;
     const lote = await getLote({ query: (t, p) => query(t, p) }, req.params.id, businessId);

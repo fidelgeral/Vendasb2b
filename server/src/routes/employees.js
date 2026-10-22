@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import { query } from "../db.js";
-import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
+import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { hashPassword } from "../auth/hash.js";
 import { buildStore } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
+import { requirePermission } from "../permissions.js";
 
 export const employeesRouter = Router({ mergeParams: true });
-employeesRouter.use(requireAuth, requireBusiness, requireRole("dono"));
+employeesRouter.use(requireAuth, requireBusiness);
 
 const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
 
@@ -29,7 +30,7 @@ const employeeSchema = z.object({
   password: z.string().min(4).optional(),
 });
 
-employeesRouter.post("/employees", async (req, res) => {
+employeesRouter.post("/employees", requirePermission("gerirEquipa"), async (req, res) => {
   const parsed = employeeSchema.safeParse(req.body);
   if (!parsed.success || !parsed.data.password) return res.status(400).json({ error: "Dados inválidos: a senha deve ter pelo menos 4 caracteres." });
   const f = parsed.data;
@@ -60,7 +61,7 @@ const employeePatchSchema = z.object({
   password: z.string().min(4).optional(),
 });
 
-employeesRouter.patch("/employees/:id", async (req, res) => {
+employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async (req, res) => {
   const parsed = employeePatchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados inválidos." });
   const f = parsed.data;
@@ -97,7 +98,7 @@ employeesRouter.patch("/employees/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-employeesRouter.delete("/employees/:id", async (req, res) => {
+employeesRouter.delete("/employees/:id", requirePermission("gerirEquipa"), async (req, res) => {
   const { businessId, id } = req.params;
   const antes = (await query("SELECT name, role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (antes && antes.role === "dono" && antes.active && !(await outroDonoActivo(businessId, id))) {
@@ -108,7 +109,7 @@ employeesRouter.delete("/employees/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-employeesRouter.patch("/employees/:id/permissions", async (req, res) => {
+employeesRouter.patch("/employees/:id/permissions", requirePermission("gerirEquipa"), async (req, res) => {
   const { businessId, id } = req.params;
   const perms = req.body && typeof req.body.permissions === "object" && req.body.permissions ? req.body.permissions : {};
   // Só guarda valores booleanos (ignora lixo).
@@ -121,7 +122,7 @@ employeesRouter.patch("/employees/:id/permissions", async (req, res) => {
   await respond(res, businessId);
 });
 
-employeesRouter.post("/employees/:id/toggle-active", async (req, res) => {
+employeesRouter.post("/employees/:id/toggle-active", requirePermission("gerirEquipa"), async (req, res) => {
   const { businessId, id } = req.params;
   const atual = (await query("SELECT role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (atual && atual.role === "dono" && atual.active && !(await outroDonoActivo(businessId, id))) {

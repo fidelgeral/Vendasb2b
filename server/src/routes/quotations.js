@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { requirePermission } from "../permissions.js";
 
 export const quotationsRouter = Router({ mergeParams: true });
 quotationsRouter.use(requireAuth, requireBusiness);
@@ -33,7 +34,7 @@ async function nextCotacaoNumber(businessId) {
   return "COT" + ano + "/" + String(n + 1).padStart(4, "0");
 }
 
-quotationsRouter.post("/quotations", async (req, res) => {
+quotationsRouter.post("/quotations", requirePermission("cotacao"), async (req, res) => {
   const parsed = quotationSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados da cotação inválidos.", details: parsed.error.flatten() });
   const f = parsed.data;
@@ -46,7 +47,7 @@ quotationsRouter.post("/quotations", async (req, res) => {
   await respond(res, businessId, 201);
 });
 
-quotationsRouter.delete("/quotations/:id", async (req, res) => {
+quotationsRouter.delete("/quotations/:id", requirePermission("cotacao"), async (req, res) => {
   const { businessId, id } = req.params;
   await query("DELETE FROM quotations WHERE id = $1 AND business_id = $2", [id, businessId]);
   await respond(res, businessId);

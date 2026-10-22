@@ -1,14 +1,17 @@
 import { Router } from "express";
 import { query } from "../db.js";
-import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
+import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { requirePermission } from "../permissions.js";
 
 export const configRouter = Router({ mergeParams: true });
-configRouter.use(requireAuth, requireBusiness, requireRole("dono"));
+// NOTA: a verificação de permissão fica em cada rota (não no .use), senão o
+// middleware bloquearia pedidos de OUTROS routers montados no mesmo caminho.
+configRouter.use(requireAuth, requireBusiness);
 
 // Faz merge raso do corpo recebido dentro de businesses.config (cada Tab de
 // configuração só envia a secção que alterou, ex.: { iva: {...} }).
-configRouter.patch("/config", async (req, res) => {
+configRouter.patch("/config", requirePermission("gerirConfig"), async (req, res) => {
   const businessId = req.params.businessId;
   const patch = req.body && typeof req.body === "object" ? req.body : {};
 

@@ -4,6 +4,7 @@ import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
+import { requirePermission } from "../permissions.js";
 
 export const productsRouter = Router({ mergeParams: true });
 productsRouter.use(requireAuth, requireBusiness);
@@ -88,7 +89,7 @@ const productSchema = z.object({
   estoqueValidade: z.string().optional().nullable(),
 });
 
-productsRouter.post("/products", async (req, res) => {
+productsRouter.post("/products", requirePermission("produtoAdicionar"), async (req, res) => {
   const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados do produto inválidos.", details: parsed.error.flatten() });
   const f = parsed.data;
@@ -166,7 +167,7 @@ const updateSchema = z.object({
   active: z.boolean().optional(),
 });
 
-productsRouter.patch("/products/:id", async (req, res) => {
+productsRouter.patch("/products/:id", requirePermission("produtoEditar"), async (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados inválidos.", details: parsed.error.flatten() });
   const f = parsed.data;
@@ -214,7 +215,7 @@ productsRouter.patch("/products/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-productsRouter.delete("/products/:id", async (req, res) => {
+productsRouter.delete("/products/:id", requirePermission("produtoApagar"), async (req, res) => {
   const { businessId, id } = req.params;
   const dependents = (
     await query(
@@ -229,7 +230,7 @@ productsRouter.delete("/products/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-productsRouter.post("/products/:id/stock-adjust", async (req, res) => {
+productsRouter.post("/products/:id/stock-adjust", requirePermission("produtoEditar"), async (req, res) => {
   const delta = Number(req.body?.delta);
   if (!Number.isFinite(delta)) return res.status(400).json({ error: "Quantidade inválida." });
   const { businessId, id } = req.params;
@@ -240,7 +241,7 @@ productsRouter.post("/products/:id/stock-adjust", async (req, res) => {
   await respond(res, businessId);
 });
 
-productsRouter.post("/products/:id/variants", async (req, res) => {
+productsRouter.post("/products/:id/variants", requirePermission("produtoEditar"), async (req, res) => {
   const label = String(req.body?.label || "").trim();
   if (!label) return res.status(400).json({ error: "Indique um nome para a variação." });
   const { businessId, id } = req.params;
@@ -250,7 +251,7 @@ productsRouter.post("/products/:id/variants", async (req, res) => {
   await respond(res, businessId, 201);
 });
 
-productsRouter.post("/products/:id/variants/:variantId/adjust", async (req, res) => {
+productsRouter.post("/products/:id/variants/:variantId/adjust", requirePermission("produtoEditar"), async (req, res) => {
   const delta = Number(req.body?.delta);
   if (!Number.isFinite(delta)) return res.status(400).json({ error: "Quantidade inválida." });
   const { businessId, id, variantId } = req.params;
@@ -261,7 +262,7 @@ productsRouter.post("/products/:id/variants/:variantId/adjust", async (req, res)
   await respond(res, businessId);
 });
 
-productsRouter.post("/products/:id/batches", async (req, res) => {
+productsRouter.post("/products/:id/batches", requirePermission("loteNovo"), async (req, res) => {
   const qty = Number(req.body?.qty);
   const expiryDate = req.body?.expiryDate || null;
   if (!Number.isFinite(qty)) return res.status(400).json({ error: "Quantidade inválida." });
@@ -282,7 +283,7 @@ const bulkRowSchema = z.object({
   minStock: z.union([z.number(), z.string()]).optional(),
 });
 
-productsRouter.post("/products/bulk-import", async (req, res) => {
+productsRouter.post("/products/bulk-import", requirePermission("produtoAdicionar"), async (req, res) => {
   const parsed = z.array(bulkRowSchema).safeParse(req.body?.rows);
   if (!parsed.success) return res.status(400).json({ error: "Ficheiro inválido." });
   const businessId = req.params.businessId;
@@ -330,7 +331,7 @@ productsRouter.post("/products/bulk-import", async (req, res) => {
   res.json({ store, summary: { created, updated, skipped } });
 });
 
-productsRouter.post("/categories", async (req, res) => {
+productsRouter.post("/categories", requirePermission("categoriaAdicionar"), async (req, res) => {
   const name = String(req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "Indique um nome de categoria." });
   const businessId = req.params.businessId;

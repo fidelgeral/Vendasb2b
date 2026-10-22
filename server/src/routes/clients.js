@@ -4,6 +4,7 @@ import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
+import { requirePermission } from "../permissions.js";
 
 export const clientsRouter = Router({ mergeParams: true });
 clientsRouter.use(requireAuth, requireBusiness);
@@ -22,7 +23,7 @@ const clientSchema = z.object({
   notas: z.string().optional().default(""),
 });
 
-clientsRouter.post("/clients", async (req, res) => {
+clientsRouter.post("/clients", requirePermission("clienteGerir"), async (req, res) => {
   const parsed = clientSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados do cliente inválidos." });
   const f = parsed.data;
@@ -50,7 +51,7 @@ const clientPatchSchema = z.object({
   notas: z.string().optional(),
 });
 
-clientsRouter.patch("/clients/:id", async (req, res) => {
+clientsRouter.patch("/clients/:id", requirePermission("clienteGerir"), async (req, res) => {
   const parsed = clientPatchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados do cliente inválidos." });
   const f = parsed.data;
@@ -74,7 +75,7 @@ clientsRouter.patch("/clients/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-clientsRouter.delete("/clients/:id", async (req, res) => {
+clientsRouter.delete("/clients/:id", requirePermission("clienteApagar"), async (req, res) => {
   const { businessId, id } = req.params;
   const antes = (await query("SELECT name FROM clients WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   await query("DELETE FROM clients WHERE id = $1 AND business_id = $2", [id, businessId]);
@@ -82,7 +83,7 @@ clientsRouter.delete("/clients/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-clientsRouter.post("/clients/:id/pay-debt", async (req, res) => {
+clientsRouter.post("/clients/:id/pay-debt", requirePermission("fiadoReceber"), async (req, res) => {
   const { businessId, id } = req.params;
   const debtId = req.body?.debtId;
   if (!debtId) return res.status(400).json({ error: "Indique a dívida." });
@@ -90,7 +91,7 @@ clientsRouter.post("/clients/:id/pay-debt", async (req, res) => {
   await respond(res, businessId);
 });
 
-clientsRouter.post("/clients/:id/pay-partial", async (req, res) => {
+clientsRouter.post("/clients/:id/pay-partial", requirePermission("fiadoReceber"), async (req, res) => {
   const { businessId, id } = req.params;
   let remaining = Number(req.body?.valor) || 0;
   if (remaining <= 0) return res.status(400).json({ error: "Valor inválido." });

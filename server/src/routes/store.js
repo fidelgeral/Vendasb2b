@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
+import { requirePermission } from "../permissions.js";
 
 export const storeRouter = Router({ mergeParams: true });
 storeRouter.use(requireAuth, requireBusiness);
@@ -354,7 +355,7 @@ storeRouter.get("/image-search", async (req, res) => {
   }
 });
 
-storeRouter.get("/history", async (req, res) => {
+storeRouter.get("/history", requirePermission("verBalanco"), async (req, res) => {
   const businessId = req.params.businessId;
   const from = req.query.from || "1900-01-01";
   const to = req.query.to || "2999-12-31";

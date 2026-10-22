@@ -3,13 +3,14 @@ import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { requirePermission } from "../permissions.js";
 
 export const caixaRouter = Router({ mergeParams: true });
 caixaRouter.use(requireAuth, requireBusiness);
 
 const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
 
-caixaRouter.post("/shifts/open", async (req, res) => {
+caixaRouter.post("/shifts/open", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;
   const openingCash = Number(req.body?.openingCash) || 0;
   const open = (await query("SELECT 1 FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows.length;
@@ -19,7 +20,7 @@ caixaRouter.post("/shifts/open", async (req, res) => {
   await respond(res, businessId, 201);
 });
 
-caixaRouter.post("/shifts/close", async (req, res) => {
+caixaRouter.post("/shifts/close", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;
   const closingCash = Number(req.body?.closingCash) || 0;
   const employeeId = req.auth.type === "employee" ? req.auth.employeeId : null;
@@ -57,7 +58,7 @@ const quebraSchema = z.object({
   motivo: z.string().optional().default(""),
 });
 
-caixaRouter.post("/quebras", async (req, res) => {
+caixaRouter.post("/quebras", requirePermission("quebras"), async (req, res) => {
   const parsed = quebraSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados inválidos." });
   const { productId, variantId, qty, motivo } = parsed.data;
@@ -90,7 +91,7 @@ const movimentoSchema = z.object({
   categoria: z.string().optional().default("Outros"),
 });
 
-caixaRouter.post("/movimentos", async (req, res) => {
+caixaRouter.post("/movimentos", (req, res, next) => requirePermission(req.body && req.body.type === "saida" ? "caixaSaida" : "caixaEntrada")(req, res, next), async (req, res) => {
   const parsed = movimentoSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados inválidos." });
   const { type, amount, motivo, categoria } = parsed.data;

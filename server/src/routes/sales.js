@@ -5,6 +5,7 @@ import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js
 import { buildStore } from "./store.js";
 import { decrementStock, incrementStock } from "./caixa.js";
 import { nextDocNumber } from "../docNumber.js";
+import { requirePermission } from "../permissions.js";
 
 export const salesRouter = Router({ mergeParams: true });
 salesRouter.use(requireAuth, requireBusiness);
@@ -35,7 +36,7 @@ const saleSchema = z.object({
   clientSaleId: z.string().max(100).optional().nullable(),
 });
 
-salesRouter.post("/sales", async (req, res) => {
+salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   const parsed = saleSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados da venda inválidos.", details: parsed.error.flatten() });
   const f = parsed.data;
@@ -135,7 +136,7 @@ salesRouter.post("/sales", async (req, res) => {
   }
 });
 
-salesRouter.post("/sales/:id/void", requireRole("dono", "gerente"), async (req, res) => {
+salesRouter.post("/sales/:id/void", requirePermission("quebras"), async (req, res) => {
   const { businessId, id } = req.params;
   const reason = req.body?.reason || "";
   const employee = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
@@ -169,7 +170,7 @@ salesRouter.post("/sales/:id/void", requireRole("dono", "gerente"), async (req, 
   await respond(res, businessId);
 });
 
-salesRouter.post("/parked", async (req, res) => {
+salesRouter.post("/parked", requirePermission("guardarPedido"), async (req, res) => {
   const businessId = req.params.businessId;
   const cart = req.body?.cart;
   if (!Array.isArray(cart) || !cart.length) return res.status(400).json({ error: "Carrinho vazio." });
@@ -177,7 +178,7 @@ salesRouter.post("/parked", async (req, res) => {
   await respond(res, businessId, 201);
 });
 
-salesRouter.delete("/parked/:id", async (req, res) => {
+salesRouter.delete("/parked/:id", requirePermission("guardarPedido"), async (req, res) => {
   const { businessId, id } = req.params;
   await query("DELETE FROM parked_sales WHERE id = $1 AND business_id = $2", [id, businessId]);
   await respond(res, businessId);
