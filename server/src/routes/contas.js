@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStore } from "./store.js";
+import { requirePermission } from "../permissions.js";
 
 export const contasRouter = Router({ mergeParams: true });
 contasRouter.use(requireAuth, requireBusiness);
@@ -17,7 +18,7 @@ const contaSchema = z.object({
   vencimento: z.string().optional().nullable(),
 });
 
-contasRouter.post("/contas-pagar", async (req, res) => {
+contasRouter.post("/contas-pagar", requirePermission("caixaSaida"), async (req, res) => {
   const parsed = contaSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados da conta inválidos." });
   const f = parsed.data;
@@ -29,7 +30,7 @@ contasRouter.post("/contas-pagar", async (req, res) => {
   await respond(res, businessId, 201);
 });
 
-contasRouter.delete("/contas-pagar/:id", async (req, res) => {
+contasRouter.delete("/contas-pagar/:id", requirePermission("caixaSaida"), async (req, res) => {
   const { businessId, id } = req.params;
   await query("DELETE FROM contas_pagar WHERE id = $1 AND business_id = $2", [id, businessId]);
   await respond(res, businessId);
@@ -37,7 +38,7 @@ contasRouter.delete("/contas-pagar/:id", async (req, res) => {
 
 // Marcar como paga. Se o caixa estiver aberto, regista também uma saída de caixa
 // (reutiliza a tabela movimentos_caixa) para o fluxo de caixa ficar certo.
-contasRouter.post("/contas-pagar/:id/pagar", async (req, res) => {
+contasRouter.post("/contas-pagar/:id/pagar", requirePermission("caixaSaida"), async (req, res) => {
   const { businessId, id } = req.params;
   const employee = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
 

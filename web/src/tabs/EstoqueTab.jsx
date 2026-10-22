@@ -268,16 +268,16 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
                 key={l.key}
                 l={l}
                 fornecedor={nomeFornecedor[l.supplierId]}
-                onEntrada={() => setEntradaLote(l)}
-                onEditar={() => setEditLote(l)}
+                onEntrada={can("loteAdicionar") ? () => setEntradaLote(l) : undefined}
+                onEditar={can("loteEditar") ? () => setEditLote(l) : undefined}
                 onHistorico={() => setHistLote(l)}
-                onQuebra={() => setQuebraLote(l)}
-                onApagar={() => apagarLote(l.loteId)}
-                onCriarLote={() => abrirNovoLote(l.product)}
+                onQuebra={can("loteQuebra") ? () => setQuebraLote(l) : undefined}
+                onApagar={can("loteApagar") ? () => apagarLote(l.loteId) : undefined}
+                onCriarLote={can("loteNovo") ? () => abrirNovoLote(l.product) : undefined}
                 onVerProduto={() => setVerProduto(l.product)}
-                onEditarProduto={() => setEditProduto(l.product)}
+                onEditarProduto={can("produtoEditar") ? () => setEditProduto(l.product) : undefined}
                 onHistoricoProduto={() => setHistProduto(l.product)}
-                onApagarProduto={() => apagarProduto(l.product)}
+                onApagarProduto={can("produtoApagar") ? () => apagarProduto(l.product) : undefined}
               />
             ))}
             {linhasFiltradas.length === 0 && (
@@ -443,17 +443,19 @@ function LoteRow({ l, fornecedor, onEntrada, onEditar, onHistorico, onQuebra, on
         <div className="flex items-center justify-center gap-1">
           {isLote ? (
             <>
-              <IconBtn title="Entrada (adicionar quantidade)" onClick={onEntrada} color={GREEN}><ArrowDownCircle size={14} /></IconBtn>
-              <IconBtn title="Editar lote" onClick={onEditar} color={TEAL}><PencilIcon size={13} /></IconBtn>
+              {onEntrada && <IconBtn title="Entrada (adicionar quantidade)" onClick={onEntrada} color={GREEN}><ArrowDownCircle size={14} /></IconBtn>}
+              {onEditar && <IconBtn title="Editar lote" onClick={onEditar} color={TEAL}><PencilIcon size={13} /></IconBtn>}
               <IconBtn title="Histórico" onClick={onHistorico}><ClockIcon size={13} /></IconBtn>
-              <IconBtn title="Quebra" onClick={onQuebra} color={GOLD}><PackageX size={13} /></IconBtn>
-              <IconBtn title="Apagar lote" onClick={onApagar} color={BRICK}><Trash2 size={13} /></IconBtn>
+              {onQuebra && <IconBtn title="Quebra" onClick={onQuebra} color={GOLD}><PackageX size={13} /></IconBtn>}
+              {onApagar && <IconBtn title="Apagar lote" onClick={onApagar} color={BRICK}><Trash2 size={13} /></IconBtn>}
             </>
           ) : l.tipo === "stock" ? (
             <>
-              <button onClick={onCriarLote} style={{ color: TEAL, borderColor: BORDER }} className="border rounded-full px-2.5 py-1 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
-                <Plus size={12} /> Criar lote
-              </button>
+              {onCriarLote && (
+                <button onClick={onCriarLote} style={{ color: TEAL, borderColor: BORDER }} className="border rounded-full px-2.5 py-1 text-xs font-medium flex items-center gap-1 whitespace-nowrap">
+                  <Plus size={12} /> Criar lote
+                </button>
+              )}
               <AcoesEntidade onVer={onVerProduto} onEditar={onEditarProduto} onHistorico={onHistoricoProduto} onApagar={onApagarProduto} />
             </>
           ) : (
