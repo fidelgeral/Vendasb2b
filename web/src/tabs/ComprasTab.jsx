@@ -35,6 +35,7 @@ export default function ComprasTab({ store, setStore, api }) {
 
   const registerPurchase = async () => {
     if (!supplierId || !productId || !qty) return;
+    if (!(await confirmar({ title: "Registar compra?", message: `Vai registar a entrada de ${qty} unidade(s) no stock.`, confirmLabel: "Registar" }))) return;
     setStore(await api.registerPurchase({ supplierId, productId, qty: Number(qty), cost: Number(cost) || 0, expiryDate: expiryDate || null }));
     setQty("");
     setCost("");
@@ -194,6 +195,7 @@ function FornecedorEditModal({ fornecedor, onSubmit, onClose }) {
 }
 
 function ContasPagar({ store, setStore, api }) {
+  const confirmar = useConfirm();
   const [form, setForm] = useState({ descricao: "", categoria: DESPESA_CATEGORIAS[0], valor: "", supplierId: "", vencimento: "" });
   const contas = store.contasPagar || [];
   const abertas = contas.filter((c) => c.estado === "aberta");
@@ -209,6 +211,7 @@ function ContasPagar({ store, setStore, api }) {
 
   const add = async () => {
     if (!form.descricao.trim() || !(Number(form.valor) > 0)) return;
+    if (!(await confirmar({ title: "Guardar conta a pagar?", message: `Vai guardar "${form.descricao.trim()}".`, confirmLabel: "Guardar" }))) return;
     setStore(
       await api.addConta({
         descricao: form.descricao.trim(),
@@ -261,11 +264,11 @@ function ContasPagar({ store, setStore, api }) {
               </span>
               <span className="flex gap-2">
                 {!paga && (
-                  <button onClick={async () => setStore(await api.pagarConta(c.id))} style={{ color: GREEN }} className="font-semibold">
+                  <button onClick={async () => { if (await confirmar({ title: "Marcar como paga?", message: `Confirma o pagamento de "${c.descricao}"? Será registada uma saída de caixa.`, confirmLabel: "Pagar" })) setStore(await api.pagarConta(c.id)); }} style={{ color: GREEN }} className="font-semibold">
                     Marcar paga
                   </button>
                 )}
-                <button onClick={async () => setStore(await api.deleteConta(c.id))}>
+                <button onClick={async () => { if (await confirmar({ title: "Apagar conta?", message: `Vai apagar "${c.descricao}".`, confirmLabel: "Apagar", danger: true })) setStore(await api.deleteConta(c.id)); }}>
                   <X size={13} style={{ color: BRICK }} />
                 </button>
               </span>

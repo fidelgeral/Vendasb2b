@@ -2,10 +2,12 @@ import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, GOLD, BRICK, GREEN, SOFTGOLD } from "../lib/theme.js";
 import { fmtMT, getStock } from "../lib/utils.js";
 import { ProductCard, CheckoutPanel } from "../components/Shared.jsx";
+import { useConfirm } from "../components/ConfirmProvider.jsx";
 import { ChevronLeft, Minus, Plus } from "../lib/icons.jsx";
 import { imprimirPedidoMesa } from "../lib/print.js";
 
 export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen, canDiscount, showToast, paymentMethods }) {
+  const confirmar = useConfirm();
   const [openTableId, setOpenTableId] = useState(null);
   const [query, setQuery] = useState("");
 
@@ -35,6 +37,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
   };
 
   const cancelComanda = async (tableId) => {
+    if (!(await confirmar({ title: "Cancelar comanda?", message: "Vai apagar todos os itens desta mesa.", confirmLabel: "Cancelar comanda", danger: true }))) return;
     setStore(await api.cancelComanda(tableId));
     setOpenTableId(null);
   };

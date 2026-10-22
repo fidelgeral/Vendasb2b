@@ -132,8 +132,14 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       showToast(e.message || "Ocorreu um erro", "warn");
     }
   };
-  const criarLote = (payload) => guard(() => api.createLote(payload), "Lote criado");
-  const criarLotesBulk = (payload) => guard(() => api.createLotesBulk(payload), "Lotes registados");
+  const criarLote = async (payload) => {
+    if (!(await confirmar({ title: "Guardar lote?", message: "Vai registar este lote no stock.", confirmLabel: "Guardar" }))) return;
+    guard(() => api.createLote(payload), "Lote criado");
+  };
+  const criarLotesBulk = async (payload) => {
+    if (!(await confirmar({ title: "Guardar lotes?", message: "Vai registar os lotes introduzidos no stock.", confirmLabel: "Guardar" }))) return;
+    guard(() => api.createLotesBulk(payload), "Lotes registados");
+  };
   const entradaSubmit = (id, qty) => guard(() => api.loteEntrada(id, qty), "Entrada registada");
   const editarSubmit = (id, payload) => guard(() => api.updateLote(id, payload), "Lote actualizado");
   const quebraSubmit = (id, qty, motivo) => guard(() => api.loteQuebra(id, qty, motivo), "Quebra registada", "warn");
