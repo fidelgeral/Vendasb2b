@@ -48,6 +48,34 @@ caixaRouter.post("/shifts/close", requirePermission("caixaAbrirFechar"), async (
   await query("UPDATE shifts SET closed_at = now(), closing_cash = $1, expected_cash = $2, closed_by = $3 WHERE id = $4", [
     closingCash, expected, employeeId, shift.id,
   ]);
+
+  const shortage = +(expected - closingCash).toFixed(2);
+  if (shortage > 0) {
+    const empName = req.auth.name || "Sistema";
+    await query(
+      `INSERT INTO cash_shortages (business_id, shift_id, employee_id, employee_name, expected, declared, shortage, nota)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [businessId, shift.id, employeeId, empName, expected, closingCash, shortage, "Diferença detectada ao fechar caixa"]
+    );
+  }
+
+  await respond(res, businessId);
+});
+
+caixaRouter.post("/shortages/:shortageId/pay", requirePermission("caixaAbrirFechar"), async (req, res) => {
+  const businessId = req.params.businessId;
+  const { shortageId } = req.params;
+  const employeeId = req.auth.type === "employee" ? req.auth.employeeId : null;
+  const empName = req.auth.name || "Sistema";
+
+  const row = (await query("SELECT * FROM cash_shortages WHERE id = $1 AND business_id = $2", [shortageId, businessId])).rows[0];
+  if (!row) return res.status(404).json({ error: "Registo não encontrado." });
+  if (row.paid) return res.status(409).json({ error: "Já foi pago." });
+
+  await query("UPDATE cash_shortages SET paid = true, paid_at = now() WHERE id = $1", [shortageId]);
+  await query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,$4,$5,$6)", [
+    businessId, employeeId, empName, "PAGAMENTO QUEBRA CAIXA", `Operador pagou diferença de ${row.shortage} MT do próprio bolso`, Number(row.shortage),
+  ]);
   await respond(res, businessId);
 });
 

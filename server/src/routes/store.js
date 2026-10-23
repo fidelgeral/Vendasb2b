@@ -70,6 +70,7 @@ export async function buildStore(businessId) {
     contasPagar,
     cotacoes,
     transfers,
+    cashShortages,
   ] = await Promise.all([
     query(
       `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
@@ -195,6 +196,12 @@ export async function buildStore(businessId) {
        ORDER BY t.created_at DESC LIMIT 100`,
       [businessId]
     ),
+    query(
+      `SELECT id, shift_id AS "shiftId", employee_id AS "employeeId", employee_name AS "employeeName",
+              expected, declared, shortage, paid, paid_at AS "paidAt", nota, created_at AS "createdAt"
+       FROM cash_shortages WHERE business_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      [businessId]
+    ),
   ]);
 
   const variantsByProduct = groupBy(variants.rows, "product_id");
@@ -283,6 +290,7 @@ export async function buildStore(businessId) {
     contasPagar: contasPagar.rows.map((c) => ({ ...c, valor: Number(c.valor) })),
     cotacoes: cotacoes.rows.map((c) => ({ ...c, total: Number(c.total), discount: Number(c.discount), ivaTaxa: c.ivaTaxa === null ? null : Number(c.ivaTaxa) })),
     transfers: transfers.rows.map((t) => ({ ...t, qty: Number(t.qty), costUnit: Number(t.costUnit) })),
+    cashShortages: cashShortages.rows.map((s) => ({ ...s, expected: Number(s.expected), declared: Number(s.declared), shortage: Number(s.shortage) })),
     currentShiftId: currentShift ? currentShift.id : null,
   };
 }

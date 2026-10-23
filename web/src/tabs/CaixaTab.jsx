@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, DESPESA_CATEGORIAS, ENTRADA_CATEGORIAS } from "../lib/utils.js";
 import { DonutChart } from "../lib/charts.jsx";
-import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle, Banknote } from "../lib/icons.jsx";
+import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle, Banknote, AlertTriangle, CheckCircle2 } from "../lib/icons.jsx";
 import { imprimirReciboTermico, gerarReciboPDF } from "../lib/print.js";
 import { VoidModal } from "../components/Shared.jsx";
 
-export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid }) {
+export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid, payShortage }) {
   const [sub, setSub] = useState("resumo");
   const [showShiftModal, setShowShiftModal] = useState(null);
 
@@ -20,10 +20,13 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
   const quebrasCusto = shiftQuebras.reduce((s, q) => s + q.custoImpacto, 0);
   const expectedNow = (currentShift?.openingCash || 0) + (paymentsByMethod.dinheiro || 0) + entradas - saidas;
 
+  const unpaidShortages = (store.cashShortages || []).filter((s) => !s.paid);
+
   const subtabs = [
     { id: "resumo", label: "Resumo", icon: Scale },
     { id: "historico", label: "Histórico de movimentos", icon: Banknote },
-    { id: "quebras", label: "Quebras", icon: PackageX },
+    { id: "quebrasCaixa", label: `Quebras de caixa${unpaidShortages.length ? ` (${unpaidShortages.length})` : ""}`, icon: AlertTriangle },
+    { id: "quebras", label: "Quebras de stock", icon: PackageX },
     { id: "entrada", label: "Nova entrada", icon: ArrowDownCircle },
     { id: "saida", label: "Nova saída", icon: ArrowUpCircle },
   ];
@@ -123,6 +126,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
         </div>
       )}
       {sub === "historico" && <CaixaHistorico store={store} voidSale={voidSale} canVoid={canVoid} />}
+      {sub === "quebrasCaixa" && <CashShortagesList store={store} payShortage={payShortage} />}
       {sub === "quebras" && <QuebrasForm store={store} onSubmit={registerQuebra} />}
       {sub === "entrada" && <MovimentoForm type="entrada" shiftOpen={shiftOpen} onSubmit={registerMovimento} />}
       {sub === "saida" && <MovimentoForm type="saida" shiftOpen={shiftOpen} onSubmit={registerMovimento} />}
@@ -130,13 +134,15 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
       {showShiftModal && (
         <ShiftModal
           mode={showShiftModal}
+          expectedCash={expectedNow}
+          podeVerEsperado={podeVerEsperado}
           onConfirmOpen={(v) => {
             openShift(v);
             setShowShiftModal(null);
           }}
-          onConfirmClose={(v) => {
-            closeShift(v);
-            setShowShiftModal(null);
+          onConfirmClose={async (v) => {
+            const result = await closeShift(v);
+            if (result) setShowShiftModal({ closingResult: result, declared: v, expected: expectedNow });
           }}
           onClose={() => setShowShiftModal(null)}
         />
@@ -389,29 +395,200 @@ function MovimentoForm({ type, shiftOpen, onSubmit }) {
   );
 }
 
-function ShiftModal({ mode, onConfirmOpen, onConfirmClose, onClose }) {
+function CashShortagesList({ store, payShortage }) {
+  const shortages = store.cashShortages || [];
+  const [paying, setPaying] = useState(null);
+
+  if (shortages.length === 0) {
+    return (
+      <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-6 text-center">
+        <CheckCircle2 size={28} style={{ color: GREEN }} className="mx-auto mb-2" />
+        <div className="text-sm font-semibold">Sem quebras de caixa</div>
+        <div className="text-xs mt-1" style={{ color: MUTED }}>Todos os fechos de caixa tiveram os valores correctos.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-semibold mb-1">Quebras de caixa (diferenças ao fechar)</div>
+      {shortages.map((s) => (
+        <div key={s.id} style={{ background: CARD, borderColor: s.paid ? "#6EE7B7" : "#FCA5A5", borderLeftWidth: 3, borderLeftColor: s.paid ? GREEN : BRICK }} className="border rounded-lg px-3 py-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold flex items-center gap-2">
+                {s.employeeName}
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: s.paid ? "#D1FAE5" : "#FEE2E2", color: s.paid ? GREEN : BRICK }}>
+                  {s.paid ? "PAGO" : "POR PAGAR"}
+                </span>
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: MUTED }}>
+                {new Date(s.createdAt).toLocaleString("pt-PT")} · Esperado: {fmtMT(s.expected)} · Declarado: {fmtMT(s.declared)}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-sm font-bold" style={{ color: BRICK }}>-{fmtMT(s.shortage)}</div>
+              {!s.paid && (
+                <button
+                  disabled={paying === s.id}
+                  onClick={async () => { setPaying(s.id); await payShortage(s.id); setPaying(null); }}
+                  style={{ background: TEAL, color: "#fff" }}
+                  className="text-[11px] px-2 py-1 rounded-lg font-medium mt-1 disabled:opacity-50"
+                >
+                  {paying === s.id ? "A registar…" : "Pagar do bolso"}
+                </button>
+              )}
+              {s.paid && s.paidAt && (
+                <div className="text-[10px] mt-1" style={{ color: GREEN }}>Pago em {new Date(s.paidAt).toLocaleDateString("pt-PT")}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ShiftModal({ mode, expectedCash, podeVerEsperado, onConfirmOpen, onConfirmClose, onClose }) {
   const [value, setValue] = useState("");
+  const [step, setStep] = useState("input");
+  const [closing, setClosing] = useState(false);
+
+  if (typeof mode === "object" && mode.closingResult) {
+    const { declared, expected } = mode;
+    const diff = +(declared - expected).toFixed(2);
+    const isMatch = Math.abs(diff) < 0.01;
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div style={{ background: CARD }} className="rounded-xl p-5 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+          {isMatch ? (
+            <>
+              <div className="flex items-center gap-3 mb-3">
+                <div style={{ background: "#D1FAE5" }} className="p-2 rounded-full"><CheckCircle2 size={24} style={{ color: GREEN }} /></div>
+                <div>
+                  <div className="text-base font-bold" style={{ color: GREEN }}>Caixa fechado com sucesso!</div>
+                  <div className="text-xs" style={{ color: MUTED }}>Os valores conferem perfeitamente.</div>
+                </div>
+              </div>
+              <div style={{ background: "#D1FAE520", borderColor: "#6EE7B7" }} className="border rounded-lg p-3 mb-4 space-y-1">
+                <div className="flex justify-between text-sm"><span>Valor esperado:</span><span className="font-semibold">{fmtMT(expected)}</span></div>
+                <div className="flex justify-between text-sm"><span>Valor declarado:</span><span className="font-semibold">{fmtMT(declared)}</span></div>
+                <div className="flex justify-between text-sm font-bold" style={{ color: GREEN }}><span>Diferença:</span><span>0,00 MT</span></div>
+              </div>
+              <div className="text-xs text-center" style={{ color: MUTED }}>
+                Excelente trabalho! O caixa foi encerrado sem discrepâncias. Este é o resultado esperado de uma gestão rigorosa e responsável.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-3">
+                <div style={{ background: "#FEE2E2" }} className="p-2 rounded-full"><AlertTriangle size={24} style={{ color: BRICK }} /></div>
+                <div>
+                  <div className="text-base font-bold" style={{ color: BRICK }}>Discrepância detectada</div>
+                  <div className="text-xs" style={{ color: MUTED }}>O valor declarado não corresponde ao esperado.</div>
+                </div>
+              </div>
+              <div style={{ background: "#FEE2E220", borderColor: "#FCA5A5" }} className="border rounded-lg p-3 mb-3 space-y-1">
+                <div className="flex justify-between text-sm"><span>Valor esperado:</span><span className="font-semibold">{fmtMT(expected)}</span></div>
+                <div className="flex justify-between text-sm"><span>Valor declarado:</span><span className="font-semibold">{fmtMT(declared)}</span></div>
+                <div className="flex justify-between text-sm font-bold" style={{ color: BRICK }}>
+                  <span>Diferença:</span><span>{diff > 0 ? "+" : ""}{fmtMT(Math.abs(diff))}</span>
+                </div>
+              </div>
+              <div style={{ background: "#FEF3C7", borderColor: "#F59E0B" }} className="border rounded-lg p-3 mb-3 text-xs">
+                <div className="font-semibold mb-1" style={{ color: "#92400E" }}>O que pode ter acontecido:</div>
+                <ul className="list-disc pl-4 space-y-0.5" style={{ color: "#92400E" }}>
+                  <li>Troco dado a mais ou a menos ao cliente</li>
+                  <li>Venda não registada no sistema</li>
+                  <li>Retirada de dinheiro não registada como saída</li>
+                  <li>Erro de contagem ao fechar o caixa</li>
+                </ul>
+              </div>
+              <div className="text-xs" style={{ color: MUTED }}>
+                Esta diferença ficou registada. O operador pode regularizar pagando do próprio bolso na secção "Quebras de caixa", ou o gestor pode analisar no relatório.
+              </div>
+            </>
+          )}
+          <button onClick={onClose} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-medium mt-4">
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isClose = mode === "close";
+
+  if (isClose && step === "confirm") {
+    const declared = Number(value) || 0;
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div style={{ background: CARD }} className="rounded-xl p-5 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="text-base font-bold mb-2">Confirmação de fecho de caixa</div>
+          <div className="text-sm mb-3" style={{ color: INK }}>
+            Está prestes a encerrar o caixa. Por favor, confirme que o valor abaixo corresponde ao dinheiro <strong>físico</strong> que contou na gaveta do caixa neste momento.
+          </div>
+          <div style={{ background: "#F0F9FF", borderColor: TEAL }} className="border rounded-lg p-3 mb-3 text-center">
+            <div className="text-xs" style={{ color: MUTED }}>Valor declarado</div>
+            <div className="text-2xl font-extrabold" style={{ color: TEAL }}>{fmtMT(declared)}</div>
+          </div>
+          {podeVerEsperado && (
+            <div className="text-xs mb-3 text-center" style={{ color: MUTED }}>
+              Valor esperado pelo sistema: <strong>{fmtMT(expectedCash)}</strong>
+            </div>
+          )}
+          <div className="text-xs mb-4 p-2 rounded-lg" style={{ background: "#FEF3C7", color: "#92400E" }}>
+            Atenção: Após confirmar, o caixa será encerrado e qualquer diferença entre o valor declarado e o esperado ficará registada no sistema. Certifique-se de que o valor está correcto.
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setStep("input")} style={{ borderColor: BORDER }} className="flex-1 border rounded-lg py-2 text-sm font-medium">
+              Voltar
+            </button>
+            <button
+              disabled={closing}
+              onClick={async () => { setClosing(true); await onConfirmClose(declared); setClosing(false); }}
+              style={{ background: BRICK, color: "#fff" }}
+              className="flex-1 rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {closing ? "A fechar…" : "Confirmo, fechar caixa"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div style={{ background: CARD }} className="rounded-lg p-4 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-        <div className="text-sm font-semibold mb-3">{mode === "open" ? "Abrir caixa" : "Fechar caixa"}</div>
-        <label className="text-xs" style={{ color: MUTED }}>
-          {mode === "open" ? "Dinheiro inicial no caixa" : "Dinheiro contado no caixa agora"}
+      <div style={{ background: CARD }} className="rounded-xl p-5 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="text-base font-bold mb-1">{isClose ? "Fechar caixa" : "Abrir caixa"}</div>
+        <div className="text-xs mb-3" style={{ color: MUTED }}>
+          {isClose
+            ? "Conte todo o dinheiro físico na gaveta do caixa e insira o valor total abaixo. Inclua notas, moedas e o troco."
+            : "Insira o valor em dinheiro com que vai iniciar o turno. Este valor servirá como base para o cálculo do esperado."
+          }
+        </div>
+        <label className="text-xs font-medium" style={{ color: INK }}>
+          {isClose ? "Dinheiro contado no caixa (MT)" : "Dinheiro inicial no caixa (MT)"}
         </label>
         <input
           type="number"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           style={{ borderColor: BORDER }}
-          className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1 mb-3"
-          placeholder="0"
+          className="w-full border rounded-lg px-3 py-2 text-lg mt-1 mb-3 font-semibold"
+          placeholder="0.00"
+          autoFocus
         />
         <button
-          onClick={() => (mode === "open" ? onConfirmOpen(Number(value) || 0) : onConfirmClose(Number(value) || 0))}
-          style={{ background: TEAL, color: "#fff" }}
-          className="w-full rounded-lg py-2 text-sm font-medium"
+          onClick={() => {
+            if (isClose) { setStep("confirm"); }
+            else { onConfirmOpen(Number(value) || 0); }
+          }}
+          style={{ background: isClose ? BRICK : GREEN, color: "#fff" }}
+          className="w-full rounded-lg py-2.5 text-sm font-semibold"
         >
-          Confirmar
+          {isClose ? "Avançar para confirmação" : "Abrir caixa"}
         </button>
       </div>
     </div>

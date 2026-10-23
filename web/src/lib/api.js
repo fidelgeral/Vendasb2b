@@ -127,6 +127,7 @@ export function businessApi(businessId) {
     closeShift: (closingCash) => s(post(`${base}/shifts/close`, { closingCash })),
     registerQuebra: (payload) => s(post(`${base}/quebras`, payload)),
     registerMovimento: (payload) => s(post(`${base}/movimentos`, payload)),
+    payShortage: (shortageId) => s(post(`${base}/shortages/${shortageId}/pay`, {})),
 
     finalizeSale: (payload) => post(`${base}/sales`, payload),
     voidSale: (id, reason) => s(post(`${base}/sales/${id}/void`, { reason })),

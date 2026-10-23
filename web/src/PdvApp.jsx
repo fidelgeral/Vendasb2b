@@ -241,6 +241,9 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     ...store.clients
       .filter((c) => c.creditLimit > 0 && c.debts.reduce((s, d) => s + d.amount, 0) > c.creditLimit)
       .map((c) => ({ text: `${c.name} passou o limite de fiado`, color: BRICK, tab: "clientes" })),
+    ...(store.cashShortages || [])
+      .filter((s) => !s.paid)
+      .map((s) => ({ text: `Quebra de caixa: ${s.employeeName} — ${s.shortage.toFixed(2)} MT por pagar`, color: BRICK, tab: "caixa" })),
   ];
 
   const openShift = async (openingCash) => {
@@ -253,8 +256,18 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   };
   const closeShift = async (closingCash) => {
     try {
-      setStore(await api.closeShift(closingCash));
-      showToast("Caixa fechado");
+      const newStore = await api.closeShift(closingCash);
+      setStore(newStore);
+      return newStore;
+    } catch (e) {
+      showToast(e.message, "warn");
+      return null;
+    }
+  };
+  const payShortage = async (shortageId) => {
+    try {
+      setStore(await api.payShortage(shortageId));
+      showToast("Pagamento registado com sucesso");
     } catch (e) {
       showToast(e.message, "warn");
     }
@@ -463,6 +476,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             registerMovimento={registerMovimento}
             voidSale={voidSale}
             canVoid={canVoid}
+            payShortage={payShortage}
           />
         )}
         {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} can={can} onGoEstoque={() => setTab("estoque")} />}
