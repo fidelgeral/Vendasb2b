@@ -11,30 +11,28 @@ productsRouter.use(requireAuth, requireBusiness);
 
 const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
 
-// Transferência de stock entre filiais do mesmo grupo (produtos simples, sem
-// variantes/lotes). O produto é identificado no destino pelo nome; se não
-// existir, é criado lá.
 const transferSchema = z.object({
   toBusinessId: z.string().uuid(),
   productId: z.string().uuid(),
   qty: z.number().positive(),
+  nota: z.string().optional().default(""),
 });
 
-productsRouter.post("/transfer-stock", requireRole("dono", "gerente"), async (req, res) => {
+productsRouter.post("/transfer-stock", requirePermission("loteNovo"), async (req, res) => {
   const parsed = transferSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados da transferência inválidos." });
   const fromId = req.params.businessId;
-  const { toBusinessId, productId, qty } = parsed.data;
+  const { toBusinessId, productId, qty, nota } = parsed.data;
 
   const allowed = req.auth.type === "super" || (req.auth.groupBusinessIds || [req.auth.businessId]).includes(toBusinessId);
   if (!allowed) return res.status(403).json({ error: "A filial de destino não pertence ao seu grupo." });
   if (toBusinessId === fromId) return res.status(400).json({ error: "Escolha uma filial diferente." });
 
-  // A filial de destino não pode estar suspensa (não se envia stock para uma
-  // loja bloqueada por falta de pagamento).
-  const destino = (await query("SELECT subscription_status FROM businesses WHERE id = $1 AND active = true", [toBusinessId])).rows[0];
+  const destino = (await query("SELECT name, subscription_status FROM businesses WHERE id = $1 AND active = true", [toBusinessId])).rows[0];
   if (!destino) return res.status(404).json({ error: "Filial de destino não encontrada." });
   if (destino.subscription_status === "suspenso") return res.status(400).json({ error: "A filial de destino está suspensa." });
+
+  const fromBiz = (await query("SELECT name FROM businesses WHERE id = $1", [fromId])).rows[0];
 
   const prod = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [productId, fromId])).rows[0];
   if (!prod) return res.status(404).json({ error: "Produto não encontrado." });
@@ -44,6 +42,8 @@ productsRouter.post("/transfer-stock", requireRole("dono", "gerente"), async (re
     (await query("SELECT (SELECT count(*) FROM product_batches WHERE product_id=$1)+(SELECT count(*) FROM product_variants WHERE product_id=$1) AS n", [productId])).rows[0].n;
   if (Number(hasBatchesOrVariants) > 0) return res.status(400).json({ error: "Este produto tem lotes/variantes e não pode ser transferido automaticamente." });
   if (Number(prod.stock) < qty) return res.status(400).json({ error: "Stock insuficiente na filial de origem." });
+
+  const who = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
 
   await withTransaction(async (client) => {
     await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
@@ -57,10 +57,22 @@ productsRouter.post("/transfer-stock", requireRole("dono", "gerente"), async (re
         [toBusinessId, prod.name, prod.category, prod.unit, prod.price, prod.cost, qty, prod.min_stock]
       );
     }
-    const who = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
-    await client.query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,'TRANSFERENCIA STOCK',$4,$5)", [
-      fromId, who.id, who.name, `${prod.name} × ${qty} enviado para outra filial`, Number(prod.cost) * qty,
-    ]);
+    // Registo na tabela de transferências
+    await client.query(
+      `INSERT INTO stock_transfers (from_business_id, to_business_id, product_id, product_name, qty, cost_unit, employee_id, employee_name, nota)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [fromId, toBusinessId, productId, prod.name, qty, prod.cost, who.id, who.name, nota]
+    );
+    // Audit na origem
+    await client.query(
+      "INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,'TRANSFERENCIA STOCK',$4,$5)",
+      [fromId, who.id, who.name, `${prod.name} × ${qty} enviado para ${destino.name}`, Number(prod.cost) * qty]
+    );
+    // Audit no destino
+    await client.query(
+      "INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,'TRANSFERENCIA STOCK RECEBIDA',$4,$5)",
+      [toBusinessId, who.id, who.name, `${prod.name} × ${qty} recebido de ${fromBiz?.name || "outra filial"}`, Number(prod.cost) * qty]
+    );
   });
 
   await respond(res, fromId);

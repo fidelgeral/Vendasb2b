@@ -69,6 +69,7 @@ export async function buildStore(businessId) {
     audit,
     contasPagar,
     cotacoes,
+    transfers,
   ] = await Promise.all([
     query(
       `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
@@ -182,6 +183,18 @@ export async function buildStore(businessId) {
        FROM quotations WHERE business_id = $1 AND status = 'aberta' ORDER BY created_at DESC LIMIT 200`,
       [businessId]
     ),
+    query(
+      `SELECT t.id, t.from_business_id AS "fromBusinessId", t.to_business_id AS "toBusinessId",
+              t.product_name AS "productName", t.qty, t.cost_unit AS "costUnit",
+              t.employee_name AS "employeeName", t.nota, t.created_at AS date,
+              fb.name AS "fromName", tb.name AS "toName"
+       FROM stock_transfers t
+       LEFT JOIN businesses fb ON fb.id = t.from_business_id
+       LEFT JOIN businesses tb ON tb.id = t.to_business_id
+       WHERE t.from_business_id = $1 OR t.to_business_id = $1
+       ORDER BY t.created_at DESC LIMIT 100`,
+      [businessId]
+    ),
   ]);
 
   const variantsByProduct = groupBy(variants.rows, "product_id");
@@ -269,6 +282,7 @@ export async function buildStore(businessId) {
     audit: audit.rows.map((a) => ({ ...a, valor: a.valor === null ? null : Number(a.valor) })),
     contasPagar: contasPagar.rows.map((c) => ({ ...c, valor: Number(c.valor) })),
     cotacoes: cotacoes.rows.map((c) => ({ ...c, total: Number(c.total), discount: Number(c.discount), ivaTaxa: c.ivaTaxa === null ? null : Number(c.ivaTaxa) })),
+    transfers: transfers.rows.map((t) => ({ ...t, qty: Number(t.qty), costUnit: Number(t.costUnit) })),
     currentShiftId: currentShift ? currentShift.id : null,
   };
 }

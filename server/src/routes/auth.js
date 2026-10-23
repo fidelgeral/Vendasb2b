@@ -48,11 +48,10 @@ authRouter.post("/auth/login", loginLimiter, async (req, res) => {
   if (!ok) return res.status(401).json({ error: "Email ou senha incorrectos." });
   if (!emp.business_active) return res.status(403).json({ error: "Conta de negócio inactiva." });
 
-  // Filiais: só o dono acede a várias lojas do mesmo grupo. O grupo é a sede
-  // (parent) + todas as suas filiais; se este negócio for a sede, inclui-se a si
-  // próprio + filhos. Para outros papéis, acede só ao seu negócio.
+  // Filiais: donos e gerentes acedem a todas as lojas do mesmo grupo.
+  // O grupo é a sede (parent) + todas as suas filiais.
   let filiais = [{ id: emp.business_id, name: emp.business_name }];
-  if (emp.role === "dono") {
+  if (emp.role === "dono" || emp.role === "gerente") {
     const biz = (await query("SELECT id, name, parent_business_id FROM businesses WHERE id = $1", [emp.business_id])).rows[0];
     const rootId = biz.parent_business_id || biz.id;
     const group = (
@@ -61,7 +60,7 @@ authRouter.post("/auth/login", loginLimiter, async (req, res) => {
         [rootId]
       )
     ).rows;
-    if (group.length) filiais = group;
+    if (group.length > 1) filiais = group;
   }
   const groupBusinessIds = filiais.map((f) => f.id);
 

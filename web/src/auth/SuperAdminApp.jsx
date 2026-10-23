@@ -156,49 +156,77 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
               Ainda não há contas. Crie a primeira acima.
             </div>
           )}
-          {businesses.map((b) => {
-            const active = b.active !== false;
-            return (
-              <div key={b.id} style={{ background: CARD, borderColor: BORDER, opacity: active ? 1 : 0.6 }} className="border rounded-lg p-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold flex items-center gap-2">
-                      {b.name}
-                      <span
-                        style={{ background: active ? "#D1FAE5" : "#F1F5F9", color: active ? GREEN : MUTED }}
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase"
+          {(() => {
+            const sedes = businesses.filter((b) => !b.parentBusinessId);
+            const filiais = businesses.filter((b) => b.parentBusinessId);
+            const filiaisPorSede = {};
+            filiais.forEach((f) => { (filiaisPorSede[f.parentBusinessId] ||= []).push(f); });
+            const orphans = businesses.filter((b) => !b.parentBusinessId && !filiaisPorSede[b.id]);
+            const groups = sedes.filter((s) => filiaisPorSede[s.id]?.length > 0);
+
+            const renderCard = (b, indent = false) => {
+              const active = b.active !== false;
+              return (
+                <div key={b.id} style={{ background: CARD, borderColor: indent ? "#7C3AED22" : BORDER, opacity: active ? 1 : 0.6, marginLeft: indent ? 20 : 0, borderLeftWidth: indent ? 3 : 1, borderLeftColor: indent ? "#7C3AED" : BORDER }} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold flex items-center gap-2">
+                        {indent && <span style={{ color: "#7C3AED" }} className="text-[10px]">↳ filial</span>}
+                        {b.name}
+                        <span
+                          style={{ background: active ? "#D1FAE5" : "#F1F5F9", color: active ? GREEN : MUTED }}
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase"
+                        >
+                          {active ? "Activa" : "Suspensa"}
+                        </span>
+                      </div>
+                      <div className="text-xs" style={{ color: MUTED }}>
+                        Código: {b.slug} · {b.employee_count} conta(s) de utilizador · criada em {new Date(b.created_at).toLocaleDateString("pt-PT")}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => rename(b)} style={{ color: TEAL }} className="text-xs font-medium">
+                        Renomear
+                      </button>
+                      <button onClick={() => toggleActive(b)} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
+                        {active ? "Suspender" : "Reactivar"}
+                      </button>
+                      <button onClick={() => remove(b)} style={{ color: BRICK }} className="text-xs font-medium">
+                        {confirmDelete === b.id ? "Confirmar apagar?" : "Apagar"}
+                      </button>
+                      <button
+                        onClick={() => onOpenBusiness(b)}
+                        disabled={!active}
+                        style={{ background: TEAL, color: "#fff" }}
+                        className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
                       >
-                        {active ? "Activa" : "Suspensa"}
+                        Abrir
+                      </button>
+                    </div>
+                  </div>
+                  <BillingControls b={b} onChanged={load} />
+                </div>
+              );
+            };
+
+            return (
+              <>
+                {groups.map((sede) => (
+                  <div key={sede.id} className="space-y-1.5">
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="text-xs font-bold uppercase" style={{ color: "#7C3AED" }}>Grupo: {sede.name}</div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#7C3AED22", color: "#7C3AED" }}>
+                        {(filiaisPorSede[sede.id]?.length || 0) + 1} estabelecimento(s)
                       </span>
                     </div>
-                    <div className="text-xs" style={{ color: MUTED }}>
-                      Código: {b.slug} · {b.employee_count} conta(s) de utilizador · criada em {new Date(b.created_at).toLocaleDateString("pt-PT")}
-                    </div>
+                    {renderCard(sede, false)}
+                    {(filiaisPorSede[sede.id] || []).map((f) => renderCard(f, true))}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button onClick={() => rename(b)} style={{ color: TEAL }} className="text-xs font-medium">
-                      Renomear
-                    </button>
-                    <button onClick={() => toggleActive(b)} style={{ color: active ? MUTED : GREEN }} className="text-xs font-medium">
-                      {active ? "Suspender" : "Reactivar"}
-                    </button>
-                    <button onClick={() => remove(b)} style={{ color: BRICK }} className="text-xs font-medium">
-                      {confirmDelete === b.id ? "Confirmar apagar?" : "Apagar"}
-                    </button>
-                    <button
-                      onClick={() => onOpenBusiness(b)}
-                      disabled={!active}
-                      style={{ background: TEAL, color: "#fff" }}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
-                    >
-                      Abrir
-                    </button>
-                  </div>
-                </div>
-                <BillingControls b={b} onChanged={load} />
-              </div>
+                ))}
+                {orphans.map((b) => renderCard(b, false))}
+              </>
             );
-          })}
+          })()}
         </div>
       </div>
     </div>

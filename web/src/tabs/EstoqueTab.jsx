@@ -214,7 +214,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
           <button onClick={onGoCompras} style={{ background: "#2563EB", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
             Fornecedores
           </button>
-          {outrasFiliais.length > 0 && (
+          {outrasFiliais.length > 0 && can("loteNovo") && (
             <button onClick={() => setShowTransfer(true)} style={{ background: "#7C3AED", color: "#fff" }} className="rounded-lg px-3 py-1.5 text-xs font-medium">
               ⇄ Transferir p/ filial
             </button>
@@ -934,29 +934,133 @@ function ProdutoEditModal({ produto, store, onSubmit, onClose, onCreateCategoria
 }
 
 function TransferModal({ store, filiais, onSubmit, onClose }) {
-  const simples = store.products.filter((p) => p.tipo === "simples" && !p.variants && !p.batches);
-  const [productId, setProductId] = useState(simples[0]?.id || "");
+  const confirmar = useConfirm();
+  const simples = store.products.filter((p) => p.tipo === "simples" && !p.variants?.length && !p.batches?.length);
+  const [productId, setProductId] = useState("");
   const [toBusinessId, setToBusinessId] = useState(filiais[0]?.id || "");
   const [qty, setQty] = useState("");
+  const [nota, setNota] = useState("");
+  const [sending, setSending] = useState(false);
+  const [tab, setTab] = useState("enviar"); // enviar | historico
+
+  const prod = simples.find((p) => p.id === productId);
+  const maxQty = prod ? prod.stock : 0;
+  const valid = productId && toBusinessId && Number(qty) > 0 && Number(qty) <= maxQty;
+
+  const transfers = (store.transfers || []);
+  const enviadas = transfers.filter((t) => t.fromBusinessId === store.id);
+  const recebidas = transfers.filter((t) => t.toBusinessId === store.id);
+
+  const doTransfer = async () => {
+    if (!valid) return;
+    const destName = filiais.find((f) => f.id === toBusinessId)?.name || "filial";
+    const ok = await confirmar({
+      title: "Confirmar transferência",
+      message: `Enviar ${qty} × ${prod.name} para ${destName}?`,
+      confirmLabel: "Transferir",
+    });
+    if (!ok) return;
+    setSending(true);
+    await onSubmit({ productId, toBusinessId, qty: Number(qty), nota });
+    setSending(false);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-sm space-y-2" onClick={(e) => e.stopPropagation()}>
-        <div className="text-sm font-semibold">Transferir stock para outra filial</div>
-        <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
-          <option value="">Produto (só produtos simples)</option>
-          {simples.map((p) => (
-            <option key={p.id} value={p.id}>{p.name} (tem {p.stock})</option>
+      <div style={{ background: CARD }} className="rounded-2xl w-full max-w-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: BORDER }}>
+          <div className="text-base font-bold">Transferências entre filiais</div>
+          <button onClick={onClose} className="p-1"><X size={16} /></button>
+        </div>
+
+        <div className="flex border-b" style={{ borderColor: BORDER }}>
+          {["enviar", "historico"].map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className="flex-1 text-xs font-semibold py-2.5 text-center"
+              style={{ color: tab === t ? TEAL : MUTED, borderBottom: tab === t ? `2px solid ${TEAL}` : "2px solid transparent" }}>
+              {t === "enviar" ? "Enviar stock" : `Histórico (${transfers.length})`}
+            </button>
           ))}
-        </select>
-        <select value={toBusinessId} onChange={(e) => setToBusinessId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
-          {filiais.map((f) => (
-            <option key={f.id} value={f.id}>{f.name}</option>
-          ))}
-        </select>
-        <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Quantidade" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
-        <button onClick={() => productId && toBusinessId && Number(qty) > 0 && onSubmit({ productId, toBusinessId, qty: Number(qty) })} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-semibold">
-          Transferir
-        </button>
+        </div>
+
+        {tab === "enviar" ? (
+          <div className="p-4 space-y-3">
+            <div>
+              <label className="text-xs font-medium" style={{ color: MUTED }}>Produto (só simples, sem lotes/variantes)</label>
+              <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
+                <option value="">— Seleccione —</option>
+                {simples.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} (stock: {p.stock})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium" style={{ color: MUTED }}>Filial de destino</label>
+              <select value={toBusinessId} onChange={(e) => setToBusinessId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1">
+                {filiais.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium" style={{ color: MUTED }}>Quantidade {maxQty > 0 ? `(máx. ${maxQty})` : ""}</label>
+              <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} min="1" max={maxQty}
+                placeholder="0" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium" style={{ color: MUTED }}>Nota (opcional)</label>
+              <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ex: requisição do Sr. Jorge"
+                style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+            </div>
+            {Number(qty) > maxQty && maxQty > 0 && (
+              <div className="text-xs" style={{ color: BRICK }}>Stock insuficiente (tem {maxQty})</div>
+            )}
+            <button onClick={doTransfer} disabled={!valid || sending}
+              style={{ background: "#7C3AED", color: "#fff" }}
+              className="w-full rounded-lg py-2.5 text-sm font-bold disabled:opacity-40">
+              {sending ? "A transferir…" : "⇄ Confirmar transferência"}
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 max-h-80 overflow-y-auto space-y-2">
+            {transfers.length === 0 ? (
+              <div className="text-center py-6 text-sm" style={{ color: MUTED }}>Nenhuma transferência registada</div>
+            ) : (
+              <>
+                {recebidas.length > 0 && (
+                  <div className="mb-2">
+                    <div className="text-xs font-bold uppercase mb-1" style={{ color: GREEN }}>Recebidas</div>
+                    {recebidas.map((t) => (
+                      <div key={t.id} className="flex items-center justify-between py-1.5 border-b text-xs" style={{ borderColor: BORDER }}>
+                        <div>
+                          <span className="font-semibold">{t.productName}</span> × {t.qty}
+                          <span style={{ color: MUTED }}> de {t.fromName}</span>
+                          {t.nota ? <span style={{ color: MUTED }}> — {t.nota}</span> : null}
+                        </div>
+                        <div style={{ color: MUTED }}>{new Date(t.date).toLocaleDateString("pt-PT")}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {enviadas.length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold uppercase mb-1" style={{ color: "#7C3AED" }}>Enviadas</div>
+                    {enviadas.map((t) => (
+                      <div key={t.id} className="flex items-center justify-between py-1.5 border-b text-xs" style={{ borderColor: BORDER }}>
+                        <div>
+                          <span className="font-semibold">{t.productName}</span> × {t.qty}
+                          <span style={{ color: MUTED }}> para {t.toName}</span>
+                          {t.nota ? <span style={{ color: MUTED }}> — {t.nota}</span> : null}
+                        </div>
+                        <div style={{ color: MUTED }}>{new Date(t.date).toLocaleDateString("pt-PT")}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
