@@ -42,6 +42,8 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
   const confirmar = useConfirm();
   const [verProduto, setVerProduto] = useState(null);
   const [histProduto, setHistProduto] = useState(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   const nomeFornecedor = useMemo(() => Object.fromEntries((store.suppliers || []).map((s) => [s.id, s.name])), [store.suppliers]);
 
@@ -54,6 +56,9 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
       (!categoryFilter || p.category === categoryFilter) &&
       (statusFilter === "todos" || (statusFilter === "ativos" ? p.active !== false : p.active === false))
   );
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedProducts = filteredProducts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const valorCatalogo = store.products.reduce((s, p) => s + (p.cost || 0) * getStock(p, store.products), 0);
   const possiveisPais = store.products.filter((p) => p.tipo !== "variacao" && p.tipo !== "composicao" && p.id !== editingId);
 
@@ -494,7 +499,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
           ].map((t) => (
             <button
               key={t.id}
-              onClick={() => setStatusFilter(t.id)}
+              onClick={() => { setStatusFilter(t.id); setPage(1); }}
               style={{ background: statusFilter === t.id ? "#0F172A" : CARD, color: statusFilter === t.id ? "#fff" : "#0F172A", borderColor: BORDER }}
               className="border rounded-full px-3 py-1.5 text-xs font-medium"
             >
@@ -502,7 +507,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
             </button>
           ))}
         </div>
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2 py-1.5 text-xs">
+        <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2 py-1.5 text-xs">
           <option value="">Categorias: Todas</option>
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -512,7 +517,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
         </select>
       </div>
 
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar produto ou código…" style={{ borderColor: BORDER, background: CARD }} className="w-full border rounded-lg px-3 py-2 text-sm" />
+      <input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Buscar produto ou código…" style={{ borderColor: BORDER, background: CARD }} className="w-full border rounded-lg px-3 py-2 text-sm" />
 
       {erro && !showForm && (
         <div style={{ background: "#FEE2E2", color: BRICK }} className="rounded-lg p-2 text-xs">
@@ -521,7 +526,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
       )}
 
       <div className="space-y-1.5">
-        {filteredProducts.map((p) => (
+        {pagedProducts.map((p) => (
           <ProdutoRow
             key={p.id}
             p={p}
@@ -539,6 +544,16 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button onClick={() => setPage(1)} disabled={safePage <= 1} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2.5 py-1.5 text-xs disabled:opacity-40">«</button>
+          <button onClick={() => setPage(safePage - 1)} disabled={safePage <= 1} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2.5 py-1.5 text-xs disabled:opacity-40">‹</button>
+          <span className="text-xs" style={{ color: MUTED }}>Página {safePage} de {totalPages} ({filteredProducts.length} produtos)</span>
+          <button onClick={() => setPage(safePage + 1)} disabled={safePage >= totalPages} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2.5 py-1.5 text-xs disabled:opacity-40">›</button>
+          <button onClick={() => setPage(totalPages)} disabled={safePage >= totalPages} style={{ borderColor: BORDER, background: CARD }} className="border rounded-lg px-2.5 py-1.5 text-xs disabled:opacity-40">»</button>
+        </div>
+      )}
 
       {codScanner && (
         <BarcodeScanner

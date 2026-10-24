@@ -1,6 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const TOKEN_KEY = "vendasb2b_token";
 const SESSION_KEY = "vendasb2b_session";
+const REFRESH_KEY = "vendasb2b_refresh";
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || "";
@@ -16,9 +17,16 @@ export function setSession(token, session) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
+export function setRefreshToken(rt) {
+  if (rt) localStorage.setItem(REFRESH_KEY, rt);
+}
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_KEY) || "";
+}
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
 class ApiError extends Error {
@@ -45,10 +53,37 @@ async function request(method, path, body) {
   const isJson = (res.headers.get("content-type") || "").includes("application/json");
   const data = isJson ? await res.json().catch(() => ({})) : null;
   if (!res.ok) {
-    if (res.status === 401) clearSession();
+    if (res.status === 401) {
+      const refreshed = await tryRefresh();
+      if (refreshed) return request(method, path, body);
+      clearSession();
+    }
     throw new ApiError((data && data.error) || `Erro (${res.status})`, res.status);
   }
   return data;
+}
+
+let refreshing = null;
+async function tryRefresh() {
+  const rt = getRefreshToken();
+  if (!rt) return false;
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    try {
+      const res = await fetch(API_URL + "/api/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: rt }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      localStorage.setItem(TOKEN_KEY, data.token);
+      if (data.refreshToken) localStorage.setItem(REFRESH_KEY, data.refreshToken);
+      return true;
+    } catch { return false; }
+    finally { refreshing = null; }
+  })();
+  return refreshing;
 }
 
 const get = (path) => request("GET", path);
@@ -58,8 +93,9 @@ const put = (path, body) => request("PUT", path, body);
 const del = (path) => request("DELETE", path);
 
 export const auth = {
-  superLogin: (email, password) => post("/api/super/login", { email, password }),
-  login: (email, password) => post("/api/auth/login", { email, password }),
+  superLogin: (email, password) => post("/api/super/login", { email, password }).then((d) => { if (d.refreshToken) setRefreshToken(d.refreshToken); return d; }),
+  login: (email, password) => post("/api/auth/login", { email, password }).then((d) => { if (d.refreshToken) setRefreshToken(d.refreshToken); return d; }),
+  logout: () => { const rt = getRefreshToken(); clearSession(); if (rt) post("/api/auth/logout", { refreshToken: rt }).catch(() => {}); },
 };
 
 export const superApi = {
@@ -84,6 +120,8 @@ export function businessApi(businessId) {
   return {
     getStore: () => get(`${base}/store`).then((d) => d.store),
     getHistory: (from, to) => get(`${base}/history?from=${from || ""}&to=${to || ""}`),
+    getProductsPaginated: (page = 1, limit = 50, search = "", category = "") =>
+      get(`${base}/products/paginated?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`),
 
     createProduct: (payload) => s(post(`${base}/products`, payload)),
     updateProduct: (id, payload) => s(patch(`${base}/products/${id}`, payload)),

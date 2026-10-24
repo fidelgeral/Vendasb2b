@@ -11,6 +11,47 @@ productsRouter.use(requireAuth, requireBusiness);
 
 const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
 
+productsRouter.get("/products/paginated", async (req, res) => {
+  const businessId = req.params.businessId;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+  const search = (req.query.search || "").trim();
+  const category = (req.query.category || "").trim();
+  const offset = (page - 1) * limit;
+
+  let where = "business_id = $1";
+  const params = [businessId];
+  let idx = 2;
+
+  if (search) {
+    where += ` AND (lower(name) LIKE $${idx} OR lower(codigo) LIKE $${idx})`;
+    params.push(`%${search.toLowerCase()}%`);
+    idx++;
+  }
+  if (category) {
+    where += ` AND category = $${idx}`;
+    params.push(category);
+    idx++;
+  }
+
+  const [countRes, rows] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS total FROM products WHERE ${where}`, params),
+    query(
+      `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
+              iva_taxa AS "ivaTaxa", price, cost, min_stock AS "minStock", prazo_reembolso AS "prazoReembolso",
+              foto, stock, parent_id AS "parentId", consumo, fornecedor_id AS "fornecedorId", active, created_at AS "createdAt"
+       FROM products WHERE ${where} ORDER BY name LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, limit, offset]
+    ),
+  ]);
+
+  const total = countRes.rows[0].total;
+  res.json({
+    products: rows.rows.map((p) => ({ ...p, price: Number(p.price), cost: Number(p.cost), stock: Number(p.stock), minStock: Number(p.minStock) })),
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  });
+});
+
 const transferSchema = z.object({
   toBusinessId: z.string().uuid(),
   productId: z.string().uuid(),
