@@ -7,6 +7,17 @@ import { buildStore } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 import { requirePermission } from "../permissions.js";
 
+async function syncResendContact(email, name) {
+  if (!process.env.RESEND_API_KEY || !email) return;
+  try {
+    await fetch("https://api.resend.com/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+      body: JSON.stringify({ email, first_name: name, unsubscribed: false, audience_id: process.env.RESEND_AUDIENCE_ID || "" }),
+    });
+  } catch {}
+}
+
 export const employeesRouter = Router({ mergeParams: true });
 employeesRouter.use(requireAuth, requireBusiness);
 
@@ -52,6 +63,7 @@ employeesRouter.post("/employees", requirePermission("gerirEquipa"), async (req,
     )
   ).rows[0];
   await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Adicionou o utilizador "${f.name}" (${f.role})`, entityType: "funcionario", entityId: novo.id });
+  syncResendContact(f.email, f.name);
   await respond(res, businessId, 201);
 });
 
@@ -104,6 +116,7 @@ employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async 
     .map((k) => `${k}: "${existing[campos[k]] ?? ""}" → "${f[k] ?? ""}"`);
   if (f.password) mudancas.push("senha alterada");
   await logAudit({ businessId, employee: authEmployee(req), acao: "EQUIPA", detalhe: `Editou o utilizador "${f.name ?? existing.name}"${mudancas.length ? ` (${mudancas.join("; ")})` : ""}`, entityType: "funcionario", entityId: id });
+  if (f.email || f.name) syncResendContact((f.email ?? existing.email).toLowerCase(), f.name ?? existing.name);
   await respond(res, businessId);
 });
 

@@ -67,6 +67,13 @@ export const PERMISSOES = [
       { id: "gerirConfig", label: "Configurações" },
     ],
   },
+  {
+    grupo: "notificacoes",
+    label: "Notificações",
+    itens: [
+      { id: "receberEmail", label: "Receber resumo diário por email" },
+    ],
+  },
 ];
 
 export const TODAS_PERMISSOES = PERMISSOES.flatMap((g) => g.itens.map((i) => i.id));

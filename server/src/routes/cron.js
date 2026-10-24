@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { query } from "../db.js";
+import { temPermissao } from "../permissions.js";
 
 export const cronRouter = Router();
 
@@ -14,20 +15,20 @@ cronRouter.use((req, res, next) => {
 });
 
 async function sendEmail(to, subject, html) {
-  if (!process.env.BREVO_API_KEY) return { skipped: true };
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+  if (!process.env.RESEND_API_KEY) return { skipped: true };
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "api-key": process.env.BREVO_API_KEY },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     body: JSON.stringify({
-      sender: { name: "VENDASB2B", email: process.env.BREVO_SENDER || "no-reply@vendasb2b.co.mz" },
-      to: [{ email: to }],
+      from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
+      to: [to],
       subject,
-      htmlContent: html,
+      html,
     }),
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error("Brevo " + res.status + " " + t);
+    throw new Error("Resend " + res.status + " " + t);
   }
   return { ok: true };
 }
@@ -42,10 +43,11 @@ cronRouter.post("/daily-summary", async (req, res) => {
   const erros = [];
 
   for (const biz of businesses) {
-    // email do dono
+    // funcionários activos com email que podem receber resumo
     // eslint-disable-next-line no-await-in-loop
-    const dono = (await query("SELECT email FROM employees WHERE business_id = $1 AND role = 'dono' AND active = true ORDER BY created_at LIMIT 1", [biz.id])).rows[0];
-    if (!dono?.email) continue;
+    const empRows = (await query("SELECT email, role, permissions FROM employees WHERE business_id = $1 AND active = true AND email IS NOT NULL AND email <> ''", [biz.id])).rows;
+    const destinatarios = empRows.filter((e) => temPermissao(e.role, e.permissions, "receberEmail")).map((e) => e.email);
+    if (destinatarios.length === 0) continue;
 
     // vendas de hoje
     // eslint-disable-next-line no-await-in-loop
@@ -99,12 +101,14 @@ cronRouter.post("/daily-summary", async (req, res) => {
         </div>
       </div>`;
 
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      await sendEmail(dono.email, `Resumo do dia — ${nome} (${hoje})`, html);
-      enviados++;
-    } catch (e) {
-      erros.push(biz.name + ": " + e.message);
+    for (const email of destinatarios) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await sendEmail(email, `Resumo do dia — ${nome} (${hoje})`, html);
+        enviados++;
+      } catch (e) {
+        erros.push(biz.name + " (" + email + "): " + e.message);
+      }
     }
   }
 
