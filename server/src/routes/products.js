@@ -2,14 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 import { requirePermission } from "../permissions.js";
 
 export const productsRouter = Router({ mergeParams: true });
 productsRouter.use(requireAuth, requireBusiness);
 
-const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
+const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStoreAndCache(businessId) });
 
 productsRouter.get("/products/paginated", async (req, res) => {
   const businessId = req.params.businessId;
@@ -262,6 +262,14 @@ productsRouter.patch("/products/:id", requirePermission("produtoEditar"), async 
       .filter(([k]) => f[k] !== undefined && String(f[k]) !== String(campos.find((c) => c[0] === k)[2]))
       .map(([k, lbl]) => `${lbl}: "${campos.find((c) => c[0] === k)[2]}" → "${f[k]}"`)
       .join("; ");
+    const oldPrice = Number(existing.price), newPrice = Number(f.price ?? existing.price);
+    const oldCost = Number(existing.cost), newCost = Number(f.cost ?? existing.cost);
+    if (oldPrice !== newPrice || oldCost !== newCost) {
+      await client.query(
+        "INSERT INTO price_history (business_id, product_id, old_price, new_price, old_cost, new_cost, employee_name) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+        [businessId, id, oldPrice, newPrice, oldCost, newCost, authEmployee(req).name]
+      );
+    }
     await logAudit({ businessId, employee: authEmployee(req), acao: "PRODUTO", detalhe: `Editou o produto "${f.name ?? existing.name}"${mudancas ? ` (${mudancas})` : ""}`, entityType: "produto", entityId: id }, (t, p) => client.query(t, p));
   });
 
@@ -380,7 +388,7 @@ productsRouter.post("/products/bulk-import", requirePermission("produtoAdicionar
     }
   });
 
-  const store = await buildStore(businessId);
+  const store = await buildStoreAndCache(businessId);
   res.json({ store, summary: { created, updated, skipped } });
 });
 

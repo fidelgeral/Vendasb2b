@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { z } from "zod";
 import { query } from "../db.js";
-import { verifyPassword } from "../auth/hash.js";
+import { verifyPassword, hashPassword } from "../auth/hash.js";
 import { signToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
 
@@ -150,4 +150,61 @@ authRouter.post("/auth/logout", async (req, res) => {
 
 authRouter.get("/auth/me", requireAuth, async (req, res) => {
   res.json({ auth: req.auth });
+});
+
+// --- Recuperação de senha ---
+const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
+
+authRouter.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: "Email obrigatório." });
+  const emp = (await query("SELECT id, name, email FROM employees WHERE lower(email) = lower($1) AND active = true", [email])).rows[0];
+  // Resposta genérica para não revelar se o email existe
+  if (!emp) return res.json({ ok: true });
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+  await query("DELETE FROM password_reset_tokens WHERE employee_id = $1", [emp.id]);
+  await query("INSERT INTO password_reset_tokens (employee_id, code, expires_at) VALUES ($1,$2,$3)", [emp.id, code, expiresAt]);
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
+          to: [emp.email],
+          subject: "Código de recuperação — VENDASB2B",
+          html: `<div style="font-family:Arial,sans-serif;max-width:400px;margin:auto;text-align:center">
+            <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:20px;border-radius:12px 12px 0 0">
+              <div style="font-size:20px;font-weight:bold">VENDASB2B</div>
+            </div>
+            <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
+              <p>Olá <strong>${emp.name}</strong>,</p>
+              <p>O seu código de recuperação é:</p>
+              <div style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#4F46E5;margin:16px 0">${code}</div>
+              <p style="color:#64748B;font-size:13px">Este código expira em 15 minutos.</p>
+            </div>
+          </div>`,
+        }),
+      });
+    } catch {}
+  }
+  res.json({ ok: true });
+});
+
+const passwordRule = z.string().min(6).regex(/[a-zA-Z]/).regex(/[0-9]/);
+
+authRouter.post("/auth/reset-password", forgotLimiter, async (req, res) => {
+  const { email, code, newPassword } = req.body || {};
+  if (!email || !code || !newPassword) return res.status(400).json({ error: "Dados em falta." });
+  const parsed = passwordRule.safeParse(newPassword);
+  if (!parsed.success) return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres, com letras e números." });
+  const emp = (await query("SELECT id FROM employees WHERE lower(email) = lower($1) AND active = true", [email])).rows[0];
+  if (!emp) return res.status(400).json({ error: "Código inválido ou expirado." });
+  const tok = (await query("SELECT * FROM password_reset_tokens WHERE employee_id = $1 AND code = $2 AND expires_at > NOW()", [emp.id, code])).rows[0];
+  if (!tok) return res.status(400).json({ error: "Código inválido ou expirado." });
+  const hash = await hashPassword(newPassword);
+  await query("UPDATE employees SET password_hash = $1 WHERE id = $2", [hash, emp.id]);
+  await query("DELETE FROM password_reset_tokens WHERE employee_id = $1", [emp.id]);
+  res.json({ ok: true });
 });

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { requirePermission } from "../permissions.js";
 
 export const configRouter = Router({ mergeParams: true });
@@ -24,7 +24,7 @@ configRouter.patch("/config", requirePermission("gerirConfig"), async (req, res)
   }
 
   await query("UPDATE businesses SET config = $1::jsonb WHERE id = $2", [JSON.stringify(next), businessId]);
-  res.json({ store: await buildStore(businessId) });
+  res.json({ store: await buildStoreAndCache(businessId) });
 });
 
 configRouter.patch("/loyalty", requirePermission("gerirConfig"), async (req, res) => {
@@ -34,7 +34,7 @@ configRouter.patch("/loyalty", requirePermission("gerirConfig"), async (req, res
     "UPDATE businesses SET loyalty_enabled = $1, loyalty_points_per_mt = $2, loyalty_mt_per_point = $3 WHERE id = $4",
     [!!enabled, Number(pointsPerMt) || 1, Number(mtPerPoint) || 0.1, businessId]
   );
-  res.json({ store: await buildStore(businessId) });
+  res.json({ store: await buildStoreAndCache(businessId) });
 });
 
 configRouter.patch("/theme", requirePermission("gerirConfig"), async (req, res) => {
@@ -48,18 +48,18 @@ configRouter.patch("/theme", requirePermission("gerirConfig"), async (req, res) 
   if (!sets.length) return res.status(400).json({ error: "Nada para atualizar." });
   vals.push(businessId);
   await query(`UPDATE businesses SET ${sets.join(", ")} WHERE id = $${i}`, vals);
-  res.json({ store: await buildStore(businessId) });
+  res.json({ store: await buildStoreAndCache(businessId) });
 });
 
 configRouter.post("/onboarding-done", requirePermission("gerirConfig"), async (req, res) => {
   const businessId = req.params.businessId;
   await query("UPDATE businesses SET onboarding_done = true WHERE id = $1", [businessId]);
-  res.json({ store: await buildStore(businessId) });
+  res.json({ store: await buildStoreAndCache(businessId) });
 });
 
 configRouter.get("/backup", requirePermission("gerirConfig"), async (req, res) => {
   const businessId = req.params.businessId;
-  const store = await buildStore(businessId);
+  const store = await buildStoreAndCache(businessId);
   if (!store) return res.status(404).json({ error: "Negócio não encontrado." });
   const backup = {
     version: 1,

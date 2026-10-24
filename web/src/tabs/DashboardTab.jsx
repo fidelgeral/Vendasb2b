@@ -88,6 +88,12 @@ export default function DashboardTab({ store }) {
 
   const alertasStock = useMemo(() => store.products.filter((p) => isLowStock(p, store.products)), [store.products]);
   const alertasVencimento = useMemo(() => store.products.filter((p) => nearExpiry(p).length > 0), [store.products]);
+  const alertasMargem = useMemo(() => store.products.filter((p) => {
+    const price = Number(p.price), cost = Number(p.cost || 0);
+    if (price <= 0 || cost <= 0) return false;
+    const margem = ((price - cost) / price) * 100;
+    return margem < 10;
+  }).map((p) => ({ ...p, margem: Math.round(((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100) })), [store.products]);
   const totalClientes = store.clients.length;
   const dividasTotal = store.clients.reduce((a, c) => a + c.debts.reduce((s, d) => s + d.amount, 0), 0);
 
@@ -115,21 +121,24 @@ export default function DashboardTab({ store }) {
       </div>
 
       {/* Alertas */}
-      {(alertasStock.length > 0 || alertasVencimento.length > 0) && (
+      {(alertasStock.length > 0 || alertasVencimento.length > 0 || alertasMargem.length > 0) && (
         <div style={{ background: `${BRICK}11`, borderColor: `${BRICK}44` }} className="border rounded-xl p-3">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={16} color={BRICK} />
-            <span className="text-sm font-semibold" style={{ color: BRICK }}>Alertas ({alertasStock.length + alertasVencimento.length})</span>
+            <span className="text-sm font-semibold" style={{ color: BRICK }}>Alertas ({alertasStock.length + alertasVencimento.length + alertasMargem.length})</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs" style={{ color: INK }}>
+            {alertasMargem.slice(0, 5).map((p) => (
+              <div key={"m" + p.id}>⚠️ {p.name} — margem: {p.margem}%</div>
+            ))}
             {alertasStock.slice(0, 5).map((p) => (
               <div key={p.id}>📦 {p.name} — stock: {getStock(p, store.products)}</div>
             ))}
             {alertasVencimento.slice(0, 5).map((p) => (
               <div key={p.id}>⏰ {p.name} — lote a vencer</div>
             ))}
-            {(alertasStock.length + alertasVencimento.length > 10) && (
-              <div style={{ color: MUTED }}>+{alertasStock.length + alertasVencimento.length - 10} mais…</div>
+            {(alertasStock.length + alertasVencimento.length + alertasMargem.length > 15) && (
+              <div style={{ color: MUTED }}>+{alertasStock.length + alertasVencimento.length + alertasMargem.length - 15} mais…</div>
             )}
           </div>
         </div>

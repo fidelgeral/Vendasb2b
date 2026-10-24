@@ -2,13 +2,13 @@ import { Router } from "express";
 import { z } from "zod";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 
 export const suppliersRouter = Router({ mergeParams: true });
 suppliersRouter.use(requireAuth, requireBusiness);
 
-const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
+const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStoreAndCache(businessId) });
 
 const supplierSchema = z.object({
   name: z.string().min(1),

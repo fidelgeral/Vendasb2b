@@ -6,6 +6,28 @@ import { requirePermission } from "../permissions.js";
 export const storeRouter = Router({ mergeParams: true });
 storeRouter.use(requireAuth, requireBusiness);
 
+const storeCache = new Map();
+const CACHE_TTL = 30_000;
+
+export function invalidateStoreCache(businessId) {
+  storeCache.delete(businessId);
+}
+
+async function getCachedStore(businessId) {
+  const cached = storeCache.get(businessId);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  const data = await buildStore(businessId);
+  storeCache.set(businessId, { data, ts: Date.now() });
+  return data;
+}
+
+// Wrapper chamado pelas rotas de escrita: reconstroi o store e actualiza a cache
+export async function buildStoreAndCache(businessId) {
+  const data = await buildStore(businessId);
+  storeCache.set(businessId, { data, ts: Date.now() });
+  return data;
+}
+
 const DEFAULT_CONFIG = {
   businessName: "",
   modules: { mercearia: true, restaurante: false, bar: false, roupa: false, padaria: false },
@@ -315,7 +337,7 @@ function groupBy(rows, key) {
 }
 
 storeRouter.get("/store", async (req, res) => {
-  const store = await buildStore(req.params.businessId);
+  const store = await getCachedStore(req.params.businessId);
   if (!store) return res.status(404).json({ error: "Negócio não encontrado." });
   res.set("Cache-Control", "private, no-cache");
   res.json({ store });

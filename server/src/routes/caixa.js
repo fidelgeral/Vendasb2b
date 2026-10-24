@@ -2,13 +2,13 @@ import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { requirePermission } from "../permissions.js";
 
 export const caixaRouter = Router({ mergeParams: true });
 caixaRouter.use(requireAuth, requireBusiness);
 
-const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
+const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStoreAndCache(businessId) });
 
 caixaRouter.post("/shifts/open", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;

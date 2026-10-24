@@ -193,6 +193,25 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     }
   }, []);
 
+  // Atalhos de teclado globais
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
+      const key = e.key;
+      if (key === "F1") { e.preventDefault(); setTab("vender"); }
+      else if (key === "F2") { e.preventDefault(); setTab("produtos"); }
+      else if (key === "F3") { e.preventDefault(); setTab("clientes"); }
+      else if (key === "F4") { e.preventDefault(); setTab("caixa"); }
+      else if (key === "F5") { e.preventDefault(); load(); }
+      else if (key === "F6") { e.preventDefault(); setTab("estoque"); }
+      else if (key === "F7") { e.preventDefault(); setTab("balanco"); }
+      else if (key === "F8") { e.preventDefault(); setTab("dashboard"); }
+      else if (key === "Escape") { e.preventDefault(); setTab("vender"); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [load]);
+
   if (suspended) {
     return (
       <div style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }} className="min-h-screen p-5">

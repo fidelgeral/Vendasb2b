@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { requirePermission } from "../permissions.js";
 
 export const lotesRouter = Router({ mergeParams: true });
@@ -12,7 +12,7 @@ lotesRouter.use(requireAuth, requireBusiness);
 // (o Express 4 não o faz sozinho — sem isto um erro deitava o processo abaixo).
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
+const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStoreAndCache(businessId) });
 const empName = (req) => (req.auth.type === "employee" ? req.auth.name : "Super-admin");
 const httpErr = (status, message) => Object.assign(new Error(message), { http: status });
 

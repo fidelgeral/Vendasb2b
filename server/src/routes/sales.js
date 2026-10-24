@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { decrementStock, incrementStock } from "./caixa.js";
 import { nextDocNumber } from "../docNumber.js";
 import { requirePermission } from "../permissions.js";
@@ -10,7 +10,7 @@ import { requirePermission } from "../permissions.js";
 export const salesRouter = Router({ mergeParams: true });
 salesRouter.use(requireAuth, requireBusiness);
 
-const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
+const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStoreAndCache(businessId) });
 
 const itemSchema = z.object({
   productId: z.string().uuid(),
@@ -128,7 +128,7 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
     return row;
   });
 
-  const store = await buildStore(businessId);
+  const store = await buildStoreAndCache(businessId);
   res.status(duplicate ? 200 : 201).json({ store, sale: store.sales.find((s) => s.id === sale.id) });
   } catch (err) {
     // Rede de segurança: se ainda assim duas vendas idênticas colidirem no
@@ -139,7 +139,7 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
         await query("SELECT id FROM sales WHERE business_id = $1 AND client_sale_id = $2", [businessId, f.clientSaleId])
       ).rows[0];
       if (existente) {
-        const store = await buildStore(businessId);
+        const store = await buildStoreAndCache(businessId);
         return res.status(200).json({ store, sale: store.sales.find((s) => s.id === existente.id) });
       }
     }

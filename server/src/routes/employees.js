@@ -3,7 +3,7 @@ import { z } from "zod";
 import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { hashPassword } from "../auth/hash.js";
-import { buildStore } from "./store.js";
+import { buildStoreAndCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 import { requirePermission } from "../permissions.js";
 
@@ -21,7 +21,7 @@ async function syncResendContact(email, name) {
 export const employeesRouter = Router({ mergeParams: true });
 employeesRouter.use(requireAuth, requireBusiness);
 
-const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStore(businessId) });
+const respond = async (res, businessId, status = 200) => res.status(status).json({ store: await buildStoreAndCache(businessId) });
 
 // Garante que nunca se fica sem nenhum administrador (dono) activo — evita o
 // bloqueio total do negócio (sem quem gira equipa/configurações).
@@ -32,13 +32,15 @@ async function outroDonoActivo(businessId, excluirId) {
   return n > 0;
 }
 
+const passwordRule = z.string().min(6, "Mínimo 6 caracteres").regex(/[a-zA-Z]/, "Deve ter pelo menos uma letra").regex(/[0-9]/, "Deve ter pelo menos um número");
+
 const employeeSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   phone: z.string().optional().default(""),
   role: z.enum(["dono", "gerente", "caixa", "cozinha"]).default("caixa"),
   docId: z.string().optional().default(""),
-  password: z.string().min(4).optional(),
+  password: passwordRule.optional(),
   genero: z.string().optional().default(""),
   foto: z.string().optional().default(""),
   garcom: z.boolean().optional().default(false),
@@ -46,7 +48,7 @@ const employeeSchema = z.object({
 
 employeesRouter.post("/employees", requirePermission("gerirEquipa"), async (req, res) => {
   const parsed = employeeSchema.safeParse(req.body);
-  if (!parsed.success || !parsed.data.password) return res.status(400).json({ error: "Dados inválidos: a senha deve ter pelo menos 4 caracteres." });
+  if (!parsed.success || !parsed.data.password) return res.status(400).json({ error: "Dados inválidos: a senha deve ter pelo menos 6 caracteres, com letras e números." });
   const f = parsed.data;
   const businessId = req.params.businessId;
 
@@ -73,7 +75,7 @@ const employeePatchSchema = z.object({
   phone: z.string().optional(),
   role: z.enum(["dono", "gerente", "caixa", "cozinha"]).optional(),
   docId: z.string().optional(),
-  password: z.string().min(4).optional(),
+  password: passwordRule.optional(),
   genero: z.string().optional(),
   foto: z.string().optional(),
   garcom: z.boolean().optional(),

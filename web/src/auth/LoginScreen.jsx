@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CARD, BORDER, INK, TEAL, MUTED, BRICK, GRADIENT } from "../lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "../lib/theme.js";
 import { BRAND_LOGO } from "../lib/logo.js";
-import { auth, setSession } from "../lib/api.js";
+import { auth, setSession, setRefreshToken } from "../lib/api.js";
 
 export default function LoginScreen({ onLogin }) {
   const [mode, setMode] = useState("negocio");
@@ -52,6 +52,7 @@ function BusinessLoginForm({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -85,7 +86,75 @@ function BusinessLoginForm({ onLogin }) {
       <button type="submit" disabled={loading} style={{ background: GRADIENT, color: "#fff", boxShadow: "0 6px 16px rgba(79,70,229,0.35)" }} className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
         {loading ? "A entrar…" : "Entrar"}
       </button>
+      <div className="text-center mt-2">
+        <button type="button" onClick={() => setShowReset(true)} className="text-xs underline" style={{ color: TEAL }}>Esqueci a minha senha</button>
+      </div>
+      {showReset && <ResetPasswordModal email={email} onClose={() => setShowReset(false)} />}
     </form>
+  );
+}
+
+function ResetPasswordModal({ email: initialEmail, onClose }) {
+  const [step, setStep] = useState(1);
+  const [email, setEmail] = useState(initialEmail || "");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendCode = async () => {
+    if (!email.trim()) { setError("Insira o seu email."); return; }
+    setLoading(true); setError("");
+    try {
+      await auth.forgotPassword(email.trim());
+      setStep(2);
+      setSuccess("Se o email existir, enviámos um código de 6 dígitos.");
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  const resetPwd = async () => {
+    if (!code.trim() || !newPassword) { setError("Preencha todos os campos."); return; }
+    setLoading(true); setError("");
+    try {
+      await auth.resetPassword(email.trim(), code.trim(), newPassword);
+      setSuccess("Senha alterada com sucesso! Pode fazer login.");
+      setStep(3);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div style={{ background: CARD }} className="rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="text-sm font-bold mb-3" style={{ color: INK }}>Recuperar senha</div>
+        {step === 1 && (
+          <>
+            <p className="text-xs mb-3" style={{ color: MUTED }}>Insira o email da sua conta para receber um código de recuperação.</p>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mb-2" />
+            {error && <div className="text-xs mb-2" style={{ color: BRICK }}>{error}</div>}
+            <button onClick={sendCode} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold disabled:opacity-50">{loading ? "A enviar…" : "Enviar código"}</button>
+          </>
+        )}
+        {step === 2 && (
+          <>
+            {success && <div className="text-xs mb-2" style={{ color: "#059669" }}>{success}</div>}
+            <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código de 6 dígitos" maxLength={6} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mb-2 text-center tracking-widest text-lg font-bold" />
+            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nova senha (min. 6 chars, letras + números)" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mb-2" />
+            {error && <div className="text-xs mb-2" style={{ color: BRICK }}>{error}</div>}
+            <button onClick={resetPwd} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold disabled:opacity-50">{loading ? "A redefinir…" : "Redefinir senha"}</button>
+          </>
+        )}
+        {step === 3 && (
+          <>
+            <div className="text-xs mb-3 text-center" style={{ color: "#059669" }}>{success}</div>
+            <button onClick={onClose} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold">Fechar</button>
+          </>
+        )}
+        {step !== 3 && <button onClick={onClose} className="w-full text-xs mt-2 underline" style={{ color: MUTED }}>Cancelar</button>}
+      </div>
+    </div>
   );
 }
 
