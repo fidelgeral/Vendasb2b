@@ -123,6 +123,28 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
               Perdas por quebra neste turno: {fmtMT(quebrasCusto)}
             </div>
           )}
+          {shiftSales.length > 0 && (() => {
+            const byEmp = {};
+            shiftSales.forEach((s) => {
+              const emp = store.employees.find((e) => e.id === s.employeeId);
+              const name = emp ? emp.name : "Sistema";
+              if (!byEmp[name]) byEmp[name] = { count: 0, total: 0 };
+              byEmp[name].count++;
+              byEmp[name].total += s.total;
+            });
+            const sorted = Object.entries(byEmp).sort((a, b) => b[1].total - a[1].total);
+            return (
+              <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+                <div className="text-sm font-semibold mb-2">Vendas por operador (turno actual)</div>
+                {sorted.map(([name, d]) => (
+                  <div key={name} className="flex justify-between text-sm py-1" style={{ borderBottom: "1px solid " + BORDER }}>
+                    <span>{name} <span className="text-xs" style={{ color: MUTED }}>({d.count} vendas)</span></span>
+                    <span style={{ color: TEAL }} className="font-medium">{fmtMT(d.total)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
       {sub === "historico" && <CaixaHistorico store={store} voidSale={voidSale} canVoid={canVoid} />}
