@@ -65,6 +65,7 @@ const employeePatchSchema = z.object({
   genero: z.string().optional(),
   foto: z.string().optional(),
   garcom: z.boolean().optional(),
+  allowedFiliais: z.array(z.string().uuid()).nullable().optional(),
 });
 
 employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async (req, res) => {
@@ -88,12 +89,13 @@ employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async 
   }
 
   const passwordHash = f.password ? await hashPassword(f.password) : existing.password_hash;
+  const allowedFiliais = f.allowedFiliais !== undefined ? f.allowedFiliais : existing.allowed_filiais;
   await query(
-    "UPDATE employees SET name=$1, email=$2, phone=$3, role=$4, doc_id=$5, password_hash=$6, genero=$7, foto=$8, garcom=$9 WHERE id = $10",
+    "UPDATE employees SET name=$1, email=$2, phone=$3, role=$4, doc_id=$5, password_hash=$6, genero=$7, foto=$8, garcom=$9, allowed_filiais=$10 WHERE id = $11",
     [
       f.name ?? existing.name, (f.email ?? existing.email).toLowerCase(), f.phone ?? existing.phone,
       f.role ?? existing.role, f.docId ?? existing.doc_id, passwordHash,
-      f.genero ?? existing.genero, f.foto !== undefined ? f.foto : existing.foto, f.garcom ?? existing.garcom, id,
+      f.genero ?? existing.genero, f.foto !== undefined ? f.foto : existing.foto, f.garcom ?? existing.garcom, allowedFiliais || null, id,
     ]
   );
   const campos = { name: "name", email: "email", phone: "phone", role: "role", docId: "doc_id" };
