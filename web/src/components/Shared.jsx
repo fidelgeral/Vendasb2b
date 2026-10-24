@@ -112,6 +112,14 @@ export function PhotoPicker({ value, onChange, api }) {
     if (!file) return;
     setUploading(true);
     try {
+      if (api?.uploadImage) {
+        try {
+          const { url } = await api.uploadImage(file);
+          onChange(url);
+          setUploading(false);
+          return;
+        } catch (_) { /* Cloudinary indisponível, fallback base64 */ }
+      }
       const dataUrl = await compressImageFile(file);
       onChange(dataUrl);
     } catch (err) {

@@ -56,3 +56,27 @@ configRouter.post("/onboarding-done", requirePermission("gerirConfig"), async (r
   await query("UPDATE businesses SET onboarding_done = true WHERE id = $1", [businessId]);
   res.json({ store: await buildStore(businessId) });
 });
+
+configRouter.get("/backup", requirePermission("gerirConfig"), async (req, res) => {
+  const businessId = req.params.businessId;
+  const store = await buildStore(businessId);
+  if (!store) return res.status(404).json({ error: "Negócio não encontrado." });
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    businessId,
+    businessName: store.name,
+    data: {
+      config: store.config,
+      products: store.products,
+      categories: store.categories,
+      clients: store.clients,
+      employees: store.employees.map(({ permissions, ...e }) => e),
+      suppliers: store.suppliers,
+      sales: store.sales,
+      contasPagar: store.contasPagar,
+    },
+  };
+  res.set("Content-Disposition", `attachment; filename="backup-${store.slug || businessId}-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.json(backup);
+});

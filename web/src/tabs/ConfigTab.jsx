@@ -45,7 +45,7 @@ export default function ConfigTab({ store, setStore, api }) {
       {cat === "empresa" && <EmpresaConfig store={store} setStore={setStore} api={api} />}
       {cat === "fidelidade" && <FidelidadeConfig store={store} setStore={setStore} api={api} />}
       {cat === "tema" && <TemaConfig store={store} setStore={setStore} api={api} />}
-      {cat === "seguranca" && <SegurancaConfig store={store} />}
+      {cat === "seguranca" && <SegurancaConfig store={store} api={api} />}
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 mt-4">
         <div className="text-sm font-semibold mb-2">Áreas activas do negócio</div>
         <ModulosConfig store={store} setStore={setStore} api={api} />
@@ -439,40 +439,41 @@ function TemaConfig({ store, setStore, api }) {
 // Segurança: a cópia de segurança automática/manual agora é feita pela própria
 // base de dados (Neon) — aqui fica apenas uma exportação de leitura, útil como
 // cópia extra do próprio dono.
-function SegurancaConfig({ store }) {
-  const [exportText, setExportText] = useState("");
+function SegurancaConfig({ store, api }) {
   const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const generateExport = () => setExportText(JSON.stringify(store, null, 2));
-  const copyExport = async () => {
+  const downloadBackup = async () => {
+    setLoading(true);
+    setMsg("");
     try {
-      await navigator.clipboard.writeText(exportText);
-      setMsg("Copiado.");
+      const data = await api.downloadBackup();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-${store.slug || store.id}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg("Backup descarregado com sucesso.");
     } catch (e) {
-      setMsg("Não foi possível copiar automaticamente — seleccione o texto acima e copie manualmente.");
+      setMsg("Erro ao gerar backup: " + e.message);
     }
+    setLoading(false);
   };
 
   return (
     <div className="space-y-3">
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
-        <div className="text-sm font-semibold">Exportar dados (cópia de segurança)</div>
+        <div className="text-sm font-semibold">Cópia de segurança (Backup)</div>
         <div className="text-xs" style={{ color: MUTED }}>
-          Os seus dados já ficam guardados de forma segura na base de dados do sistema. Esta exportação é apenas uma cópia extra, para guardar no seu computador.
+          Os seus dados já ficam guardados de forma segura na base de dados (Neon). Esta exportação é uma cópia extra em ficheiro JSON que pode guardar no seu computador.
         </div>
-        <button onClick={generateExport} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
-          Gerar cópia
+        <button onClick={downloadBackup} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-50">
+          {loading ? "A gerar..." : "Descarregar backup"}
         </button>
-        {exportText && (
-          <>
-            <textarea readOnly value={exportText} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-xs h-32" />
-            <button onClick={copyExport} style={{ borderColor: BORDER, color: TEAL }} className="border rounded-lg px-3 py-1 text-xs">
-              Copiar
-            </button>
-          </>
-        )}
         {msg && (
-          <div className="text-xs" style={{ color: MUTED }}>
+          <div className="text-xs" style={{ color: msg.includes("Erro") ? BRICK : MUTED }}>
             {msg}
           </div>
         )}
