@@ -16,9 +16,10 @@ import { NotificationBell } from "./components/Shared.jsx";
 import SwitchUserModal from "./auth/SwitchUserModal.jsx";
 import {
   ShoppingCart, LayoutGrid, Banknote, Package, Boxes, Users, Truck, UserCog, Scale, Settings,
-  ChevronLeft, Lock, LogOut, CheckCircle2,
+  ChevronLeft, Lock, LogOut, CheckCircle2, BarChart3,
 } from "./lib/icons.jsx";
 
+import DashboardTab from "./tabs/DashboardTab.jsx";
 import VenderTab from "./tabs/VenderTab.jsx";
 import MesasTab from "./tabs/MesasTab.jsx";
 import CaixaTab from "./tabs/CaixaTab.jsx";
@@ -38,7 +39,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const [loading, setLoading] = useState(() => !loadCachedStore(businessId));
   const [refreshing, setRefreshing] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [tab, setTab] = useState("vender");
+  const [tab, setTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
   const [showUserSwitch, setShowUserSwitch] = useState(false);
   const [suspended, setSuspended] = useState(false);
@@ -164,6 +165,34 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     };
   }, [syncPending]);
 
+  // Auto-refresh a cada 30s para dashboard em tempo real
+  useEffect(() => {
+    const id = setInterval(() => { if (navigator.onLine && !suspended) load(); }, 30000);
+    return () => clearInterval(id);
+  }, [load, suspended]);
+
+  // Notificações push do browser (stock baixo, lotes a vencer)
+  const prevAlertCountRef = useRef(0);
+  useEffect(() => {
+    if (!store) return;
+    const alertCount = store.products.filter((p) => isLowStock(p, store.products)).length
+      + store.products.filter((p) => nearExpiry(p).length > 0).length;
+    if (alertCount > prevAlertCountRef.current && prevAlertCountRef.current >= 0) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        const novos = alertCount - prevAlertCountRef.current;
+        new Notification("VENDASB2B — Alerta", { body: `${novos} novo(s) alerta(s) de stock/validade`, icon: "/icon-192.png" });
+      }
+    }
+    prevAlertCountRef.current = alertCount;
+  }, [store]);
+
+  // Pedir permissão de notificações uma vez
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   if (suspended) {
     return (
       <div style={{ background: BG, color: INK, fontFamily: "system-ui, sans-serif" }} className="min-h-screen p-5">
@@ -224,6 +253,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const paymentMethods = getActivePaymentMethods(store.config);
 
   const tabDefs = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3, show: true },
     { id: "vender", label: "Vender", icon: ShoppingCart, show: true },
     { id: "mesas", label: "Mesas", icon: LayoutGrid, show: modules.restaurante || modules.bar },
     { id: "caixa", label: "Caixa", icon: Banknote, show: true },
@@ -433,6 +463,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       </div>
 
       <div className="flex-1 p-4 md:p-6">
+        {tab === "dashboard" && <DashboardTab store={store} />}
         {!shiftOpen && tab === "vender" && (
           <div style={{ background: SOFTGOLD, borderColor: "#F59E0B" }} className="border rounded-lg p-4 text-sm mb-4">
             O caixa está fechado. Abra o caixa na aba Caixa para começar a registar vendas.

@@ -1,0 +1,64 @@
+name: Relatórios por email
+
+on:
+  schedule:
+    # Resumo diário — todos os dias às 20h (UTC, ~22h Moçambique)
+    - cron: "0 20 * * *"
+    # Relatório semanal — todas as segundas às 08h UTC (~10h Moçambique)
+    - cron: "0 8 * * 1"
+    # Relatório mensal — dia 1 de cada mês às 08h UTC
+    - cron: "0 8 1 * *"
+  workflow_dispatch:
+    inputs:
+      tipo:
+        description: "Tipo de relatório"
+        required: true
+        type: choice
+        options:
+          - diario
+          - semanal
+          - mensal
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar servidor
+        run: curl -fsS --max-time 90 https://vendasb2b-api.onrender.com/api/health || true
+
+      - name: Determinar tipo
+        id: tipo
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "report=${{ github.event.inputs.tipo }}" >> "$GITHUB_OUTPUT"
+          else
+            CRON="${{ github.event.schedule }}"
+            if [ "$CRON" = "0 20 * * *" ]; then
+              echo "report=diario" >> "$GITHUB_OUTPUT"
+            elif [ "$CRON" = "0 8 * * 1" ]; then
+              echo "report=semanal" >> "$GITHUB_OUTPUT"
+            else
+              echo "report=mensal" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Enviar resumo diário
+        if: steps.tipo.outputs.report == 'diario'
+        run: |
+          curl -fsS --max-time 120 -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            https://vendasb2b-api.onrender.com/api/cron/daily-summary || true
+
+      - name: Enviar relatório semanal
+        if: steps.tipo.outputs.report == 'semanal'
+        run: |
+          curl -fsS --max-time 120 -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "https://vendasb2b-api.onrender.com/api/cron/periodic-report?periodo=semanal" || true
+
+      - name: Enviar relatório mensal
+        if: steps.tipo.outputs.report == 'mensal'
+        run: |
+          curl -fsS --max-time 120 -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "https://vendasb2b-api.onrender.com/api/cron/periodic-report?periodo=mensal" || true

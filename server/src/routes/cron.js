@@ -114,3 +114,101 @@ cronRouter.post("/daily-summary", async (req, res) => {
 
   res.json({ enviados, erros });
 });
+
+// Relatório periódico (semanal ou mensal) — reutiliza a lógica de resumo mas
+// com intervalo configurável via query param ?periodo=semanal|mensal
+cronRouter.post("/periodic-report", async (req, res) => {
+  const periodo = req.query.periodo || "semanal";
+  const dias = periodo === "mensal" ? 30 : 7;
+  const labelPeriodo = periodo === "mensal" ? "Relatório mensal" : "Relatório semanal";
+
+  const businesses = (
+    await query("SELECT id, name, config FROM businesses WHERE active = true AND subscription_status <> 'suspenso'")
+  ).rows;
+
+  let enviados = 0;
+  const erros = [];
+
+  for (const biz of businesses) {
+    // eslint-disable-next-line no-await-in-loop
+    const empRows = (await query("SELECT email, role, permissions FROM employees WHERE business_id = $1 AND active = true AND email IS NOT NULL AND email <> ''", [biz.id])).rows;
+    const destinatarios = empRows.filter((e) => temPermissao(e.role, e.permissions, "receberEmail")).map((e) => e.email);
+    if (destinatarios.length === 0) continue;
+
+    // eslint-disable-next-line no-await-in-loop
+    const vendas = (
+      await query(
+        `SELECT s.id, s.total, s.discount, s.payments, s.created_at
+         FROM sales s WHERE s.business_id = $1 AND s.voided = false AND s.created_at >= NOW() - INTERVAL '${dias} days'`,
+        [biz.id]
+      )
+    ).rows;
+    // eslint-disable-next-line no-await-in-loop
+    const itens = (
+      await query(
+        `SELECT si.name_snapshot AS name, si.qty, si.price, si.cost
+         FROM sale_items si JOIN sales s ON s.id = si.sale_id
+         WHERE s.business_id = $1 AND s.voided = false AND s.created_at >= NOW() - INTERVAL '${dias} days'`,
+        [biz.id]
+      )
+    ).rows;
+    // eslint-disable-next-line no-await-in-loop
+    const dividasRow = (await query("SELECT COALESCE(SUM(amount),0) AS total FROM client_debts d JOIN clients c ON c.id = d.client_id WHERE c.business_id = $1", [biz.id])).rows[0];
+    // eslint-disable-next-line no-await-in-loop
+    const stockBaixo = (await query("SELECT COUNT(*)::int AS n FROM products WHERE business_id = $1 AND active = true AND stock <= min_stock AND parent_id IS NULL", [biz.id])).rows[0].n;
+
+    if (vendas.length === 0) continue;
+
+    const faturacao = vendas.reduce((a, s) => a + Number(s.total), 0);
+    const lucro = itens.reduce((a, it) => a + (Number(it.price) - Number(it.cost)) * Number(it.qty), 0);
+    const topAgg = {};
+    itens.forEach((it) => (topAgg[it.name] = (topAgg[it.name] || 0) + Number(it.qty)));
+    const topProds = Object.entries(topAgg).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const dividas = Number(dividasRow.total);
+    const mediaDiaria = faturacao / dias;
+
+    const fmt = (n) => new Intl.NumberFormat("pt-MZ").format(Math.round(n)) + " MT";
+    const nome = biz.config?.businessName || biz.name;
+    const hoje = new Date().toLocaleDateString("pt-PT");
+    const topHtml = topProds.map(([n, q]) => `<tr><td style="padding:4px 0;border-bottom:1px solid #F3F4F6">${n}</td><td style="text-align:right;border-bottom:1px solid #F3F4F6">${q}</td></tr>`).join("");
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
+        <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED,#DB2777);color:#fff;padding:16px;border-radius:12px 12px 0 0">
+          <div style="font-size:12px;opacity:.85">VENDASB2B · ${labelPeriodo}</div>
+          <div style="font-size:20px;font-weight:bold">${nome}</div>
+          <div style="font-size:12px;opacity:.85">${hoje} — últimos ${dias} dias</div>
+        </div>
+        <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:16px">
+          <table style="width:100%;font-size:14px;border-collapse:collapse">
+            <tr><td style="padding:6px 0">Nº de vendas</td><td style="text-align:right;font-weight:bold">${vendas.length}</td></tr>
+            <tr><td style="padding:6px 0">Facturação total</td><td style="text-align:right;font-weight:bold;color:#4F46E5">${fmt(faturacao)}</td></tr>
+            <tr><td style="padding:6px 0">Média diária</td><td style="text-align:right;font-weight:bold">${fmt(mediaDiaria)}</td></tr>
+            <tr><td style="padding:6px 0">Lucro estimado</td><td style="text-align:right;font-weight:bold;color:#059669">${fmt(lucro)}</td></tr>
+            <tr><td style="padding:6px 0">Margem</td><td style="text-align:right;font-weight:bold">${faturacao > 0 ? Math.round((lucro / faturacao) * 100) + "%" : "—"}</td></tr>
+            <tr><td style="padding:6px 0">Produtos com stock baixo</td><td style="text-align:right;font-weight:bold;color:${stockBaixo > 0 ? "#EF4444" : "#059669"}">${stockBaixo}</td></tr>
+            <tr><td style="padding:6px 0">Dívidas de clientes</td><td style="text-align:right">${fmt(dividas)}</td></tr>
+          </table>
+          ${topProds.length > 0 ? `
+          <div style="margin-top:12px;font-size:13px;font-weight:bold;color:#374151">Top 5 produtos</div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:4px">
+            <tr style="color:#9CA3AF"><td>Produto</td><td style="text-align:right">Qtd.</td></tr>
+            ${topHtml}
+          </table>` : ""}
+          <div style="color:#64748B;font-size:11px;margin-top:12px">${labelPeriodo} automático enviado pelo VENDASB2B.</div>
+        </div>
+      </div>`;
+
+    for (const email of destinatarios) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await sendEmail(email, `${labelPeriodo} — ${nome} (${hoje})`, html);
+        enviados++;
+      } catch (e) {
+        erros.push(biz.name + " (" + email + "): " + e.message);
+      }
+    }
+  }
+
+  res.json({ enviados, erros });
+});
