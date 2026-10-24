@@ -161,6 +161,14 @@ export function businessApi(businessId) {
     addConta: (payload) => s(post(`${base}/contas-pagar`, payload)),
     deleteConta: (id) => s(del(`${base}/contas-pagar/${id}`)),
     pagarConta: (id) => s(post(`${base}/contas-pagar/${id}/pagar`)),
+
+    uploadImage: async (file) => {
+      const form = new FormData();
+      form.append("file", file);
+      const resp = await fetch(`${API_URL}${base}/upload`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: form });
+      if (!resp.ok) throw new ApiError((await resp.json().catch(() => ({}))).error || "Erro no upload", resp.status);
+      return resp.json();
+    },
   };
 }
 

@@ -22,7 +22,9 @@ import { contasRouter } from "./routes/contas.js";
 import { lotesRouter } from "./routes/lotes.js";
 import { quotationsRouter } from "./routes/quotations.js";
 import { cronRouter } from "./routes/cron.js";
+import { uploadRouter } from "./routes/upload.js";
 import { requireActiveSubscription } from "./auth/middleware.js";
+import { initSentry } from "./sentry.js";
 
 const app = express();
 
@@ -86,11 +88,14 @@ app.use("/api/businesses/:businessId", salesRouter);
 app.use("/api/businesses/:businessId", configRouter);
 app.use("/api/businesses/:businessId", contasRouter);
 app.use("/api/businesses/:businessId", quotationsRouter);
+app.use("/api/businesses/:businessId", uploadRouter);
 app.use("/api/businesses/:businessId", assistantRouter);
 app.use("/api/public", publicRouter);
 app.use("/api/cron", cronRouter);
 
 app.use((req, res) => res.status(404).json({ error: "Rota não encontrada." }));
+
+initSentry(app);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
