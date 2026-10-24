@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import compression from "compression";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import "dotenv/config";
 
 import { authRouter } from "./routes/auth.js";
@@ -24,9 +26,17 @@ import { requireActiveSubscription } from "./auth/middleware.js";
 
 const app = express();
 
-// Comprime todas as respostas (JSON + fotos base64 encolhem ~80%) — a maior
-// vitória de desempenho para ligações lentas em Moçambique.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(compression());
+
+const globalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Tente novamente em breve." },
+});
+app.use("/api", globalLimiter);
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "").split(",").map((s) => s.trim()).filter(Boolean);
 app.use(
@@ -39,9 +49,16 @@ app.use(express.json({ limit: "5mb" }));
 
 // Health check com a versão implantada — o Render define RENDER_GIT_COMMIT a
 // cada deploy, o que permite confirmar que versão do backend está realmente no ar.
-app.get("/api/health", (req, res) =>
-  res.json({ ok: true, commit: (process.env.RENDER_GIT_COMMIT || "dev").slice(0, 7), at: new Date().toISOString() })
-);
+app.get("/api/health", (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    ok: true,
+    commit: (process.env.RENDER_GIT_COMMIT || "dev").slice(0, 7),
+    at: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    memory: { rss: Math.round(mem.rss / 1048576), heap: Math.round(mem.heapUsed / 1048576) },
+  });
+});
 
 app.use("/api", authRouter);
 app.use("/api/super/businesses", businessesRouter);

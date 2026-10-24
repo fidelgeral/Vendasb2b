@@ -96,6 +96,9 @@ function ReportTable({ title, columns, rows, meta, note, align }) {
 
 
 const REPORTS = {
+  dashboard: [
+    { id: "resumo", label: "Visão Geral" },
+  ],
   vendas: [
     { id: "detalhado", label: "Detalhado" },
     { id: "abc", label: "Curva ABC" },
@@ -124,8 +127,8 @@ const REPORTS = {
 };
 
 export default function BalancoTab({ store, api }) {
-  const [group, setGroup] = useState("vendas");
-  const [report, setReport] = useState("detalhado");
+  const [group, setGroup] = useState("dashboard");
+  const [report, setReport] = useState("resumo");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [history, setHistory] = useState(null);
@@ -185,6 +188,7 @@ export default function BalancoTab({ store, api }) {
   const meta = { business: store.config.businessName, period: periodLabel, empresa: store.config.empresa };
 
   const groups = [
+    { id: "dashboard", label: "DASHBOARD", color: TEAL },
     { id: "vendas", label: "VENDAS", color: "#7C3AED" },
     { id: "financeiro", label: "FINANCEIRO", color: GREEN },
     { id: "estoque", label: "ESTOQUE", color: "#2563EB" },
@@ -249,9 +253,47 @@ export default function BalancoTab({ store, api }) {
         </div>
       </div>
 
+      {group === "dashboard" && <DashboardOverview store={data} sales={sales} />}
       {group === "vendas" && <VendasReports store={data} sales={sales} report={report} meta={meta} />}
       {group === "financeiro" && <FinanceiroReports store={data} sales={sales} report={report} meta={meta} from={from} to={to} histPrev={histPrev} />}
       {group === "estoque" && <EstoqueReports store={data} report={report} meta={meta} from={from} to={to} sales={sales} />}
+    </div>
+  );
+}
+
+function DashboardOverview({ store, sales }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const monthStart = today.slice(0, 8) + "01";
+  const filter = (from) => sales.filter((s) => s.date >= from);
+  const todaySales = filter(today);
+  const weekSales = filter(weekAgo);
+  const monthSales = filter(monthStart);
+  const sum = (arr) => arr.reduce((a, s) => a + s.total, 0);
+  const lucro = (arr) => arr.reduce((a, s) => a + s.items.reduce((b, it) => b + (it.price - it.cost) * it.qty, 0), 0);
+  const topProduct = () => {
+    const counts = {};
+    monthSales.forEach((s) => s.items.forEach((it) => { counts[it.name] = (counts[it.name] || 0) + it.qty; }));
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return sorted[0] ? `${sorted[0][0]} (${sorted[0][1]} un.)` : "—";
+  };
+  const lowStockCount = store.products.filter((p) => isLowStock(p, store.products)).length;
+  const unpaidDebts = store.clients.reduce((a, c) => a + c.debts.reduce((b, d) => b + d.amount, 0), 0);
+  const contasAbertas = (store.contasPagar || []).filter((c) => c.estado === "aberta").reduce((a, c) => a + c.valor, 0);
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Vendas hoje" value={fmtMT(sum(todaySales))} sub={`${todaySales.length} vendas`} />
+        <StatCard label="Vendas esta semana" value={fmtMT(sum(weekSales))} sub={`${weekSales.length} vendas`} />
+        <StatCard label="Vendas este mês" value={fmtMT(sum(monthSales))} sub={`${monthSales.length} vendas`} />
+        <StatCard label="Lucro do mês" value={fmtMT(lucro(monthSales))} sub="receita - custo" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Produto mais vendido" value={topProduct()} sub="este mês" />
+        <StatCard label="Stock baixo" value={lowStockCount + " produtos"} sub={lowStockCount > 0 ? "atenção necessária" : "tudo em ordem"} />
+        <StatCard label="Dívidas de clientes" value={fmtMT(unpaidDebts)} sub="fiado por cobrar" />
+        <StatCard label="Contas a pagar" value={fmtMT(contasAbertas)} sub="em aberto" />
+      </div>
     </div>
   );
 }

@@ -79,6 +79,17 @@ caixaRouter.post("/shortages/:shortageId/pay", requirePermission("caixaAbrirFech
   await respond(res, businessId);
 });
 
+caixaRouter.post("/loyalty/redeem", requirePermission("caixaAbrirFechar"), async (req, res) => {
+  const businessId = req.params.businessId;
+  const { clientId, points } = req.body || {};
+  if (!clientId || !points || points <= 0) return res.status(400).json({ error: "Dados inválidos." });
+  const lp = (await query("SELECT * FROM loyalty_points WHERE business_id = $1 AND client_id = $2", [businessId, clientId])).rows[0];
+  if (!lp || Number(lp.points) < points) return res.status(409).json({ error: "Pontos insuficientes." });
+  await query("UPDATE loyalty_points SET points = points - $1, total_redeemed = total_redeemed + $1, updated_at = now() WHERE business_id = $2 AND client_id = $3", [points, businessId, clientId]);
+  await query("INSERT INTO loyalty_history (business_id, client_id, points, tipo, descricao) VALUES ($1,$2,$3,'resgate',$4)", [businessId, clientId, -points, `Resgate de ${points} pontos`]);
+  await respond(res, businessId);
+});
+
 const quebraSchema = z.object({
   productId: z.string().uuid(),
   variantId: z.string().uuid().optional().nullable(),

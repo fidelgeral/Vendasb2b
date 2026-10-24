@@ -65,6 +65,40 @@ export function imprimirReciboTermico(sale, store, clientes) {
   return true;
 }
 
+export function gerarReciboTexto(sale, store, clientes) {
+  const emp = store.config.empresa || {};
+  const cli = clientes.find((c) => c.id === sale.clientId);
+  const lines = [];
+  lines.push("*" + (emp.nome || store.config.businessName) + "*");
+  if (emp.endereco) lines.push(emp.endereco);
+  if (emp.contacto) lines.push("Tel: " + emp.contacto);
+  if (emp.nuit) lines.push("NUIT: " + emp.nuit);
+  lines.push("─────────────────");
+  lines.push("*" + (sale.numero || "") + "*");
+  lines.push(new Date(sale.date).toLocaleString("pt-PT"));
+  lines.push("Cliente: " + (cli ? cli.name : "Consumidor Final"));
+  lines.push("─────────────────");
+  sale.items.forEach((it) => {
+    lines.push(it.name);
+    lines.push("  " + it.qty + " x " + fmtMT(it.price) + " = " + fmtMT(it.price * it.qty));
+  });
+  lines.push("─────────────────");
+  if (sale.discount) lines.push("Desconto: -" + fmtMT(sale.discount));
+  lines.push("*TOTAL: " + fmtMT(sale.total) + "*");
+  lines.push(sale.payments.map((p) => p.method + ": " + fmtMT(p.amount)).join(" | "));
+  lines.push("─────────────────");
+  lines.push(store.config.receiptMessage || "Obrigado pela preferência!");
+  return lines.join("\n");
+}
+
+export function enviarReciboPorWhatsApp(sale, store, clientes, phone) {
+  const texto = gerarReciboTexto(sale, store, clientes);
+  const n = String(phone || "").replace(/[^0-9]/g, "");
+  const full = n.length <= 9 ? "258" + n : n;
+  const url = "https://wa.me/" + full + "?text=" + encodeURIComponent(texto);
+  window.open(url, "_blank");
+}
+
 export async function gerarReciboPDF(sale, store, clientes) {
   try {
     const emp = store.config.empresa || {};

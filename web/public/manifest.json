@@ -1,0 +1,14 @@
+{
+  "name": "VENDASB2B — Sistema de Vendas",
+  "short_name": "VENDASB2B",
+  "description": "Sistema POS completo para o seu negócio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fb",
+  "theme_color": "#1E5BA8",
+  "orientation": "any",
+  "icons": [
+    { "src": "/vb-logo.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

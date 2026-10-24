@@ -71,6 +71,7 @@ export async function buildStore(businessId) {
     cotacoes,
     transfers,
     cashShortages,
+    loyaltyPoints,
   ] = await Promise.all([
     query(
       `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
@@ -202,6 +203,11 @@ export async function buildStore(businessId) {
        FROM cash_shortages WHERE business_id = $1 ORDER BY created_at DESC LIMIT 50`,
       [businessId]
     ),
+    query(
+      `SELECT lp.client_id AS "clientId", lp.points, lp.total_earned AS "totalEarned", lp.total_redeemed AS "totalRedeemed"
+       FROM loyalty_points lp WHERE lp.business_id = $1`,
+      [businessId]
+    ),
   ]);
 
   const variantsByProduct = groupBy(variants.rows, "product_id");
@@ -291,6 +297,11 @@ export async function buildStore(businessId) {
     cotacoes: cotacoes.rows.map((c) => ({ ...c, total: Number(c.total), discount: Number(c.discount), ivaTaxa: c.ivaTaxa === null ? null : Number(c.ivaTaxa) })),
     transfers: transfers.rows.map((t) => ({ ...t, qty: Number(t.qty), costUnit: Number(t.costUnit) })),
     cashShortages: cashShortages.rows.map((s) => ({ ...s, expected: Number(s.expected), declared: Number(s.declared), shortage: Number(s.shortage) })),
+    loyaltyPoints: loyaltyPoints.rows.map((lp) => ({ ...lp, points: Number(lp.points), totalEarned: Number(lp.totalEarned), totalRedeemed: Number(lp.totalRedeemed) })),
+    loyalty: { enabled: !!biz.loyalty_enabled, pointsPerMt: Number(biz.loyalty_points_per_mt || 1), mtPerPoint: Number(biz.loyalty_mt_per_point || 0.1) },
+    themeColor: biz.theme_color || "#2563eb",
+    logoUrl: biz.logo_url || "",
+    onboardingDone: !!biz.onboarding_done,
     currentShiftId: currentShift ? currentShift.id : null,
   };
 }
@@ -306,6 +317,7 @@ function groupBy(rows, key) {
 storeRouter.get("/store", async (req, res) => {
   const store = await buildStore(req.params.businessId);
   if (!store) return res.status(404).json({ error: "Negócio não encontrado." });
+  res.set("Cache-Control", "private, no-cache");
   res.json({ store });
 });
 

@@ -97,6 +97,18 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
     }
     if (f.clientId) {
       await client.query("UPDATE clients SET points = GREATEST(0, points - $1 + $2) WHERE id = $3", [f.pontosUsados, pontosGanhos, f.clientId]);
+      if (biz.loyalty_enabled && pontosGanhos > 0) {
+        await client.query(
+          `INSERT INTO loyalty_points (business_id, client_id, points, total_earned)
+           VALUES ($1,$2,$3,$3)
+           ON CONFLICT (business_id, client_id) DO UPDATE SET points = loyalty_points.points + $3, total_earned = loyalty_points.total_earned + $3, updated_at = now()`,
+          [businessId, f.clientId, pontosGanhos]
+        );
+        await client.query(
+          "INSERT INTO loyalty_history (business_id, client_id, points, tipo, descricao, sale_id) VALUES ($1,$2,$3,'ganho',$4,$5)",
+          [businessId, f.clientId, pontosGanhos, `Venda ${doc.numero}: +${pontosGanhos} pontos`, row.id]
+        );
+      }
     }
     if (f.tableId) {
       await client.query("DELETE FROM comandas WHERE table_id = $1", [f.tableId]);

@@ -137,6 +137,10 @@ export function businessApi(businessId) {
     deleteQuotation: (id) => s(del(`${base}/quotations/${id}`)),
 
     patchConfig: (payload) => s(patch(`${base}/config`, payload)),
+    patchLoyalty: (payload) => s(patch(`${base}/loyalty`, payload)),
+    patchTheme: (payload) => s(patch(`${base}/theme`, payload)),
+    completeOnboarding: () => s(post(`${base}/onboarding-done`, {})),
+    redeemLoyalty: (clientId, points) => s(post(`${base}/loyalty/redeem`, { clientId, points })),
 
     assistantChat: (history) => post(`${base}/assistant/chat`, { history }).then((d) => d.reply),
 

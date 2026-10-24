@@ -3,7 +3,7 @@ import { CARD, BORDER, MUTED, TEAL, INK, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, DESPESA_CATEGORIAS, ENTRADA_CATEGORIAS } from "../lib/utils.js";
 import { DonutChart } from "../lib/charts.jsx";
 import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle, Banknote, AlertTriangle, CheckCircle2 } from "../lib/icons.jsx";
-import { imprimirReciboTermico, gerarReciboPDF } from "../lib/print.js";
+import { imprimirReciboTermico, gerarReciboPDF, enviarReciboPorWhatsApp } from "../lib/print.js";
 import { VoidModal } from "../components/Shared.jsx";
 
 export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid, payShortage }) {
@@ -256,6 +256,12 @@ function CaixaHistorico({ store, voidSale, canVoid }) {
                   </button>
                   <button onClick={() => gerarReciboPDF(s, store, store.clients)} style={{ color: MUTED }} className="text-xs font-medium">
                     PDF
+                  </button>
+                  <button onClick={() => {
+                    const cli = store.clients.find((c) => c.id === s.clientId);
+                    enviarReciboPorWhatsApp(s, store, store.clients, cli?.phone || "");
+                  }} style={{ color: "#25D366" }} className="text-xs font-medium">
+                    WhatsApp
                   </button>
                   {canVoid && !anulada && (
                     <button onClick={() => setVoidTarget(s.id)} style={{ color: BRICK }} className="text-xs font-medium">

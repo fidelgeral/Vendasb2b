@@ -29,6 +29,7 @@ import ComprasTab from "./tabs/ComprasTab.jsx";
 import EquipaTab from "./tabs/EquipaTab.jsx";
 import BalancoTab from "./tabs/BalancoTab.jsx";
 import ConfigTab from "./tabs/ConfigTab.jsx";
+import OnboardingWizard from "./components/OnboardingWizard.jsx";
 
 export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLoggedOut, filiais, activeBusinessId, onSwitchFilial }) {
   // Arranque instantâneo: começa com o último estado guardado no aparelho (se
@@ -506,6 +507,12 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       )}
 
       <HelpAssistant api={api} />
+
+      {!store.onboardingDone && (role === "dono" || isSuperAdmin) && (
+        <OnboardingWizard onComplete={async () => {
+          try { setStore(await api.completeOnboarding()); } catch (e) { showToast(e.message, "warn"); }
+        }} />
+      )}
 
       {showUserSwitch && (
         <SwitchUserModal

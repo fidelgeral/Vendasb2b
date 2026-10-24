@@ -26,3 +26,33 @@ configRouter.patch("/config", requirePermission("gerirConfig"), async (req, res)
   await query("UPDATE businesses SET config = $1::jsonb WHERE id = $2", [JSON.stringify(next), businessId]);
   res.json({ store: await buildStore(businessId) });
 });
+
+configRouter.patch("/loyalty", requirePermission("gerirConfig"), async (req, res) => {
+  const businessId = req.params.businessId;
+  const { enabled, pointsPerMt, mtPerPoint } = req.body || {};
+  await query(
+    "UPDATE businesses SET loyalty_enabled = $1, loyalty_points_per_mt = $2, loyalty_mt_per_point = $3 WHERE id = $4",
+    [!!enabled, Number(pointsPerMt) || 1, Number(mtPerPoint) || 0.1, businessId]
+  );
+  res.json({ store: await buildStore(businessId) });
+});
+
+configRouter.patch("/theme", requirePermission("gerirConfig"), async (req, res) => {
+  const businessId = req.params.businessId;
+  const { themeColor, logoUrl } = req.body || {};
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  if (themeColor !== undefined) { sets.push(`theme_color = $${i++}`); vals.push(themeColor); }
+  if (logoUrl !== undefined) { sets.push(`logo_url = $${i++}`); vals.push(logoUrl); }
+  if (!sets.length) return res.status(400).json({ error: "Nada para atualizar." });
+  vals.push(businessId);
+  await query(`UPDATE businesses SET ${sets.join(", ")} WHERE id = $${i}`, vals);
+  res.json({ store: await buildStore(businessId) });
+});
+
+configRouter.post("/onboarding-done", requirePermission("gerirConfig"), async (req, res) => {
+  const businessId = req.params.businessId;
+  await query("UPDATE businesses SET onboarding_done = true WHERE id = $1", [businessId]);
+  res.json({ store: await buildStore(businessId) });
+});

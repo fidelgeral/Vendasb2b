@@ -19,6 +19,10 @@ authRouter.post("/super/login", loginLimiter, async (req, res) => {
   const { rows } = await query("SELECT * FROM super_admins WHERE email = $1", [email.toLowerCase()]);
   const admin = rows[0];
   const ok = admin && (await verifyPassword(password, admin.password_hash));
+  await query(
+    "INSERT INTO login_attempts (email, success, ip, user_agent, login_type) VALUES ($1,$2,$3,$4,'super')",
+    [email.toLowerCase(), !!ok, req.ip, (req.headers["user-agent"] || "").slice(0, 255)]
+  );
   if (!ok) return res.status(401).json({ error: "Email ou senha incorrectos." });
   const token = signToken({ type: "super", adminId: admin.id, email: admin.email });
   res.json({ token, admin: { id: admin.id, email: admin.email } });
@@ -45,6 +49,10 @@ authRouter.post("/auth/login", loginLimiter, async (req, res) => {
     )
   ).rows[0];
   const ok = emp && (await verifyPassword(password, emp.password_hash));
+  await query(
+    "INSERT INTO login_attempts (email, success, ip, user_agent, employee_id, business_id, login_type) VALUES ($1,$2,$3,$4,$5,$6,'employee')",
+    [email.toLowerCase(), !!ok, req.ip, (req.headers["user-agent"] || "").slice(0, 255), ok ? emp.id : null, ok ? emp.business_id : null]
+  );
   if (!ok) return res.status(401).json({ error: "Email ou senha incorrectos." });
   if (!emp.business_active) return res.status(403).json({ error: "Conta de negócio inactiva." });
 

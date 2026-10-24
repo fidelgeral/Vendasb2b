@@ -3,7 +3,7 @@ import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
 import { ALL_MODULES } from "../lib/utils.js";
 import { processarLogo } from "../lib/logoProcess.js";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
-import { Settings, Percent, Wallet, Users, Lock, Banknote } from "../lib/icons.jsx";
+import { Settings, Percent, Wallet, Users, Lock, Banknote, Gift, Palette } from "../lib/icons.jsx";
 import BillingPanel from "../components/BillingPanel.jsx";
 
 export default function ConfigTab({ store, setStore, api }) {
@@ -14,6 +14,8 @@ export default function ConfigTab({ store, setStore, api }) {
     { id: "contas", label: "Contas", icon: Wallet },
     { id: "empresa", label: "Empresa", icon: Users },
     { id: "assinatura", label: "A minha assinatura", icon: Banknote },
+    { id: "fidelidade", label: "Fidelidade", icon: Gift },
+    { id: "tema", label: "Personalização", icon: Palette },
     { id: "seguranca", label: "Segurança e Backups", icon: Lock },
   ];
   return (
@@ -41,6 +43,8 @@ export default function ConfigTab({ store, setStore, api }) {
       {cat === "iva" && <IvaConfig store={store} setStore={setStore} api={api} />}
       {cat === "contas" && <ContasConfig store={store} setStore={setStore} api={api} />}
       {cat === "empresa" && <EmpresaConfig store={store} setStore={setStore} api={api} />}
+      {cat === "fidelidade" && <FidelidadeConfig store={store} setStore={setStore} api={api} />}
+      {cat === "tema" && <TemaConfig store={store} setStore={setStore} api={api} />}
       {cat === "seguranca" && <SegurancaConfig store={store} />}
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 mt-4">
         <div className="text-sm font-semibold mb-2">Áreas activas do negócio</div>
@@ -361,6 +365,73 @@ function EmpresaConfig({ store, setStore, api }) {
       <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">
         Guardar
       </button>
+    </div>
+  );
+}
+
+function FidelidadeConfig({ store, setStore, api }) {
+  const loyalty = store.loyalty || { enabled: false, pointsPerMt: 1, mtPerPoint: 0.1 };
+  const [enabled, setEnabled] = useState(loyalty.enabled);
+  const [pointsPerMt, setPointsPerMt] = useState(loyalty.pointsPerMt);
+  const [mtPerPoint, setMtPerPoint] = useState(loyalty.mtPerPoint);
+  const confirmar = useConfirm();
+  const save = async () => {
+    if (!(await confirmar({ title: "Guardar configuração de fidelidade?", message: "Vai activar ou desactivar o programa de pontos.", confirmLabel: "Guardar" }))) return;
+    setStore(await api.patchLoyalty({ enabled, pointsPerMt: Number(pointsPerMt) || 1, mtPerPoint: Number(mtPerPoint) || 0.1 }));
+  };
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-3">
+      <div className="text-sm font-semibold">Programa de fidelidade</div>
+      <div className="text-xs" style={{ color: MUTED }}>
+        Active para que os clientes acumulem pontos a cada compra. Os pontos podem ser usados como desconto em compras futuras.
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Programa de fidelidade activo
+      </label>
+      {enabled && (
+        <>
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Pontos ganhos por cada MT gasto</label>
+            <input type="number" value={pointsPerMt} onChange={(e) => setPointsPerMt(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Valor em MT de cada ponto ao resgatar</label>
+            <input type="number" step="0.01" value={mtPerPoint} onChange={(e) => setMtPerPoint(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" />
+          </div>
+          <div className="text-xs p-2 rounded-lg" style={{ background: "#F0FDF4", color: "#166534" }}>
+            Exemplo: cliente gasta 1000 MT → ganha {Math.floor(1000 * (Number(pointsPerMt) || 1))} pontos → vale {(Math.floor(1000 * (Number(pointsPerMt) || 1)) * (Number(mtPerPoint) || 0.1)).toFixed(2)} MT de desconto.
+          </div>
+        </>
+      )}
+      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">Guardar</button>
+    </div>
+  );
+}
+
+function TemaConfig({ store, setStore, api }) {
+  const [color, setColor] = useState(store.themeColor || "#2563eb");
+  const confirmar = useConfirm();
+  const COLORS = ["#2563eb", "#1f8e8e", "#7c3aed", "#dc2626", "#059669", "#d97706", "#0f172a", "#ec4899"];
+  const save = async () => {
+    if (!(await confirmar({ title: "Guardar personalização?", message: "Vai alterar a cor do tema do sistema.", confirmLabel: "Guardar" }))) return;
+    setStore(await api.patchTheme({ themeColor: color }));
+  };
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-3">
+      <div className="text-sm font-semibold">Personalização visual</div>
+      <div className="text-xs" style={{ color: MUTED }}>Escolha a cor principal do seu sistema. Esta cor será usada nos botões e destaques.</div>
+      <div className="flex gap-2 flex-wrap">
+        {COLORS.map((c) => (
+          <button key={c} onClick={() => setColor(c)} style={{ background: c, outline: color === c ? "3px solid " + c : "none", outlineOffset: 2 }} className="w-8 h-8 rounded-full" />
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-xs" style={{ color: MUTED }}>Cor personalizada:</label>
+        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+        <span className="text-xs font-mono">{color}</span>
+      </div>
+      <div className="h-8 rounded-lg" style={{ background: color }} />
+      <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">Guardar</button>
     </div>
   );
 }
