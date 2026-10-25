@@ -155,7 +155,7 @@ export async function buildStore(businessId) {
     ),
     query(
       `SELECT id, opening_cash AS "openingCash", closing_cash AS "closingCash", expected_cash AS "expectedCash",
-              opened_at AS "openedAt", closed_at AS "closedAt"
+              opened_at AS "openedAt", closed_at AS "closedAt", opened_by AS "openedBy", closed_by AS "closedBy"
        FROM shifts WHERE business_id = $1 ORDER BY opened_at DESC LIMIT 200`,
       [businessId]
     ),

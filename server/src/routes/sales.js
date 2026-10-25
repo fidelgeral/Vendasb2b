@@ -57,7 +57,7 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
     // Bloqueia a linha do negócio PRIMEIRO. Isto serializa as vendas do mesmo
     // negócio: a verificação de idempotência e a numeração do documento passam
     // a correr uma de cada vez, sem corridas entre separadores/reenvios.
-    const biz = (await client.query("SELECT config FROM businesses WHERE id = $1 FOR UPDATE", [businessId])).rows[0];
+    const biz = (await client.query("SELECT config, loyalty_enabled FROM businesses WHERE id = $1 FOR UPDATE", [businessId])).rows[0];
 
     // Idempotência: se esta venda já foi registada (mesmo clientSaleId), não
     // cria outra — devolve a que já existe.

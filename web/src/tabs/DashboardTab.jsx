@@ -84,9 +84,10 @@ export default function DashboardTab({ store, shiftOpen, currentShift }) {
   const metodosPagamento = useMemo(() => {
     const agg = {};
     for (const s of vendasHoje) {
-      const pays = s.payments || {};
-      for (const [m, v] of Object.entries(pays)) {
-        if (Number(v) > 0) agg[m] = (agg[m] || 0) + Number(v);
+      const pays = s.payments || [];
+      for (const p of Array.isArray(pays) ? pays : Object.entries(pays).map(([method, amount]) => ({ method, amount }))) {
+        const val = Number(p.amount || 0);
+        if (val > 0) agg[p.method] = (agg[p.method] || 0) + val;
       }
     }
     return Object.entries(agg).map(([label, value]) => ({ label, value: Math.round(value) }));
