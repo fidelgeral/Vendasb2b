@@ -2,9 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ink: #0F172A;
+  --teal: #4F46E5;
+  --gold: #F59E0B;
+  --bg: #F4F6FB;
+  --card: #FFFFFF;
+  --border: #E5E7EB;
+  --brick: #EF4444;
+  --muted: #64748B;
+  --softgold: #FEF3C7;
+  --green: #10B981;
+  --price-green: #059669;
+  --primary-soft: #EEF2FF;
+  --gradient: linear-gradient(135deg, #4F46E5 0%, #7C3AED 55%, #DB2777 100%);
+  --gradient-soft: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FDF2F8 100%);
+}
+
+:root.dark {
+  --ink: #E2E8F0;
+  --teal: #818CF8;
+  --gold: #FBBF24;
+  --bg: #0F172A;
+  --card: #1E293B;
+  --border: #334155;
+  --brick: #F87171;
+  --muted: #94A3B8;
+  --softgold: #422006;
+  --green: #34D399;
+  --price-green: #10B981;
+  --primary-soft: #1E1B4B;
+  --gradient: linear-gradient(135deg, #818CF8 0%, #A78BFA 55%, #F472B6 100%);
+  --gradient-soft: linear-gradient(135deg, #1E1B4B 0%, #2E1065 50%, #4A044E 100%);
+}
+
 body {
   margin: 0;
-  background: #f4f6fb;
+  background: var(--bg);
+  color: var(--ink);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -17,7 +52,8 @@ div[style*="system-ui"] {
 input,
 select,
 textarea {
-  background: #fff;
+  background: var(--card);
+  color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 input:focus,

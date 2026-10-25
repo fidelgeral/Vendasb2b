@@ -191,6 +191,150 @@ export async function gerarReciboPDF(sale, store, clientes) {
   }
 }
 
+export async function gerarRelatorioFechoCaixaPDF(shift, store) {
+  try {
+    const { jsPDF, autoTable } = await loadPdf();
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const emp = store.config.empresa || {};
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 42;
+
+    if (emp.logo) {
+      try {
+        const props = doc.getImageProperties(emp.logo);
+        const r = Math.min(120 / props.width, 54 / props.height);
+        doc.addImage(emp.logo, "PNG", pageW - 40 - props.width * r, 30, props.width * r, props.height * r);
+      } catch {}
+    }
+
+    doc.setFontSize(15); doc.setTextColor(20, 20, 20);
+    doc.text(emp.nome || store.config.businessName || "", 40, y); y += 14;
+    doc.setFontSize(8); doc.setTextColor(110, 110, 110);
+    [emp.endereco, emp.contacto ? "Tel: " + emp.contacto : "", emp.nuit ? "NUIT: " + emp.nuit : ""].filter(Boolean).forEach((l) => { doc.text(l, 40, y); y += 11; });
+
+    y += 6; doc.setDrawColor(220, 220, 220); doc.line(40, y, pageW - 40, y); y += 16;
+    doc.setFontSize(14); doc.setTextColor(30, 91, 168);
+    doc.text("Relatório de Fecho de Caixa", 40, y); y += 16;
+
+    const openedBy = store.employees.find((e) => e.id === shift.openedBy);
+    const closedBy = store.employees.find((e) => e.id === shift.closedBy);
+    doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+    doc.text("Abertura: " + new Date(shift.openedAt).toLocaleString("pt-PT") + (openedBy ? " — " + openedBy.name : ""), 40, y); y += 13;
+    doc.text("Fecho: " + (shift.closedAt ? new Date(shift.closedAt).toLocaleString("pt-PT") : "em aberto") + (closedBy ? " — " + closedBy.name : ""), 40, y); y += 18;
+
+    const shiftSales = store.sales.filter((s) => s.shiftId === shift.id && s.status !== "void");
+    const voidSales = store.sales.filter((s) => s.shiftId === shift.id && s.status === "void");
+    const paymentsByMethod = {};
+    shiftSales.forEach((s) => (Array.isArray(s.payments) ? s.payments : []).forEach((p) => { paymentsByMethod[p.method] = (paymentsByMethod[p.method] || 0) + Number(p.amount); }));
+    const totalVendas = shiftSales.reduce((a, s) => a + Number(s.total), 0);
+    const totalDescontos = shiftSales.reduce((a, s) => a + Number(s.discount || 0), 0);
+    const movs = store.movimentosCaixa.filter((m) => m.shiftId === shift.id);
+    const entradas = movs.filter((m) => m.type === "entrada").reduce((s, m) => s + m.amount, 0);
+    const saidas = movs.filter((m) => m.type === "saida").reduce((s, m) => s + m.amount, 0);
+    const expected = Number(shift.expectedCash || 0);
+    const declared = Number(shift.closingCash || 0);
+    const diff = +(declared - expected).toFixed(2);
+
+    const kpis = [
+      { label: "VENDAS", value: fmtMT(totalVendas) },
+      { label: "Nº VENDAS", value: String(shiftSales.length) },
+      { label: "ESPERADO", value: fmtMT(expected) },
+      { label: "DIFERENÇA", value: (diff >= 0 ? "+" : "") + fmtMT(Math.abs(diff)), color: Math.abs(diff) < 0.01 ? "green" : "red" },
+    ];
+    const gap = 10, cardW = (pageW - 80 - gap * 3) / 4, cardH = 46;
+    kpis.forEach((k, i) => {
+      const cx = 40 + i * (cardW + gap);
+      doc.setFillColor(245, 247, 250); doc.roundedRect(cx, y, cardW, cardH, 6, 6, "F");
+      doc.setFontSize(7); doc.setTextColor(120, 120, 120); doc.text(k.label, cx + 8, y + 15);
+      doc.setFontSize(13);
+      if (k.color === "green") doc.setTextColor(16, 122, 72);
+      else if (k.color === "red") doc.setTextColor(190, 30, 45);
+      else doc.setTextColor(30, 91, 168);
+      doc.text(k.value, cx + 8, y + 34);
+    });
+    y += cardH + 18;
+
+    doc.setFontSize(10); doc.setTextColor(20, 20, 20); doc.text("Resumo financeiro", 40, y); y += 14;
+    const resumoRows = [
+      ["Valor de abertura", fmtMT(shift.openingCash || 0)],
+      ["Vendas em dinheiro", fmtMT(paymentsByMethod.dinheiro || 0)],
+      ...Object.entries(paymentsByMethod).filter(([m]) => m !== "dinheiro").map(([m, v]) => ["Vendas em " + m, fmtMT(v)]),
+      ["Entradas manuais", fmtMT(entradas)],
+      ["Saídas manuais", "-" + fmtMT(saidas)],
+      totalDescontos > 0 ? ["Descontos concedidos", "-" + fmtMT(totalDescontos)] : null,
+      ["Valor esperado no caixa", fmtMT(expected)],
+      ["Valor declarado", fmtMT(declared)],
+      ["Diferença", (diff >= 0 ? "+" : "-") + fmtMT(Math.abs(diff))],
+    ].filter(Boolean);
+    autoTable(doc, {
+      body: resumoRows,
+      startY: y,
+      styles: { fontSize: 9, cellPadding: 5 },
+      columnStyles: { 0: { fontStyle: "bold" }, 1: { halign: "right" } },
+      margin: { left: 40, right: 40 },
+      theme: "plain",
+      didParseCell: (data) => { if (data.section === "body" && /^-/.test(String(data.cell.raw).trim())) data.cell.styles.textColor = [190, 30, 45]; },
+    });
+    y = doc.lastAutoTable.finalY + 18;
+
+    if (shiftSales.length > 0) {
+      doc.setFontSize(10); doc.setTextColor(20, 20, 20); doc.text("Vendas do turno (" + shiftSales.length + ")", 40, y); y += 4;
+      autoTable(doc, {
+        head: [["Documento", "Hora", "Itens", "Total", "Pagamento"]],
+        body: shiftSales.map((s) => [
+          s.numero || "—",
+          new Date(s.date).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
+          String((s.items || []).length),
+          fmtMT(s.total),
+          (Array.isArray(s.payments) ? s.payments : []).map((p) => p.method).join("+"),
+        ]),
+        startY: y,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [30, 91, 168], textColor: 255 },
+        margin: { left: 40, right: 40 },
+      });
+      y = doc.lastAutoTable.finalY + 14;
+    }
+
+    if (voidSales.length > 0) {
+      doc.setFontSize(10); doc.setTextColor(190, 30, 45); doc.text("Vendas canceladas (" + voidSales.length + ")", 40, y); y += 4;
+      autoTable(doc, {
+        head: [["Documento", "Total", "Motivo"]],
+        body: voidSales.map((s) => [s.numero || "—", fmtMT(s.total), s.voidReason || "—"]),
+        startY: y,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [190, 30, 45], textColor: 255 },
+        margin: { left: 40, right: 40 },
+      });
+      y = doc.lastAutoTable.finalY + 14;
+    }
+
+    if (movs.length > 0) {
+      doc.setFontSize(10); doc.setTextColor(20, 20, 20); doc.text("Movimentos de caixa", 40, y); y += 4;
+      autoTable(doc, {
+        head: [["Tipo", "Categoria", "Valor", "Descrição"]],
+        body: movs.map((m) => [m.type === "entrada" ? "Entrada" : "Saída", m.categoria || "—", (m.type === "saida" ? "-" : "") + fmtMT(m.amount), m.motivo || "—"]),
+        startY: y,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [100, 100, 100], textColor: 255 },
+        margin: { left: 40, right: 40 },
+        didParseCell: (data) => { if (data.section === "body" && /^-/.test(String(data.cell.raw).trim())) data.cell.styles.textColor = [190, 30, 45]; },
+      });
+    }
+
+    const total = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+      const footY = doc.internal.pageSize.getHeight() - 20;
+      doc.text("Gerado pelo Sistema " + BRAND_NAME, 40, footY);
+      doc.text("Página " + i + " de " + total, pageW - 40, footY, { align: "right" });
+    }
+    saveBlob("fecho_caixa_" + new Date(shift.closedAt || Date.now()).toISOString().slice(0, 10) + ".pdf", doc.output("blob"));
+    return true;
+  } catch (e) { return false; }
+}
+
 // Cotação / orçamento (documento não-fiscal em folha A4) — abre o diálogo de impressão.
 export function imprimirCotacao(cot, store, clientes) {
   const emp = store.config.empresa || {};

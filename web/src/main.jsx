@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import PublicChatPage from "./PublicChatPage.jsx";
 import "./index.css";
+import { initTheme } from "./lib/theme.js";
+
+initTheme();
 
 // Atualização automática da app: quando sai uma versão nova, o service worker
 // (registerType "autoUpdate") instala-a e assume o controlo. Aqui recarregamos

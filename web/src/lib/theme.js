@@ -1,20 +1,38 @@
-// Nomes antigos mantidos (TEAL, GOLD, ...) para não ter de mexer em todos os
-// componentes — só os valores mudaram para a paleta nova, mais viva.
-export const INK = "#0F172A";
-export const TEAL = "#4F46E5"; // cor principal (índigo)
-export const GOLD = "#F59E0B"; // acento (âmbar)
-export const BG = "#F4F6FB";
-export const CARD = "#FFFFFF";
-export const BORDER = "#E5E7EB";
-export const BRICK = "#EF4444";
-export const MUTED = "#64748B";
-export const SOFTGOLD = "#FEF3C7";
-export const GREEN = "#10B981";
-export const PRICE_GREEN = "#059669";
-
-export const PRIMARY_SOFT = "#EEF2FF";
-export const GRADIENT = "linear-gradient(135deg, #4F46E5 0%, #7C3AED 55%, #DB2777 100%)";
-export const GRADIENT_SOFT = "linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FDF2F8 100%)";
+// Cores via CSS custom properties — permite dark mode sem alterar componentes.
+// Cada constante devolve var(--nome), que o browser resolve em runtime.
+export const INK = "var(--ink)";
+export const TEAL = "var(--teal)";
+export const GOLD = "var(--gold)";
+export const BG = "var(--bg)";
+export const CARD = "var(--card)";
+export const BORDER = "var(--border)";
+export const BRICK = "var(--brick)";
+export const MUTED = "var(--muted)";
+export const SOFTGOLD = "var(--softgold)";
+export const GREEN = "var(--green)";
+export const PRICE_GREEN = "var(--price-green)";
+export const PRIMARY_SOFT = "var(--primary-soft)";
+export const GRADIENT = "var(--gradient)";
+export const GRADIENT_SOFT = "var(--gradient-soft)";
 
 export const BRAND_NAME = "VENDASB2B";
 export const BRAND_TAGLINE = "Soluções comerciais para empresas";
+
+export function isDarkMode() {
+  return document.documentElement.classList.contains("dark");
+}
+
+export function toggleDarkMode() {
+  const dark = !isDarkMode();
+  document.documentElement.classList.toggle("dark", dark);
+  try { localStorage.setItem("vendasb2b-dark", dark ? "1" : "0"); } catch {}
+  return dark;
+}
+
+export function initTheme() {
+  try {
+    if (localStorage.getItem("vendasb2b-dark") === "1") {
+      document.documentElement.classList.add("dark");
+    }
+  } catch {}
+}

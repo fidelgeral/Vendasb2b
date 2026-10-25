@@ -16,7 +16,7 @@ function SimpleBar({ label, value, max, color = "#4F46E5" }) {
   );
 }
 
-export default function DashboardTab({ store }) {
+export default function DashboardTab({ store, shiftOpen, currentShift }) {
   const [clock, setClock] = useState(new Date());
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function DashboardTab({ store }) {
   }, []);
 
   const today = new Date().toISOString().slice(0, 10);
-  const vendasHoje = useMemo(() => store.sales.filter((s) => !s.voided && s.createdAt?.slice(0, 10) === today), [store.sales, today]);
+  const vendasHoje = useMemo(() => store.sales.filter((s) => s.status !== "void" && s.date?.slice(0, 10) === today), [store.sales, today]);
   const faturacaoHoje = vendasHoje.reduce((a, s) => a + Number(s.total), 0);
 
   const lucroHoje = useMemo(() => {
@@ -38,14 +38,20 @@ export default function DashboardTab({ store }) {
     return lucro;
   }, [vendasHoje]);
 
-  const shiftOpen = store.currentShift && !store.currentShift.closedAt;
-  const caixaAtual = shiftOpen ? Number(store.currentShift.currentCash || 0) : 0;
+  const movsTurno = currentShift ? store.movimentosCaixa.filter((m) => m.shiftId === currentShift.id) : [];
+  const cashIn = currentShift ? store.sales.filter((s) => s.shiftId === currentShift.id && s.status !== "void").reduce((sum, s) => {
+    const pays = Array.isArray(s.payments) ? s.payments : [];
+    return sum + pays.filter((p) => p.method === "dinheiro").reduce((a, p) => a + Number(p.amount), 0);
+  }, 0) : 0;
+  const entTurno = movsTurno.filter((m) => m.type === "entrada").reduce((s, m) => s + m.amount, 0);
+  const saiTurno = movsTurno.filter((m) => m.type === "saida").reduce((s, m) => s + m.amount, 0);
+  const caixaAtual = shiftOpen ? (currentShift.openingCash || 0) + cashIn + entTurno - saiTurno : 0;
 
   // Vendas por hora (pontos para AreaChart)
   const vendasPorHora = useMemo(() => {
     const horas = new Array(17).fill(0);
     for (const s of vendasHoje) {
-      const h = new Date(s.createdAt).getHours();
+      const h = new Date(s.date).getHours();
       if (h >= 6 && h <= 22) horas[h - 6]++;
     }
     return horas;
@@ -56,7 +62,7 @@ export default function DashboardTab({ store }) {
   const faturacaoPorHora = useMemo(() => {
     const horas = new Array(17).fill(0);
     for (const s of vendasHoje) {
-      const h = new Date(s.createdAt).getHours();
+      const h = new Date(s.date).getHours();
       if (h >= 6 && h <= 22) horas[h - 6] += Number(s.total);
     }
     return horas;
@@ -122,7 +128,7 @@ export default function DashboardTab({ store }) {
 
       {/* Alertas */}
       {(alertasStock.length > 0 || alertasVencimento.length > 0 || alertasMargem.length > 0) && (
-        <div style={{ background: `${BRICK}11`, borderColor: `${BRICK}44` }} className="border rounded-xl p-3">
+        <div style={{ background: "color-mix(in srgb, var(--brick) 10%, transparent)", borderColor: "color-mix(in srgb, var(--brick) 30%, transparent)" }} className="border rounded-xl p-3">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={16} color={BRICK} />
             <span className="text-sm font-semibold" style={{ color: BRICK }}>Alertas ({alertasStock.length + alertasVencimento.length + alertasMargem.length})</span>
@@ -191,7 +197,7 @@ export default function DashboardTab({ store }) {
             <div className="space-y-1.5 max-h-48 overflow-auto">
               {vendasHoje.slice(-8).reverse().map((s) => (
                 <div key={s.id} className="flex justify-between text-xs py-1" style={{ borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ color: MUTED }}>{new Date(s.createdAt).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ color: MUTED }}>{new Date(s.date).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
                   <span style={{ color: INK }}>{(s.items || []).length} {(s.items || []).length === 1 ? "item" : "itens"}</span>
                   <span className="font-semibold" style={{ color: "#4F46E5" }}>{fmtMT(s.total)}</span>
                 </div>

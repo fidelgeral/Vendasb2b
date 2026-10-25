@@ -3,10 +3,10 @@ import { CARD, BORDER, MUTED, TEAL, INK, GREEN, BRICK } from "../lib/theme.js";
 import { fmtMT, DESPESA_CATEGORIAS, ENTRADA_CATEGORIAS } from "../lib/utils.js";
 import { DonutChart } from "../lib/charts.jsx";
 import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle, Banknote, AlertTriangle, CheckCircle2 } from "../lib/icons.jsx";
-import { imprimirReciboTermico, gerarReciboPDF, enviarReciboPorWhatsApp } from "../lib/print.js";
+import { imprimirReciboTermico, gerarReciboPDF, enviarReciboPorWhatsApp, gerarRelatorioFechoCaixaPDF } from "../lib/print.js";
 import { VoidModal } from "../components/Shared.jsx";
 
-export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid, payShortage }) {
+export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid, payShortage, api }) {
   const [sub, setSub] = useState("resumo");
   const [showShiftModal, setShowShiftModal] = useState(null);
 
@@ -147,7 +147,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
           })()}
         </div>
       )}
-      {sub === "historico" && <CaixaHistorico store={store} voidSale={voidSale} canVoid={canVoid} />}
+      {sub === "historico" && <CaixaHistorico store={store} voidSale={voidSale} canVoid={canVoid} api={api} />}
       {sub === "quebrasCaixa" && <CashShortagesList store={store} payShortage={payShortage} />}
       {sub === "quebras" && <QuebrasForm store={store} onSubmit={registerQuebra} />}
       {sub === "entrada" && <MovimentoForm type="entrada" shiftOpen={shiftOpen} onSubmit={registerMovimento} />}
@@ -158,6 +158,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
           mode={showShiftModal}
           expectedCash={expectedNow}
           podeVerEsperado={podeVerEsperado}
+          store={store}
           onConfirmOpen={(v) => {
             openShift(v);
             setShowShiftModal(null);
@@ -178,7 +179,7 @@ const metodoLabel = (m) => METODO_LABEL[m] || (m ? m.charAt(0).toUpperCase() + m
 
 // Histórico de Movimentações — a lista de vendas (antes "Vendas recentes" no
 // separador Vender) com filtros por período e pesquisa, no estilo da referência.
-function CaixaHistorico({ store, voidSale, canVoid }) {
+function CaixaHistorico({ store, voidSale, canVoid, api }) {
   const [periodo, setPeriodo] = useState("hoje");
   const [busca, setBusca] = useState("");
   const [voidTarget, setVoidTarget] = useState(null);
@@ -284,6 +285,13 @@ function CaixaHistorico({ store, voidSale, canVoid }) {
                     enviarReciboPorWhatsApp(s, store, store.clients, cli?.phone || "");
                   }} style={{ color: "#25D366" }} className="text-xs font-medium">
                     WhatsApp
+                  </button>
+                  <button onClick={() => {
+                    const cli = store.clients.find((c) => c.id === s.clientId);
+                    const email = cli?.email || prompt("Email do cliente:");
+                    if (email && api) api.emailReceipt(s.id, email).then(() => alert("Recibo enviado!")).catch(() => alert("Falha ao enviar."));
+                  }} style={{ color: TEAL }} className="text-xs font-medium">
+                    Email
                   </button>
                   {canVoid && !anulada && (
                     <button onClick={() => setVoidTarget(s.id)} style={{ color: BRICK }} className="text-xs font-medium">
@@ -477,7 +485,7 @@ function CashShortagesList({ store, payShortage }) {
   );
 }
 
-function ShiftModal({ mode, expectedCash, podeVerEsperado, onConfirmOpen, onConfirmClose, onClose }) {
+function ShiftModal({ mode, expectedCash, podeVerEsperado, store, onConfirmOpen, onConfirmClose, onClose }) {
   const [value, setValue] = useState("");
   const [step, setStep] = useState("input");
   const [closing, setClosing] = useState(false);
@@ -506,6 +514,9 @@ function ShiftModal({ mode, expectedCash, podeVerEsperado, onConfirmOpen, onConf
               <div className="text-xs text-center" style={{ color: MUTED }}>
                 Excelente trabalho! O caixa foi encerrado sem discrepâncias. Este é o resultado esperado de uma gestão rigorosa e responsável.
               </div>
+              <button onClick={() => { const s = store.shifts.find((sh) => sh.closedAt && !store.shifts.some((x) => x.closedAt && new Date(x.closedAt) > new Date(sh.closedAt))); if (s) gerarRelatorioFechoCaixaPDF(s, store); }} style={{ background: "#4F46E5", color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-medium mt-3">
+                Descarregar relatório PDF
+              </button>
             </>
           ) : (
             <>
@@ -535,6 +546,9 @@ function ShiftModal({ mode, expectedCash, podeVerEsperado, onConfirmOpen, onConf
               <div className="text-xs" style={{ color: MUTED }}>
                 Esta diferença ficou registada. O operador pode regularizar pagando do próprio bolso na secção "Quebras de caixa", ou o gestor pode analisar no relatório.
               </div>
+              <button onClick={() => { const s = store.shifts.find((sh) => sh.closedAt && !store.shifts.some((x) => x.closedAt && new Date(x.closedAt) > new Date(sh.closedAt))); if (s) gerarRelatorioFechoCaixaPDF(s, store); }} style={{ background: "#4F46E5", color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-medium mt-3">
+                Descarregar relatório PDF
+              </button>
             </>
           )}
           <button onClick={onClose} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-medium mt-4">

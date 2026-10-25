@@ -149,6 +149,13 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
     }
   };
   const updateProduct = async (id, fields) => setStore(await api.updateProduct(id, fields));
+  const duplicarProduto = async (id) => {
+    try {
+      setStore(await api.duplicateProduct(id));
+    } catch (e) {
+      setErro(e.message);
+    }
+  };
   const addCategory = async (name) => {
     if (categories.includes(name)) return;
     setStore(await api.addCategory(name));
@@ -536,6 +543,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
             onVer={can("produtoVer") ? () => setVerProduto(p) : undefined}
             onHistorico={() => setHistProduto(p)}
             onToggleActive={can("produtoEditar") ? () => updateProduct(p.id, { active: p.active === false }) : undefined}
+            onDuplicate={can("produtoEditar") ? () => duplicarProduto(p.id) : undefined}
           />
         ))}
         {filteredProducts.length === 0 && (
@@ -602,7 +610,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
   );
 }
 
-function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggleActive }) {
+function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggleActive, onDuplicate }) {
   const active = p.active !== false;
   const stock = getStock(p, produtos);
   const tipoInfo =
@@ -653,7 +661,7 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggl
               {active ? "Desativar" : "Ativar"}
             </button>
           )}
-          <AcoesEntidade onVer={onVer} onEditar={onEdit} onHistorico={onHistorico} onApagar={onRemove} />
+          <AcoesEntidade onVer={onVer} onEditar={onEdit} onDuplicar={onDuplicate} onHistorico={onHistorico} onApagar={onRemove} />
         </div>
       </div>
     </div>

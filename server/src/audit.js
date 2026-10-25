@@ -10,10 +10,14 @@ export function authEmployee(req) {
 // omissão, ou a de um cliente de transação).
 export async function logAudit(fields, run) {
   const exec = run || poolQuery;
-  const { businessId, employee, acao, detalhe, valor = 0, entityType = null, entityId = null } = fields;
+  const { businessId, employee, acao, detalhe, valor = 0, entityType = null, entityId = null, ip = null, userAgent = null } = fields;
   await exec(
-    `INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor, entity_type, entity_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [businessId, employee?.id || null, employee?.name || "Sistema", acao, detalhe, valor, entityType, entityId]
+    `INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor, entity_type, entity_id, ip, user_agent)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [businessId, employee?.id || null, employee?.name || "Sistema", acao, detalhe, valor, entityType, entityId, ip, userAgent ? String(userAgent).slice(0, 500) : null]
   );
+}
+
+export function reqMeta(req) {
+  return { ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || null, userAgent: req.headers["user-agent"] || null };
 }

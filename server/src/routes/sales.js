@@ -148,6 +148,48 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   }
 });
 
+salesRouter.post("/sales/:id/email-receipt", async (req, res) => {
+  const { businessId, id } = req.params;
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: "Email obrigatório." });
+  if (!process.env.RESEND_API_KEY) return res.status(501).json({ error: "Serviço de email não configurado." });
+
+  const sale = (await query("SELECT * FROM sales WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  if (!sale) return res.status(404).json({ error: "Venda não encontrada." });
+  const items = (await query("SELECT * FROM sale_items WHERE sale_id = $1", [id])).rows;
+  const biz = (await query("SELECT name, config FROM businesses WHERE id = $1", [businessId])).rows[0];
+  const emp = (biz.config || {}).empresa || {};
+  const empresaNome = emp.nome || biz.name || "Loja";
+
+  const linhasHtml = items.map((it) => `<tr><td style="padding:4px 8px">${it.name_snapshot}</td><td style="padding:4px 8px;text-align:right">${it.qty}</td><td style="padding:4px 8px;text-align:right">${Number(it.price).toFixed(2)} MT</td><td style="padding:4px 8px;text-align:right">${(Number(it.price) * Number(it.qty)).toFixed(2)} MT</td></tr>`).join("");
+
+  const html = `<div style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:20px">
+    <h2 style="color:#4F46E5">${empresaNome}</h2>
+    ${emp.endereco ? `<p style="color:#666;font-size:12px">${emp.endereco}${emp.contacto ? " · Tel: " + emp.contacto : ""}${emp.nuit ? " · NUIT: " + emp.nuit : ""}</p>` : ""}
+    <hr style="border:none;border-top:1px solid #eee"/>
+    <p><strong>Documento:</strong> ${sale.numero || "—"}</p>
+    <p><strong>Data:</strong> ${new Date(sale.created_at).toLocaleString("pt-PT")}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:#4F46E5;color:#fff"><th style="padding:6px 8px;text-align:left">Artigo</th><th style="padding:6px 8px;text-align:right">Qtd</th><th style="padding:6px 8px;text-align:right">Preço</th><th style="padding:6px 8px;text-align:right">Total</th></tr></thead>
+      <tbody>${linhasHtml}</tbody>
+    </table>
+    <div style="text-align:right;font-size:18px;font-weight:bold;margin:12px 0;color:#4F46E5">TOTAL: ${Number(sale.total).toFixed(2)} MT</div>
+    <hr style="border:none;border-top:1px solid #eee"/>
+    <p style="color:#999;font-size:11px;text-align:center">${(biz.config || {}).receiptMessage || "Obrigado pela preferência!"}</p>
+    <p style="color:#bbb;font-size:10px;text-align:center">Processado por VENDASB2B</p>
+  </div>`;
+
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+      body: JSON.stringify({ from: process.env.RESEND_FROM || "noreply@vendasb2b.com", to: [email], subject: `Recibo ${sale.numero || ""} — ${empresaNome}`, html }),
+    });
+    if (!resp.ok) return res.status(502).json({ error: "Falha ao enviar email." });
+    res.json({ ok: true });
+  } catch { res.status(502).json({ error: "Falha ao enviar email." }); }
+});
+
 salesRouter.post("/sales/:id/void", requirePermission("quebras"), async (req, res) => {
   const { businessId, id } = req.params;
   const reason = req.body?.reason || "";

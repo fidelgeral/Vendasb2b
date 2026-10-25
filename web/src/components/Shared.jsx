@@ -314,6 +314,16 @@ export function PencilIcon({ size = 14 }) {
   );
 }
 
+// Ícone de "copiar/duplicar".
+export function CopyIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 // Ícone de "histórico" (relógio com seta).
 export function ClockIcon({ size = 14 }) {
   return (
@@ -327,7 +337,7 @@ export function ClockIcon({ size = 14 }) {
 
 // Conjunto reutilizável de acções por entidade: Visualizar, Editar, Histórico,
 // Apagar. Cada botão só aparece se a respectiva função for passada.
-export function AcoesEntidade({ onVer, onEditar, onHistorico, onApagar, size = "sm" }) {
+export function AcoesEntidade({ onVer, onEditar, onDuplicar, onHistorico, onApagar, size = "sm" }) {
   const cls = size === "sm" ? "w-7 h-7" : "w-8 h-8";
   const Btn = ({ title, onClick, color, children }) => (
     <button onClick={onClick} title={title} style={{ borderColor: BORDER, color: color || INK }} className={`border rounded-full ${cls} flex items-center justify-center shrink-0 hover:bg-gray-50`}>
@@ -338,6 +348,7 @@ export function AcoesEntidade({ onVer, onEditar, onHistorico, onApagar, size = "
     <div className="flex items-center gap-1">
       {onVer && <Btn title="Visualizar" onClick={onVer} color={TEAL}><EyeIcon size={14} /></Btn>}
       {onEditar && <Btn title="Editar" onClick={onEditar} color={TEAL}><PencilIcon size={13} /></Btn>}
+      {onDuplicar && <Btn title="Duplicar" onClick={onDuplicar} color={MUTED}><CopyIcon size={13} /></Btn>}
       {onHistorico && <Btn title="Histórico (quem alterou e quando)" onClick={onHistorico} color={INK}><ClockIcon size={13} /></Btn>}
       {onApagar && <Btn title="Apagar" onClick={onApagar} color={BRICK}><Trash2 size={13} /></Btn>}
     </div>

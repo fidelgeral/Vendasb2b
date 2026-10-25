@@ -129,6 +129,7 @@ export function businessApi(businessId) {
     updateProduct: (id, payload) => s(patch(`${base}/products/${id}`, payload)),
     deleteProduct: (id) => s(del(`${base}/products/${id}`)),
     adjustStock: (id, delta) => s(post(`${base}/products/${id}/stock-adjust`, { delta })),
+    duplicateProduct: (id) => s(post(`${base}/products/${id}/duplicate`, {})),
     addVariant: (id, label) => s(post(`${base}/products/${id}/variants`, { label })),
     adjustVariant: (id, variantId, delta) => s(post(`${base}/products/${id}/variants/${variantId}/adjust`, { delta })),
     addBatch: (id, qty, expiryDate) => s(post(`${base}/products/${id}/batches`, { qty, expiryDate })),
@@ -171,6 +172,7 @@ export function businessApi(businessId) {
 
     finalizeSale: (payload) => post(`${base}/sales`, payload),
     voidSale: (id, reason) => s(post(`${base}/sales/${id}/void`, { reason })),
+    emailReceipt: (id, email) => post(`${base}/sales/${id}/email-receipt`, { email }),
     parkSale: (cart) => s(post(`${base}/parked`, { cart })),
     resumeSale: (id) => s(del(`${base}/parked/${id}`)),
     createQuotation: (payload) => s(post(`${base}/quotations`, payload)),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT } from "./lib/theme.js";
+import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT, toggleDarkMode, isDarkMode } from "./lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./lib/theme.js";
 import { BRAND_LOGO } from "./lib/logo.js";
 import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
@@ -439,6 +439,9 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
               <ChevronLeft size={12} /> Contas
             </button>
           )}
+          <button onClick={() => { toggleDarkMode(); setToast(isDarkMode() ? "Modo escuro activado" : "Modo claro activado"); }} style={{ background: "rgba(255,255,255,0.15)" }} className="p-2 rounded-lg text-white text-xs" title="Alternar modo escuro">
+            {isDarkMode() ? "☀️" : "🌙"}
+          </button>
           <NotificationBell alerts={alerts} onGo={(t) => setTab(t)} />
           <button
             onClick={() => setTab("caixa")}
@@ -482,7 +485,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       </div>
 
       <div className="flex-1 p-4 md:p-6">
-        {tab === "dashboard" && <DashboardTab store={store} />}
+        {tab === "dashboard" && <DashboardTab store={store} shiftOpen={shiftOpen} currentShift={currentShift} />}
         {!shiftOpen && tab === "vender" && (
           <div style={{ background: SOFTGOLD, borderColor: "#F59E0B" }} className="border rounded-lg p-4 text-sm mb-4">
             O caixa está fechado. Abra o caixa na aba Caixa para começar a registar vendas.
@@ -528,6 +531,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             voidSale={voidSale}
             canVoid={canVoid}
             payShortage={payShortage}
+            api={api}
           />
         )}
         {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} can={can} onGoEstoque={() => setTab("estoque")} />}

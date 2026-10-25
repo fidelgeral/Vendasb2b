@@ -291,6 +291,26 @@ productsRouter.delete("/products/:id", requirePermission("produtoApagar"), async
   await respond(res, businessId);
 });
 
+productsRouter.post("/products/:id/duplicate", requirePermission("produtoAdicionar"), async (req, res) => {
+  const { businessId, id } = req.params;
+  const orig = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  if (!orig) return res.status(404).json({ error: "Produto não encontrado." });
+  const newName = orig.name + " (cópia)";
+  const dup = (await query(
+    `INSERT INTO products (business_id, tipo, venda_directa, codigo, name, category, unit, qtd_itens, iva_taxa, price, cost, min_stock, prazo_reembolso, foto, stock, parent_id, consumo, fornecedor_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,0,$15,$16,$17) RETURNING id`,
+    [businessId, orig.tipo, orig.venda_directa, "", newName, orig.category, orig.unit, orig.qtd_itens, orig.iva_taxa, orig.price, orig.cost, orig.min_stock, orig.prazo_reembolso, orig.foto, orig.parent_id, orig.consumo, orig.fornecedor_id]
+  )).rows[0];
+  if (orig.tipo === "composicao") {
+    const ings = (await query("SELECT * FROM product_combo_items WHERE product_id = $1", [id])).rows;
+    for (const ing of ings) {
+      await query("INSERT INTO product_combo_items (product_id, ingredient_product_id, qty) VALUES ($1,$2,$3)", [dup.id, ing.ingredient_product_id, ing.qty]);
+    }
+  }
+  await logAudit({ businessId, employee: authEmployee(req), acao: "PRODUTO", detalhe: `Duplicou o produto "${orig.name}" → "${newName}"`, entityType: "produto", entityId: dup.id });
+  await respond(res, businessId, 201);
+});
+
 productsRouter.post("/products/:id/stock-adjust", requirePermission("produtoEditar"), async (req, res) => {
   const delta = Number(req.body?.delta);
   if (!Number.isFinite(delta)) return res.status(400).json({ error: "Quantidade inválida." });
