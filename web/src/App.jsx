@@ -28,9 +28,25 @@ export default function App() {
     inner = <LoginScreen onLogin={refreshSession} />;
   } else if (session.type === "super") {
     inner = viewingBusiness ? (
-      <PdvApp businessId={viewingBusiness.id} isSuperAdmin onExitBusiness={() => setViewingBusiness(null)} onLoggedOut={onLoggedOut} />
+      <PdvApp
+        businessId={viewingBusiness.id}
+        isSuperAdmin
+        onExitBusiness={() => setViewingBusiness(null)}
+        onLoggedOut={onLoggedOut}
+        filiais={(() => {
+          const all = viewingBusiness._allBusinesses || [];
+          const root = viewingBusiness.parentBusinessId || viewingBusiness.id;
+          const group = all.filter((b) => b.id === root || b.parentBusinessId === root);
+          return group.length > 1 ? group : null;
+        })()}
+        activeBusinessId={viewingBusiness.id}
+        onSwitchFilial={(id) => {
+          const b = (viewingBusiness._allBusinesses || []).find((x) => x.id === id);
+          if (b) setViewingBusiness({ ...b, _allBusinesses: viewingBusiness._allBusinesses });
+        }}
+      />
     ) : (
-      <SuperAdminApp onOpenBusiness={(b) => setViewingBusiness(b)} onLoggedOut={onLoggedOut} />
+      <SuperAdminApp onOpenBusiness={(b, allBusinesses) => setViewingBusiness({ ...b, _allBusinesses: allBusinesses })} onLoggedOut={onLoggedOut} />
     );
   } else {
     inner = (

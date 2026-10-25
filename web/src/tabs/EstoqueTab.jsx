@@ -33,7 +33,7 @@ function statusDe(l) {
   return { k: "normal", label: "Normal", color: GREEN };
 }
 
-export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras, can = () => true }) {
+export default function EstoqueTab({ store, setStore, api, showToast, registerQuebra, onGoCompras, can = () => true, filiaisProp }) {
   const confirmar = useConfirm();
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -53,7 +53,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const [histProduto, setHistProduto] = useState(null);
 
   const session = getSession();
-  const outrasFiliais = (session?.filiais || []).filter((f) => f.id !== store.id);
+  const outrasFiliais = (filiaisProp || session?.filiais || []).filter((f) => f.id !== store.id);
   const nomeFornecedor = useMemo(() => {
     const m = {};
     (store.suppliers || []).forEach((s) => (m[s.id] = s.name));

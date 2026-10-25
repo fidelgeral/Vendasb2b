@@ -536,7 +536,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
         )}
         {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} can={can} onGoEstoque={() => setTab("estoque")} />}
         {tab === "estoque" && (
-          <EstoqueTab store={store} setStore={setStore} api={api} showToast={showToast} registerQuebra={registerQuebra} can={can} onGoCompras={() => setTab("compras")} />
+          <EstoqueTab store={store} setStore={setStore} api={api} showToast={showToast} registerQuebra={registerQuebra} can={can} onGoCompras={() => setTab("compras")} filiaisProp={filiais} />
         )}
         {tab === "clientes" && <ClientesTab store={store} setStore={setStore} api={api} can={can} />}
         {tab === "compras" && <ComprasTab store={store} setStore={setStore} api={api} />}

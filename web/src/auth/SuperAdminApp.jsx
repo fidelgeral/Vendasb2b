@@ -195,7 +195,7 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
                         {confirmDelete === b.id ? "Confirmar apagar?" : "Apagar"}
                       </button>
                       <button
-                        onClick={() => onOpenBusiness(b)}
+                        onClick={() => onOpenBusiness(b, businesses)}
                         disabled={!active}
                         style={{ background: TEAL, color: "#fff" }}
                         className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
