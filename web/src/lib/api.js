@@ -149,6 +149,7 @@ export function businessApi(businessId) {
     renameCategory: (name, novo) => s(patch(`${base}/categories/${encodeURIComponent(name)}`, { name: novo })),
     removeCategory: (name) => s(del(`${base}/categories/${encodeURIComponent(name)}`)),
     auditEntidade: (type, id) => get(`${base}/audit-entidade?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`).then((d) => d.movimentos),
+    priceHistory: (productId) => get(`${base}/products/${productId}/price-history`).then((d) => d.history),
     searchImages: (q) => get(`${base}/image-search?q=${encodeURIComponent(q)}`).then((d) => d.results || []),
 
     createClient: (payload) => s(post(`${base}/clients`, payload)),

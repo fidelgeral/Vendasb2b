@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { CARD, BORDER, MUTED, GREEN, BRICK } from "../lib/theme.js";
+import { useEffect, useMemo, useState } from "react";
+import { CARD, BORDER, MUTED, GREEN, BRICK, TEAL, GOLD, INK } from "../lib/theme.js";
 import { fmtMT, getStock, UNIDADES } from "../lib/utils.js";
 import { StatCard, PhotoPicker, CategoriasModal, SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal } from "../components/Shared.jsx";
 import { Plus, X, Package } from "../lib/icons.jsx";
@@ -42,6 +42,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
   const confirmar = useConfirm();
   const [verProduto, setVerProduto] = useState(null);
   const [histProduto, setHistProduto] = useState(null);
+  const [precosHist, setPrecosHist] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -601,7 +602,19 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
             { label: "Fornecedor", value: nomeFornecedor[verProduto.fornecedorId] },
             { label: "Estado", value: verProduto.active === false ? "Inativo" : "Activo" },
           ]}
+          extra={
+            <button
+              onClick={() => { setVerProduto(null); setPrecosHist(verProduto); }}
+              style={{ background: TEAL, color: "#fff" }}
+              className="mt-2 rounded-lg px-3 py-1.5 text-xs font-semibold"
+            >
+              Ver histórico de preços
+            </button>
+          }
         />
+      )}
+      {precosHist && (
+        <PriceHistoryModal productId={precosHist.id} name={precosHist.name} api={api} onClose={() => setPrecosHist(null)} />
       )}
       {histProduto && (
         <HistoricoEntidadeModal title={histProduto.name} api={api} tipo="produto" id={histProduto.id} onClose={() => setHistProduto(null)} />
@@ -663,6 +676,54 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggl
           )}
           <AcoesEntidade onVer={onVer} onEditar={onEdit} onDuplicar={onDuplicate} onHistorico={onHistorico} onApagar={onRemove} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PriceHistoryModal({ productId, name, api, onClose }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    api.priceHistory(productId).then(setRows).catch(() => setRows([]));
+  }, [productId]);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-md max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold">Histórico de preços — {name}</div>
+          <button onClick={onClose} style={{ color: MUTED }}><X size={16} /></button>
+        </div>
+        {!rows ? (
+          <div className="text-xs" style={{ color: MUTED }}>A carregar…</div>
+        ) : rows.length === 0 ? (
+          <div className="text-xs" style={{ color: MUTED }}>Sem alterações de preço registadas.</div>
+        ) : (
+          <div className="space-y-2">
+            {rows.map((r) => (
+              <div key={r.id} style={{ borderColor: BORDER }} className="border rounded-lg p-2.5 text-xs">
+                <div className="flex justify-between mb-1">
+                  <span style={{ color: MUTED }}>{new Date(r.created_at).toLocaleString("pt-PT")}</span>
+                  <span style={{ color: MUTED }}>{r.employee_name || "—"}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                  {(r.old_price !== r.new_price) && (
+                    <>
+                      <span style={{ color: BRICK }}>Preço: {fmtMT(r.old_price)}</span>
+                      <span style={{ color: GREEN }}>→ {fmtMT(r.new_price)}</span>
+                    </>
+                  )}
+                  {(r.old_cost !== r.new_cost) && (
+                    <>
+                      <span style={{ color: BRICK }}>Custo: {fmtMT(r.old_cost)}</span>
+                      <span style={{ color: GREEN }}>→ {fmtMT(r.new_cost)}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

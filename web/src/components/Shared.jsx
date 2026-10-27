@@ -356,7 +356,7 @@ export function AcoesEntidade({ onVer, onEditar, onDuplicar, onHistorico, onApag
 }
 
 // Modal genérico de detalhes (só leitura): recebe uma lista de { label, value }.
-export function DetalhesModal({ title, linhas, onClose }) {
+export function DetalhesModal({ title, linhas, onClose, extra }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div style={{ background: CARD }} className="rounded-2xl p-4 w-full max-w-sm max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
@@ -372,6 +372,7 @@ export function DetalhesModal({ title, linhas, onClose }) {
             </div>
           ))}
         </div>
+        {extra}
       </div>
     </div>
   );

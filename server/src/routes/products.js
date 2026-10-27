@@ -443,3 +443,11 @@ productsRouter.delete("/categories/:name", async (req, res) => {
   await logAudit({ businessId, employee: authEmployee(req), acao: "CATEGORIA", detalhe: `Apagou a categoria "${req.params.name}"`, entityType: "categoria", entityId: req.params.name });
   await respond(res, businessId);
 });
+
+productsRouter.get("/products/:id/price-history", async (req, res) => {
+  const rows = (await query(
+    "SELECT id, old_price, new_price, old_cost, new_cost, employee_name, created_at FROM price_history WHERE business_id = $1 AND product_id = $2 ORDER BY created_at DESC LIMIT 50",
+    [req.params.businessId, req.params.id]
+  )).rows;
+  res.json({ history: rows });
+});
