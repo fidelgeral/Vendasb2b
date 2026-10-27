@@ -291,10 +291,11 @@ function CustomPaymentAccounts({ store, setStore, api }) {
   const criar = async () => {
     if (!newName.trim()) return;
     try {
-      const created = await api.createPaymentAccount({ name: newName.trim(), tipo: "personalizado", numero: newNumero.trim(), activo: true });
-      setAccounts((a) => [...a, created]);
+      await api.createPaymentAccount({ name: newName.trim(), tipo: "personalizado", numero: newNumero.trim(), activo: true });
+      const newStore = await api.getStore();
+      setAccounts(newStore.paymentAccounts || []);
       setNewName(""); setNewNumero("");
-      setStore(await api.getStore());
+      setStore(newStore);
     } catch (e) { alert(e.message); }
   };
 

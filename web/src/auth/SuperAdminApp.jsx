@@ -148,8 +148,8 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
               {demos.map((d) => (
                 <div key={d.id} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-xs flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <b>{d.name}</b> · {d.demoContactEmail} · {d.demoContactPhone || "—"}
-                    <br />Representante: {d.demoRepresentative || "—"} · Expira: {d.demoExpiresAt ? new Date(d.demoExpiresAt).toLocaleDateString("pt-PT") : "—"}
+                    <b>{d.name}</b> · {d.contactEmail} · {d.contactPhone || "—"}
+                    <br />Representante: {d.representative || "—"} · Expira: {d.demoExpiresAt ? new Date(d.demoExpiresAt).toLocaleDateString("pt-PT") : "—"}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={async () => { await superApi.activateDemo(d.id); load(); }}
