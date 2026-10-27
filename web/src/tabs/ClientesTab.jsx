@@ -120,7 +120,7 @@ export default function ClientesTab({ store, setStore, api, can = () => true }) 
               <input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div>
-              <label className="text-xs" style={{ color: MUTED }}>Limite de crédito (fiado)</label>
+              <label className="text-xs" style={{ color: MUTED }}>Limite de crédito (dívida)</label>
               <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
             </div>
             <div className="sm:col-span-2">

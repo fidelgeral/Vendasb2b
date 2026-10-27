@@ -23,23 +23,22 @@ export default function LoginScreen({ onLogin }) {
 
         <div style={{ background: CARD }} className="rounded-2xl p-6 shadow-2xl">
           <div style={{ background: "#F1F5F9" }} className="flex gap-1 mb-5 p-1 rounded-xl">
-            <button
-              onClick={() => setMode("negocio")}
-              style={{ background: mode === "negocio" ? CARD : "transparent", color: mode === "negocio" ? TEAL : MUTED, boxShadow: mode === "negocio" ? "0 1px 4px rgba(15,23,42,0.12)" : "none" }}
-              className="flex-1 rounded-lg px-3 py-2 text-sm font-semibold"
-            >
-              Sou um negócio
-            </button>
-            <button
-              onClick={() => setMode("super")}
-              style={{ background: mode === "super" ? CARD : "transparent", color: mode === "super" ? TEAL : MUTED, boxShadow: mode === "super" ? "0 1px 4px rgba(15,23,42,0.12)" : "none" }}
-              className="flex-1 rounded-lg px-3 py-2 text-sm font-semibold"
-            >
-              Administrador
-            </button>
+            {[
+              { id: "negocio", label: "Sou um negócio" },
+              { id: "super", label: "Administrador" },
+              { id: "demo", label: "Experimentar" },
+            ].map((t) => (
+              <button key={t.id} onClick={() => setMode(t.id)}
+                style={{ background: mode === t.id ? CARD : "transparent", color: mode === t.id ? TEAL : MUTED, boxShadow: mode === t.id ? "0 1px 4px rgba(15,23,42,0.12)" : "none" }}
+                className="flex-1 rounded-lg px-2 py-2 text-xs font-semibold">
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          {mode === "negocio" ? <BusinessLoginForm onLogin={onLogin} /> : <SuperLoginForm onLogin={onLogin} />}
+          {mode === "negocio" && <BusinessLoginForm onLogin={onLogin} />}
+          {mode === "super" && <SuperLoginForm onLogin={onLogin} />}
+          {mode === "demo" && <DemoForm />}
         </div>
         <div className="text-center text-xs text-white/70 mt-4">© {new Date().getFullYear()} {BRAND_NAME}</div>
       </div>
@@ -155,6 +154,78 @@ function ResetPasswordModal({ email: initialEmail, onClose }) {
         {step !== 3 && <button onClick={onClose} className="w-full text-xs mt-2 underline" style={{ color: MUTED }}>Cancelar</button>}
       </div>
     </div>
+  );
+}
+
+function DemoForm() {
+  const [form, setForm] = useState({ businessName: "", ownerName: "", email: "", phone: "", representative: "" });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.businessName.trim() || !form.ownerName.trim() || !form.email.trim()) {
+      setError("Preencha o nome do negócio, o seu nome e o email.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await auth.createDemo(form);
+      setSuccess(res);
+    } catch (err) {
+      setError(err.message || "Erro ao criar conta.");
+    }
+    setLoading(false);
+  };
+
+  if (success) {
+    return (
+      <div className="space-y-3 text-center">
+        <div className="text-2xl">🎉</div>
+        <div className="text-sm font-bold" style={{ color: INK }}>Conta demonstração criada!</div>
+        <div className="text-xs" style={{ color: MUTED }}>A conta é válida por 3 dias. Use os dados abaixo para entrar:</div>
+        <div style={{ background: "#F1F5F9", borderColor: BORDER }} className="border rounded-lg p-3 text-left space-y-1">
+          <div className="text-xs"><strong>Email:</strong> {success.email}</div>
+          <div className="text-xs"><strong>Senha:</strong> {success.password}</div>
+          <div className="text-xs"><strong>Negócio:</strong> {success.businessName}</div>
+        </div>
+        <div className="text-xs" style={{ color: MUTED }}>Guarde estes dados. Também enviámos por email (se configurado).</div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-2.5">
+      <div className="text-xs text-center mb-2" style={{ color: MUTED }}>
+        Crie uma conta gratuita por 3 dias para avaliar o sistema.
+      </div>
+      <div>
+        <label className="text-xs" style={{ color: MUTED }}>Nome do negócio</label>
+        <input value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" placeholder="Ex: Padaria do João" />
+      </div>
+      <div>
+        <label className="text-xs" style={{ color: MUTED }}>Seu nome completo</label>
+        <input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+      </div>
+      <div>
+        <label className="text-xs" style={{ color: MUTED }}>Email</label>
+        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+      </div>
+      <div>
+        <label className="text-xs" style={{ color: MUTED }}>Telefone</label>
+        <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" placeholder="Ex: 84 123 4567" />
+      </div>
+      <div>
+        <label className="text-xs" style={{ color: MUTED }}>Nome do representante VendasB2B</label>
+        <input value={form.representative} onChange={(e) => setForm({ ...form, representative: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" placeholder="Quem lhe apresentou o sistema?" />
+      </div>
+      {error && <div className="text-xs" style={{ color: BRICK }}>{error}</div>}
+      <button type="submit" disabled={loading} style={{ background: GRADIENT, color: "#fff", boxShadow: "0 6px 16px rgba(79,70,229,0.35)" }} className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
+        {loading ? "A criar…" : "Criar conta demonstração"}
+      </button>
+    </form>
   );
 }
 

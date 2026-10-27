@@ -291,7 +291,7 @@ function DashboardOverview({ store, sales }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Produto mais vendido" value={topProduct()} sub="este mês" />
         <StatCard label="Stock baixo" value={lowStockCount + " produtos"} sub={lowStockCount > 0 ? "atenção necessária" : "tudo em ordem"} />
-        <StatCard label="Dívidas de clientes" value={fmtMT(unpaidDebts)} sub="fiado por cobrar" />
+        <StatCard label="Dívidas de clientes" value={fmtMT(unpaidDebts)} sub="dívidas por cobrar" />
         <StatCard label="Contas a pagar" value={fmtMT(contasAbertas)} sub="em aberto" />
       </div>
     </div>

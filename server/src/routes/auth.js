@@ -64,6 +64,11 @@ authRouter.post("/auth/login", loginLimiter, async (req, res) => {
   if (!ok) return res.status(401).json({ error: "Email ou senha incorrectos." });
   if (!emp.business_active) return res.status(403).json({ error: "Conta de negócio inactiva." });
 
+  const demoBiz = (await query("SELECT is_demo, demo_expires_at FROM businesses WHERE id = $1", [emp.business_id])).rows[0];
+  if (demoBiz && demoBiz.is_demo && demoBiz.demo_expires_at && new Date(demoBiz.demo_expires_at) < new Date()) {
+    return res.status(403).json({ error: "Conta demonstração expirada. Contacte o representante VendasB2B para activar a sua conta." });
+  }
+
   let filiais = [{ id: emp.business_id, name: emp.business_name }];
   if (emp.role === "dono" || emp.role === "gerente") {
     const biz = (await query("SELECT id, name, parent_business_id FROM businesses WHERE id = $1", [emp.business_id])).rows[0];
@@ -207,4 +212,81 @@ authRouter.post("/auth/reset-password", forgotLimiter, async (req, res) => {
   await query("UPDATE employees SET password_hash = $1 WHERE id = $2", [hash, emp.id]);
   await query("DELETE FROM password_reset_tokens WHERE employee_id = $1", [emp.id]);
   res.json({ ok: true });
+});
+
+// --- Conta demonstração ---
+const demoLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, standardHeaders: true, legacyHeaders: false });
+
+const demoSchema = z.object({
+  businessName: z.string().min(2).max(200),
+  ownerName: z.string().min(2).max(200),
+  email: z.string().email(),
+  phone: z.string().max(50).optional().default(""),
+  representative: z.string().min(2).max(200),
+});
+
+function generatePassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let pwd = "";
+  for (let i = 0; i < 8; i++) pwd += chars[crypto.randomInt(chars.length)];
+  return pwd;
+}
+
+authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
+  const parsed = demoSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
+  const { businessName, ownerName, email, phone, representative } = parsed.data;
+
+  const existing = (await query("SELECT id FROM employees WHERE lower(email) = lower($1)", [email])).rows[0];
+  if (existing) return res.status(409).json({ error: "Já existe uma conta com este email." });
+
+  const password = generatePassword();
+  const hash = await hashPassword(password);
+  const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50);
+
+  const biz = (await query(
+    `INSERT INTO businesses (name, slug, is_demo, demo_expires_at, demo_representative, demo_contact_email, demo_contact_phone, subscription_status, plan, config)
+     VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', 'demo', '{}')
+     RETURNING id`,
+    [businessName, slug, representative, email, phone]
+  )).rows[0];
+
+  await query(
+    `INSERT INTO employees (business_id, name, email, password_hash, role, active)
+     VALUES ($1, $2, $3, $4, 'dono', true)`,
+    [biz.id, ownerName, email.toLowerCase(), hash]
+  );
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
+          to: [email],
+          subject: "Conta demonstração VENDASB2B — Os seus dados de acesso",
+          html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
+            <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:20px;border-radius:12px 12px 0 0;text-align:center">
+              <div style="font-size:22px;font-weight:bold">VENDASB2B</div>
+              <div style="font-size:13px;opacity:.85">Conta Demonstração</div>
+            </div>
+            <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
+              <p>Olá <strong>${ownerName}</strong>,</p>
+              <p>A sua conta demonstração foi criada com sucesso! Tem <strong>3 dias</strong> para avaliar o sistema.</p>
+              <div style="background:#F8FAFC;border-radius:8px;padding:16px;margin:16px 0">
+                <p style="margin:4px 0"><strong>Negócio:</strong> ${businessName}</p>
+                <p style="margin:4px 0"><strong>Email:</strong> ${email}</p>
+                <p style="margin:4px 0"><strong>Senha:</strong> <code style="background:#E0E7FF;padding:2px 8px;border-radius:4px;font-size:16px;letter-spacing:1px">${password}</code></p>
+              </div>
+              <p style="color:#64748B;font-size:13px">Representante: ${representative}</p>
+              <p style="color:#64748B;font-size:12px">Após os 3 dias, contacte o seu representante para activar a subscrição.</p>
+            </div>
+          </div>`,
+        }),
+      });
+    } catch {}
+  }
+
+  res.status(201).json({ ok: true, email, password, businessName });
 });

@@ -98,6 +98,7 @@ export const auth = {
   logout: () => { const rt = getRefreshToken(); clearSession(); if (rt) post("/api/auth/logout", { refreshToken: rt }).catch(() => {}); },
   forgotPassword: (email) => post("/api/auth/forgot-password", { email }),
   resetPassword: (email, code, newPassword) => post("/api/auth/reset-password", { email, code, newPassword }),
+  createDemo: (data) => post("/api/auth/demo", data),
 };
 
 export const superApi = {
@@ -113,6 +114,16 @@ export const superApi = {
   reactivate: (id) => post(`/api/super/billing/${id}/reactivate`),
   confirmSubmission: (subId) => post(`/api/super/billing/submissions/${subId}/confirm`),
   rejectSubmission: (subId) => post(`/api/super/billing/submissions/${subId}/reject`),
+  // Demos
+  listDemos: () => get("/api/super/billing/demos").then((d) => d.demos),
+  activateDemo: (id) => post(`/api/super/billing/demos/${id}/activate`),
+  deleteDemo: (id) => del(`/api/super/billing/demos/${id}`),
+  // Comprovativos com foto
+  listProofs: () => get("/api/super/billing/proofs").then((d) => d.proofs),
+  confirmProof: (id) => post(`/api/super/billing/proofs/${id}/confirm`),
+  rejectProof: (id) => post(`/api/super/billing/proofs/${id}/reject`),
+  // Factura
+  getInvoiceData: (id) => get(`/api/super/billing/${id}/invoice-data`),
 };
 
 // Cliente da API de um negócio — cada método devolve o "store" já actualizado.
@@ -189,6 +200,13 @@ export function businessApi(businessId) {
 
     getBilling: () => get(`${base}/billing`),
     submitPayment: (payload) => post(`${base}/billing/submit`, payload),
+    submitProof: (payload) => post(`${base}/billing/proof`, payload),
+
+    // Contas de pagamento personalizadas
+    getPaymentAccounts: () => get(`${base}/payment-accounts`).then((d) => d.accounts),
+    createPaymentAccount: (payload) => post(`${base}/payment-accounts`, payload),
+    updatePaymentAccount: (id, payload) => patch(`${base}/payment-accounts/${id}`, payload),
+    deletePaymentAccount: (id) => del(`${base}/payment-accounts/${id}`),
 
     transferStock: (payload) => s(post(`${base}/transfer-stock`, payload)),
 

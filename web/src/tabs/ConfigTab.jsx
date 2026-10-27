@@ -3,8 +3,7 @@ import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
 import { ALL_MODULES } from "../lib/utils.js";
 import { processarLogo } from "../lib/logoProcess.js";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
-import { Settings, Percent, Wallet, Users, Lock, Banknote, Gift, Palette } from "../lib/icons.jsx";
-import BillingPanel from "../components/BillingPanel.jsx";
+import { Settings, Percent, Wallet, Users, Lock, Gift, Palette } from "../lib/icons.jsx";
 
 export default function ConfigTab({ store, setStore, api }) {
   const [cat, setCat] = useState("impressao");
@@ -13,7 +12,6 @@ export default function ConfigTab({ store, setStore, api }) {
     { id: "iva", label: "IVA", icon: Percent },
     { id: "contas", label: "Contas", icon: Wallet },
     { id: "empresa", label: "Empresa", icon: Users },
-    { id: "assinatura", label: "A minha assinatura", icon: Banknote },
     { id: "fidelidade", label: "Fidelidade", icon: Gift },
     { id: "tema", label: "Personalização", icon: Palette },
     { id: "seguranca", label: "Segurança e Backups", icon: Lock },
@@ -37,8 +35,7 @@ export default function ConfigTab({ store, setStore, api }) {
           );
         })}
       </div>
-      {cat !== "assinatura" && <AtendimentoLink store={store} />}
-      {cat === "assinatura" && <BillingPanel api={api} canSubmit />}
+      <AtendimentoLink store={store} />
       {cat === "impressao" && <ImpressaoConfig store={store} setStore={setStore} api={api} />}
       {cat === "iva" && <IvaConfig store={store} setStore={setStore} api={api} />}
       {cat === "contas" && <ContasConfig store={store} setStore={setStore} api={api} />}
@@ -279,6 +276,62 @@ function ContasConfig({ store, setStore, api }) {
       </button>
       <div className="text-xs" style={{ color: MUTED }}>
         Desligar uma conta aqui remove-a dos botões de pagamento no ecrã de Vender.
+      </div>
+      <CustomPaymentAccounts store={store} setStore={setStore} api={api} />
+    </div>
+  );
+}
+
+function CustomPaymentAccounts({ store, setStore, api }) {
+  const [accounts, setAccounts] = useState(store.paymentAccounts || []);
+  const [newName, setNewName] = useState("");
+  const [newNumero, setNewNumero] = useState("");
+  const confirmar = useConfirm();
+
+  const criar = async () => {
+    if (!newName.trim()) return;
+    try {
+      const created = await api.createPaymentAccount({ name: newName.trim(), tipo: "personalizado", numero: newNumero.trim(), activo: true });
+      setAccounts((a) => [...a, created]);
+      setNewName(""); setNewNumero("");
+      setStore(await api.getStore());
+    } catch (e) { alert(e.message); }
+  };
+
+  const toggleActivo = async (acc) => {
+    try {
+      await api.updatePaymentAccount(acc.id, { activo: !acc.activo });
+      setAccounts((a) => a.map((x) => x.id === acc.id ? { ...x, activo: !x.activo } : x));
+      setStore(await api.getStore());
+    } catch (e) { alert(e.message); }
+  };
+
+  const apagar = async (acc) => {
+    if (!(await confirmar({ title: "Apagar conta?", message: `Remover "${acc.name}" dos métodos de pagamento?`, confirmLabel: "Apagar" }))) return;
+    try {
+      await api.deletePaymentAccount(acc.id);
+      setAccounts((a) => a.filter((x) => x.id !== acc.id));
+      setStore(await api.getStore());
+    } catch (e) { alert(e.message); }
+  };
+
+  return (
+    <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <div className="text-sm font-semibold mb-2">Contas de pagamento personalizadas</div>
+      <p className="text-xs mb-2" style={{ color: MUTED }}>Crie métodos de pagamento adicionais (ex: Cartão Visa, Transferência bancária, Conta Corrente).</p>
+      {accounts.map((acc) => (
+        <div key={acc.id} className="flex items-center justify-between gap-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={acc.activo} onChange={() => toggleActivo(acc)} />
+            {acc.name} {acc.numero && <span className="text-xs" style={{ color: MUTED }}>({acc.numero})</span>}
+          </label>
+          <button onClick={() => apagar(acc)} style={{ color: BRICK }} className="text-xs">Apagar</button>
+        </div>
+      ))}
+      <div className="flex gap-2 mt-2">
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome (ex: Cartão Visa)" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1 text-xs flex-1" />
+        <input value={newNumero} onChange={(e) => setNewNumero(e.target.value)} placeholder="Número (opcional)" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1 text-xs flex-1" />
+        <button onClick={criar} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1 text-xs font-semibold">Criar</button>
       </div>
     </div>
   );

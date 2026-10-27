@@ -174,7 +174,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
   );
 }
 
-const METODO_LABEL = { dinheiro: "Numerário", mpesa: "M-Pesa", emola: "e-Mola", fiado: "Fiado", cartao: "Cartão", transferencia: "Transferência" };
+const METODO_LABEL = { dinheiro: "Numerário", mpesa: "M-Pesa", emola: "e-Mola", fiado: "Dívida", cartao: "Cartão", transferencia: "Transferência" };
 const metodoLabel = (m) => METODO_LABEL[m] || (m ? m.charAt(0).toUpperCase() + m.slice(1) : "—");
 
 // Histórico de Movimentações — a lista de vendas (antes "Vendas recentes" no

@@ -638,10 +638,12 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         pontosUsados,
         ivaTaxa: ivaTaxaVenda,
       });
+      setRecebido("");
       return;
     }
     if (selectedMethod === "fiado" && (!clientId || fiadoBloqueado)) return;
     onConfirm({ total, discount: Number(discount || 0), payments: [{ method: selectedMethod, amount: total }], clientId: clientId || null, pontosUsados, ivaTaxa: ivaTaxaVenda });
+    setRecebido("");
   };
 
   const criarCliente = async () => {
@@ -712,7 +714,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
       {!novoCliente ? (
         <div className="flex items-center gap-2 mb-2">
           <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={{ borderColor: BORDER }} className="flex-1 min-w-0 border rounded-lg px-2 py-1.5 text-sm">
-            <option value="">Cliente (necessário para fiado / pontos)</option>
+            <option value="">Cliente (necessário para dívida / pontos)</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -755,7 +757,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
       )}
       {fiadoBloqueado && (
         <div style={{ background: "#FEE2E2", color: BRICK }} className="rounded-lg p-2 text-xs mb-2">
-          Limite de crédito excedido: {fmtMT(dividaActual)} em dívida + {fmtMT(total)} ultrapassa o limite de {fmtMT(limite)}. O fiado está bloqueado para este cliente.
+          Limite de crédito excedido: {fmtMT(dividaActual)} em dívida + {fmtMT(total)} ultrapassa o limite de {fmtMT(limite)}. A dívida está bloqueada para este cliente.
         </div>
       )}
 

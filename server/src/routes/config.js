@@ -57,6 +57,47 @@ configRouter.post("/onboarding-done", requirePermission("gerirConfig"), async (r
   res.json({ store: await buildStoreAndCache(businessId) });
 });
 
+// --- Contas de pagamento personalizáveis ---
+configRouter.get("/payment-accounts", async (req, res) => {
+  const { rows } = await query(
+    `SELECT id, name, tipo, numero, activo, ordem FROM payment_accounts
+     WHERE business_id = $1 ORDER BY ordem, name`,
+    [req.params.businessId]
+  );
+  res.json({ accounts: rows });
+});
+
+configRouter.post("/payment-accounts", requirePermission("gerirConfig"), async (req, res) => {
+  const { name, tipo, numero, activo } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: "Nome da conta obrigatório." });
+  await query(
+    "INSERT INTO payment_accounts (business_id, name, tipo, numero, activo) VALUES ($1,$2,$3,$4,$5)",
+    [req.params.businessId, name.trim(), tipo || "outro", numero || "", activo !== false]
+  );
+  res.json({ store: await buildStoreAndCache(req.params.businessId) });
+});
+
+configRouter.patch("/payment-accounts/:id", requirePermission("gerirConfig"), async (req, res) => {
+  const { name, tipo, numero, activo, ordem } = req.body || {};
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  if (name !== undefined) { sets.push(`name = $${i++}`); vals.push(name); }
+  if (tipo !== undefined) { sets.push(`tipo = $${i++}`); vals.push(tipo); }
+  if (numero !== undefined) { sets.push(`numero = $${i++}`); vals.push(numero); }
+  if (activo !== undefined) { sets.push(`activo = $${i++}`); vals.push(activo); }
+  if (ordem !== undefined) { sets.push(`ordem = $${i++}`); vals.push(ordem); }
+  if (!sets.length) return res.status(400).json({ error: "Nada para atualizar." });
+  vals.push(req.params.id, req.params.businessId);
+  await query(`UPDATE payment_accounts SET ${sets.join(", ")} WHERE id = $${i++} AND business_id = $${i}`, vals);
+  res.json({ store: await buildStoreAndCache(req.params.businessId) });
+});
+
+configRouter.delete("/payment-accounts/:id", requirePermission("gerirConfig"), async (req, res) => {
+  await query("DELETE FROM payment_accounts WHERE id = $1 AND business_id = $2", [req.params.id, req.params.businessId]);
+  res.json({ store: await buildStoreAndCache(req.params.businessId) });
+});
+
 configRouter.get("/backup", requirePermission("gerirConfig"), async (req, res) => {
   const businessId = req.params.businessId;
   const store = await buildStoreAndCache(businessId);

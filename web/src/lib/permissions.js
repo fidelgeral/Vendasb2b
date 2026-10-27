@@ -48,7 +48,7 @@ export const PERMISSOES = [
     itens: [
       { id: "clienteGerir", label: "Adicionar / editar cliente" },
       { id: "clienteApagar", label: "Apagar cliente" },
-      { id: "fiadoReceber", label: "Receber dívidas (fiado)" },
+      { id: "fiadoReceber", label: "Receber dívidas" },
     ],
   },
   {

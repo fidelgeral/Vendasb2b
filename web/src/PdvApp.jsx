@@ -16,7 +16,7 @@ import { NotificationBell } from "./components/Shared.jsx";
 import SwitchUserModal from "./auth/SwitchUserModal.jsx";
 import {
   ShoppingCart, LayoutGrid, Banknote, Package, Boxes, Users, Truck, UserCog, Scale, Settings,
-  ChevronLeft, Lock, LogOut, CheckCircle2, BarChart3,
+  ChevronLeft, Lock, LogOut, CheckCircle2, BarChart3, Layers,
 } from "./lib/icons.jsx";
 
 import DashboardTab from "./tabs/DashboardTab.jsx";
@@ -30,6 +30,7 @@ import ComprasTab from "./tabs/ComprasTab.jsx";
 import EquipaTab from "./tabs/EquipaTab.jsx";
 import BalancoTab from "./tabs/BalancoTab.jsx";
 import ConfigTab from "./tabs/ConfigTab.jsx";
+import OutrosServicosTab from "./tabs/OutrosServicosTab.jsx";
 import OnboardingWizard from "./components/OnboardingWizard.jsx";
 
 export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLoggedOut, filiais, activeBusinessId, onSwitchFilial }) {
@@ -269,7 +270,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const modules = store.config.modules;
   const shiftOpen = !!store.currentShiftId;
   const currentShift = store.shifts.find((s) => s.id === store.currentShiftId);
-  const paymentMethods = getActivePaymentMethods(store.config);
+  const paymentMethods = getActivePaymentMethods(store.config, store.paymentAccounts || []);
 
   const tabDefs = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3, show: true },
@@ -282,6 +283,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     { id: "compras", label: "Compras", icon: Truck, show: true },
     { id: "equipa", label: "Equipa", icon: UserCog, show: can("gerirEquipa") },
     { id: "balanco", label: "Balanço", icon: Scale, show: can("verBalanco") },
+    { id: "servicos", label: "Outros Serviços", icon: Layers, show: true },
     { id: "config", label: "Config", icon: Settings, show: can("gerirConfig") },
   ].filter((t) => t.show);
 
@@ -290,7 +292,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     ...store.products.filter((p) => nearExpiry(p).length > 0).map((p) => ({ text: `${p.name} — lote a vencer em breve`, color: "#F59E0B", tab: "estoque" })),
     ...store.clients
       .filter((c) => c.creditLimit > 0 && c.debts.reduce((s, d) => s + d.amount, 0) > c.creditLimit)
-      .map((c) => ({ text: `${c.name} passou o limite de fiado`, color: BRICK, tab: "clientes" })),
+      .map((c) => ({ text: `${c.name} passou o limite de dívida`, color: BRICK, tab: "clientes" })),
     ...(store.cashShortages || [])
       .filter((s) => !s.paid)
       .map((s) => ({ text: `Quebra de caixa: ${s.employeeName} — ${s.shortage.toFixed(2)} MT por pagar`, color: BRICK, tab: "caixa" })),
@@ -542,6 +544,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
         {tab === "compras" && <ComprasTab store={store} setStore={setStore} api={api} />}
         {tab === "equipa" && <EquipaTab store={store} setStore={setStore} api={api} />}
         {tab === "balanco" && <BalancoTab store={store} api={api} />}
+        {tab === "servicos" && <OutrosServicosTab store={store} setStore={setStore} api={api} showToast={showToast} />}
         {tab === "config" && <ConfigTab store={store} setStore={setStore} api={api} />}
       </div>
 

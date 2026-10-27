@@ -94,6 +94,7 @@ export async function buildStore(businessId) {
     transfers,
     cashShortages,
     loyaltyPoints,
+    paymentAccounts,
   ] = await Promise.all([
     query(
       `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
@@ -230,6 +231,11 @@ export async function buildStore(businessId) {
        FROM loyalty_points lp WHERE lp.business_id = $1`,
       [businessId]
     ),
+    query(
+      `SELECT id, name, tipo, numero, activo, ordem FROM payment_accounts
+       WHERE business_id = $1 ORDER BY ordem, name`,
+      [businessId]
+    ),
   ]);
 
   const variantsByProduct = groupBy(variants.rows, "product_id");
@@ -320,6 +326,7 @@ export async function buildStore(businessId) {
     transfers: transfers.rows.map((t) => ({ ...t, qty: Number(t.qty), costUnit: Number(t.costUnit) })),
     cashShortages: cashShortages.rows.map((s) => ({ ...s, expected: Number(s.expected), declared: Number(s.declared), shortage: Number(s.shortage) })),
     loyaltyPoints: loyaltyPoints.rows.map((lp) => ({ ...lp, points: Number(lp.points), totalEarned: Number(lp.totalEarned), totalRedeemed: Number(lp.totalRedeemed) })),
+    paymentAccounts: paymentAccounts.rows,
     loyalty: { enabled: !!biz.loyalty_enabled, pointsPerMt: Number(biz.loyalty_points_per_mt || 1), mtPerPoint: Number(biz.loyalty_mt_per_point || 0.1) },
     themeColor: biz.theme_color || "#2563eb",
     logoUrl: biz.logo_url || "",

@@ -15,6 +15,12 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
 
   const [pending, setPending] = useState([]);
 
+  const [demos, setDemos] = useState([]);
+  const [proofs, setProofs] = useState([]);
+  const [showDemos, setShowDemos] = useState(false);
+  const [showProofs, setShowProofs] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(null);
+
   const load = () => {
     superApi
       .listBusinesses()
@@ -24,6 +30,8 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
       })
       .catch((e) => setError(e.message));
     superApi.pendingSubmissions().then(setPending).catch(() => {});
+    superApi.listDemos().then(setDemos).catch(() => {});
+    superApi.listProofs().then(setProofs).catch(() => {});
   };
 
   useEffect(() => {
@@ -125,6 +133,82 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
             </div>
           </div>
         )}
+
+        {/* Contas demo */}
+        <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-semibold">Contas demonstração ({demos.length})</div>
+            <button onClick={() => setShowDemos((s) => !s)} style={{ color: TEAL }} className="text-xs font-medium">
+              {showDemos ? "Fechar" : "Gerir demos"}
+            </button>
+          </div>
+          {showDemos && (
+            <div className="space-y-1.5">
+              {demos.length === 0 && <div className="text-xs" style={{ color: MUTED }}>Nenhuma conta demo activa.</div>}
+              {demos.map((d) => (
+                <div key={d.id} style={{ borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-xs flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <b>{d.name}</b> · {d.demoContactEmail} · {d.demoContactPhone || "—"}
+                    <br />Representante: {d.demoRepresentative || "—"} · Expira: {d.demoExpiresAt ? new Date(d.demoExpiresAt).toLocaleDateString("pt-PT") : "—"}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={async () => { await superApi.activateDemo(d.id); load(); }}
+                      style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-2.5 py-1 font-semibold">
+                      Activar subscrição
+                    </button>
+                    <button onClick={async () => { if (confirm("Apagar conta demo " + d.name + "?")) { await superApi.deleteDemo(d.id); load(); } }}
+                      style={{ color: BRICK }} className="font-semibold">
+                      Apagar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Comprovativos com foto */}
+        {proofs.length > 0 && (
+          <div style={{ background: "#E0F2FE", borderColor: "#0284C7" }} className="border rounded-xl p-3">
+            <div className="text-sm font-bold mb-2">Comprovativos de pagamento ({proofs.length})</div>
+            <div className="space-y-1.5">
+              {proofs.map((p) => (
+                <div key={p.id} style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg px-3 py-2 text-xs flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <b>{p.businessName}</b> · {Number(p.amount)} MT · {p.paymentMethod}
+                    <br />Pago por: {p.payerName} · Tel: {p.payerPhone || "—"}
+                    {p.notes && <> · {p.notes}</>}
+                    <br />Data: {new Date(p.createdAt).toLocaleDateString("pt-PT")}
+                    {p.photoUrl && <> · <a href={p.photoUrl} target="_blank" rel="noopener" style={{ color: TEAL }}>Ver comprovativo</a></>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={async () => { await superApi.confirmProof(p.id); load(); }}
+                      style={{ background: GREEN, color: "#fff" }} className="rounded-lg px-2.5 py-1 font-semibold">
+                      Confirmar (+30 dias)
+                    </button>
+                    <button onClick={async () => { await superApi.rejectProof(p.id); load(); }}
+                      style={{ color: BRICK }} className="font-semibold">
+                      Rejeitar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Emitir fatura / recibo */}
+        <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-semibold">Emitir fatura / recibo</div>
+            <button onClick={() => setShowInvoice((s) => s ? null : "invoice")} style={{ color: TEAL }} className="text-xs font-medium">
+              {showInvoice ? "Fechar" : "Emitir documento"}
+            </button>
+          </div>
+          {showInvoice && (
+            <InvoiceGenerator businesses={businesses} type={showInvoice} onChangeType={setShowInvoice} />
+          )}
+        </div>
 
         <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
@@ -278,6 +362,129 @@ function BillingControls({ b, onChanged }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function InvoiceGenerator({ businesses, type, onChangeType }) {
+  const [biz, setBiz] = useState("");
+  const [docType, setDocType] = useState(type || "invoice");
+  const [clientName, setClientName] = useState("");
+  const [clientNuit, setClientNuit] = useState("");
+  const [items, setItems] = useState([{ description: "Mensalidade VENDASB2B", qty: 1, unitPrice: 0 }]);
+  const [period, setPeriod] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const addItem = () => setItems((i) => [...i, { description: "", qty: 1, unitPrice: 0 }]);
+  const updateItem = (idx, field, value) => setItems((i) => i.map((it, j) => j === idx ? { ...it, [field]: value } : it));
+  const removeItem = (idx) => setItems((i) => i.filter((_, j) => j !== idx));
+
+  const total = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.unitPrice || 0), 0);
+  const hoje = new Date().toLocaleDateString("pt-PT");
+  const docNum = docType === "invoice"
+    ? `FT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`
+    : `RC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+
+  const selectedBiz = businesses.find((b) => b.id === biz);
+
+  const imprimir = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const isInvoice = docType === "invoice";
+    const itemsHtml = items.map((it) => `
+      <tr>
+        <td style="border:1px solid #ddd;padding:8px">${it.description}</td>
+        <td style="border:1px solid #ddd;padding:8px;text-align:center">${it.qty}</td>
+        <td style="border:1px solid #ddd;padding:8px;text-align:right">${Number(it.unitPrice).toFixed(2)} MT</td>
+        <td style="border:1px solid #ddd;padding:8px;text-align:right">${(Number(it.qty) * Number(it.unitPrice)).toFixed(2)} MT</td>
+      </tr>`).join("");
+
+    const html = `
+      <div style="font-family:system-ui,sans-serif;max-width:800px;margin:0 auto;padding:40px">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:30px">
+          <div>
+            <h1 style="margin:0;color:#4F46E5;font-size:28px">VENDASB2B</h1>
+            <p style="color:#666;margin:4px 0">Sistema de Gestão Comercial</p>
+            <p style="color:#666;margin:0;font-size:12px">M-Pesa: 845508667 · e-Mola: 861132245</p>
+          </div>
+          <div style="text-align:right">
+            <h2 style="margin:0;font-size:22px;color:#333">${isInvoice ? "FATURA" : "RECIBO DE PAGAMENTO"}</h2>
+            <p style="color:#666;margin:4px 0">Nº ${docNum}</p>
+            <p style="color:#666;margin:0">Data: ${hoje}</p>
+          </div>
+        </div>
+        <hr style="border:none;border-top:2px solid #4F46E5;margin:20px 0"/>
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <strong>Cliente:</strong><br/>
+            ${clientName || (selectedBiz ? selectedBiz.name : "—")}<br/>
+            ${clientNuit ? "NUIT: " + clientNuit : ""}
+          </div>
+          ${period ? `<div><strong>Período:</strong><br/>${period}</div>` : ""}
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          <thead>
+            <tr style="background:#4F46E5;color:#fff">
+              <th style="padding:10px;text-align:left">Descrição</th>
+              <th style="padding:10px;text-align:center;width:80px">Qtd</th>
+              <th style="padding:10px;text-align:right;width:120px">Preço unit.</th>
+              <th style="padding:10px;text-align:right;width:120px">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <div style="text-align:right;font-size:22px;font-weight:bold;color:#4F46E5;margin:20px 0">
+          TOTAL: ${total.toFixed(2)} MT
+        </div>
+        ${notes ? `<div style="background:#f8f9fa;padding:12px;border-radius:8px;margin:20px 0"><strong>Observações:</strong> ${notes}</div>` : ""}
+        <hr style="border:none;border-top:1px solid #ddd;margin:30px 0"/>
+        <p style="text-align:center;color:#999;font-size:11px">Documento gerado por VENDASB2B · ${hoje}</p>
+      </div>`;
+    win.document.write(`<html><body>${html}<script>window.print();<\/script></body></html>`);
+    win.document.close();
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <button onClick={() => { setDocType("invoice"); onChangeType("invoice"); }}
+          style={{ background: docType === "invoice" ? TEAL : CARD, color: docType === "invoice" ? "#fff" : INK, borderColor: BORDER }}
+          className="border rounded-lg px-3 py-1.5 text-xs font-semibold">
+          Fatura profissional
+        </button>
+        <button onClick={() => { setDocType("receipt"); onChangeType("receipt"); }}
+          style={{ background: docType === "receipt" ? TEAL : CARD, color: docType === "receipt" ? "#fff" : INK, borderColor: BORDER }}
+          className="border rounded-lg px-3 py-1.5 text-xs font-semibold">
+          Recibo de pagamento
+        </button>
+      </div>
+      <select value={biz} onChange={(e) => setBiz(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm">
+        <option value="">Seleccionar negócio (cliente)</option>
+        {businesses.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+      </select>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nome do cliente / instituição" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+        <input value={clientNuit} onChange={(e) => setClientNuit(e.target.value)} placeholder="NUIT (opcional)" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+      </div>
+      <input value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="Período (ex: Outubro 2026)" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
+      <div className="text-xs font-semibold mt-1">Linhas do documento</div>
+      {items.map((it, idx) => (
+        <div key={idx} className="grid grid-cols-12 gap-1 items-center">
+          <input value={it.description} onChange={(e) => updateItem(idx, "description", e.target.value)} placeholder="Descrição" style={{ borderColor: BORDER }} className="col-span-5 border rounded-lg px-2 py-1.5 text-xs" />
+          <input type="number" value={it.qty} onChange={(e) => updateItem(idx, "qty", e.target.value)} style={{ borderColor: BORDER }} className="col-span-2 border rounded-lg px-2 py-1.5 text-xs text-center" />
+          <input type="number" value={it.unitPrice} onChange={(e) => updateItem(idx, "unitPrice", e.target.value)} placeholder="Preço" style={{ borderColor: BORDER }} className="col-span-3 border rounded-lg px-2 py-1.5 text-xs text-right" />
+          <button onClick={() => removeItem(idx)} style={{ color: BRICK }} className="col-span-2 text-xs">✕</button>
+        </div>
+      ))}
+      <button onClick={addItem} style={{ color: TEAL }} className="text-xs font-semibold">+ Adicionar linha</button>
+      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações (opcional)" rows={2}
+        style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-bold" style={{ color: TEAL }}>Total: {total.toFixed(2)} MT</div>
+        <button onClick={imprimir} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-4 py-2 text-sm font-semibold">
+          Imprimir {docType === "invoice" ? "fatura" : "recibo"} A4
+        </button>
+      </div>
     </div>
   );
 }
