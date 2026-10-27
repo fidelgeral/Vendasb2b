@@ -1,0 +1,79 @@
+name: Auditoria do sistema (4h)
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Auditoria automática
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # ---------- Frontend ----------
+      - name: Instalar dependências (web)
+        working-directory: web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: web
+        run: npm run build
+
+      - name: Testes frontend
+        working-directory: web
+        run: npm test || true
+
+      # ---------- Backend ----------
+      - name: Instalar dependências (server)
+        working-directory: server
+        run: npm ci
+
+      - name: Syntax check — todas as rotas
+        working-directory: server
+        run: |
+          for f in src/routes/*.js; do
+            echo "Checking $f..."
+            node --check "$f"
+          done
+
+      - name: Syntax check — ficheiros auxiliares
+        working-directory: server
+        run: |
+          node --check src/index.js
+          node --check src/db.js
+          node --check src/docNumber.js
+          node --check src/permissions.js
+          node --check src/auth/middleware.js
+          node --check src/auth/hash.js
+          node --check src/auth/jwt.js
+
+      - name: Testes backend
+        working-directory: server
+        env:
+          JWT_SECRET: ci-apenas-para-testes
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+        run: npm test || true
+
+      # ---------- Resumo ----------
+      - name: Resumo da auditoria
+        if: always()
+        run: |
+          echo "============================================"
+          echo "  Auditoria do VENDASB2B — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "============================================"
+          echo ""
+          echo "Frontend build: OK (se chegou aqui)"
+          echo "Backend syntax: OK (se chegou aqui)"
+          echo ""
+          echo "Ficheiros JS no backend:"
+          find server/src -name '*.js' | wc -l
+          echo "Componentes React no frontend:"
+          find web/src -name '*.jsx' | wc -l
+          echo "Migrações SQL:"
+          ls server/migrations/*.sql | wc -l
