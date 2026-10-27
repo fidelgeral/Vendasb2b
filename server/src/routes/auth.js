@@ -242,7 +242,7 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
 
   const password = generatePassword();
   const hash = await hashPassword(password);
-  const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50);
+  const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + "-" + crypto.randomInt(10000);
 
   const biz = (await query(
     `INSERT INTO businesses (name, slug, is_demo, demo_expires_at, demo_representative, demo_contact_email, demo_contact_phone, subscription_status, plan, config)
