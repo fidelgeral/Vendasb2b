@@ -7,6 +7,8 @@ import { computeIva } from "../lib/iva.js";
 import { inPeriod, periodoAnterior, variacao } from "../lib/periods.js";
 import { StatCard, ReportBlock, EmptyNote, BarRow } from "../components/Shared.jsx";
 
+const MESES_CURTO = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
 function ExportButtons({ title, columns, rows, meta }) {
   const [aGerar, setAGerar] = useState(null); // 'pdf' | 'excel' | null
   const disabled = !rows || rows.length === 0;
@@ -111,6 +113,7 @@ const REPORTS = {
   financeiro: [
     { id: "dre", label: "Resultados (DRE)" },
     { id: "despesas", label: "Despesas por Categoria" },
+    { id: "salarios", label: "Salários" },
     { id: "contabilidade", label: "Exportar p/ Contabilidade" },
     { id: "fechamento", label: "Fecho de Caixa" },
     { id: "iva", label: "Fiscal (IVA)" },
@@ -581,7 +584,8 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
     const saidas = movs.filter((m) => m.type === "saida").reduce((a, m) => a + m.amount, 0);
     const entradas = movs.filter((m) => m.type === "entrada").reduce((a, m) => a + m.amount, 0);
     const dividas = store.clients.reduce((a, c) => a + c.debts.reduce((x, d) => x + d.amount, 0), 0);
-    const lucroReal = lucroBruto - perdas - saidas + entradas;
+    const salarios = (store.payroll || []).filter((p) => inPeriod(p.created_at, from, to)).reduce((a, p) => a + Number(p.total), 0);
+    const lucroReal = lucroBruto - perdas - saidas - salarios + entradas;
     const serieDre = (() => {
       const fat = [], luc = [], rot = [];
       for (let i = 13; i >= 0; i--) {
@@ -618,6 +622,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
       linha("Lucro bruto (receita − custo)", lucroBruto, prev && prev.lb),
       linha("Quebras / perdas de stock", perdas, prev && prev.pd, "-"),
       linha("Saídas de caixa (despesas)", saidas, prev && prev.sd, "-"),
+      linha("Salários de funcionários", salarios, null, "-"),
       linha("Entradas extra de caixa", entradas, prev && prev.en, "+"),
       linha("Resultado líquido estimado", lucroReal, prev && prev.real),
       prev ? ["Dívidas de clientes (a receber)", fmtMT(dividas), "—", "—"] : ["Dívidas de clientes (a receber)", fmtMT(dividas)],
@@ -653,6 +658,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
               { label: "Lucro líquido", value: Math.max(0, lucroReal) },
               { label: "Perdas", value: perdas },
               { label: "Despesas", value: saidas },
+              { label: "Salários", value: salarios },
             ].filter((d) => d.value > 0)}
             size={120}
           />
@@ -684,6 +690,31 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
             <BarRow key={k} label={k} value={Math.round(v)} max={Math.round(list[0][1])} />
           ))}
         </ReportBlock>
+      </div>
+    );
+  }
+
+  if (report === "salarios") {
+    const payrollRows = (store.payroll || []).filter((p) => inPeriod(p.created_at, from, to));
+    const totalSal = payrollRows.reduce((a, p) => a + Number(p.total), 0);
+    const totalPago = payrollRows.filter((p) => p.pago).reduce((a, p) => a + Number(p.total), 0);
+    const rows = payrollRows.map((p) => [
+      p.employee_name,
+      MESES_CURTO[p.mes - 1] + "/" + p.ano,
+      fmtMT(p.salario_base),
+      fmtMT(p.bonus),
+      fmtMT(p.descontos),
+      fmtMT(p.total),
+      p.pago ? "Pago" : "Pendente",
+    ]);
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2.5">
+          <StatCard label="Total salários" value={fmtMT(totalSal)} />
+          <StatCard label="Pago" value={fmtMT(totalPago)} />
+          <StatCard label="Pendente" value={fmtMT(totalSal - totalPago)} />
+        </div>
+        <ReportTable title="Salários no Período" columns={["Funcionário", "Mês", "Base", "Bónus", "Descontos", "Total", "Estado"]} rows={rows} meta={{ ...meta, kpis: [{ label: "Total", value: fmtMT(totalSal) }, { label: "Pago", value: fmtMT(totalPago) }, { label: "Funcionários", value: String(new Set(payrollRows.map((p) => p.employee_id)).size) }] }} align={["l", "l", "r", "r", "r", "r", "c"]} />
       </div>
     );
   }

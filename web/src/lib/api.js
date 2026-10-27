@@ -199,6 +199,11 @@ export function businessApi(businessId) {
 
     assistantChat: (history) => post(`${base}/assistant/chat`, { history }).then((d) => d.reply),
 
+    getPayroll: (ano, mes) => get(`${base}/payroll?ano=${ano}${mes ? "&mes=" + mes : ""}`).then((d) => d.payroll),
+    createPayroll: (payload) => post(`${base}/payroll`, payload).then((d) => d.payroll),
+    markPayrollPaid: (id) => patch(`${base}/payroll/${id}/pay`, {}),
+    deletePayroll: (id) => del(`${base}/payroll/${id}`),
+
     getBilling: () => get(`${base}/billing`),
     submitPayment: (payload) => post(`${base}/billing/submit`, payload),
     submitProof: (payload) => post(`${base}/billing/proof`, payload),
