@@ -1,4 +1,5 @@
 import express from "express";
+import "express-async-errors";
 import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
@@ -28,6 +29,8 @@ import { requireActiveSubscription } from "./auth/middleware.js";
 import { initSentry } from "./sentry.js";
 
 const app = express();
+// Atrás do proxy do Render: sem isto req.ip é o do proxy e os rate-limiters são partilhados por todos.
+app.set("trust proxy", 1);
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(compression());

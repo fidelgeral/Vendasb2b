@@ -29,7 +29,7 @@ const saleSchema = z.object({
   payments: z.array(paymentSchema).min(1),
   clientId: z.string().uuid().optional().nullable(),
   tableId: z.string().uuid().optional().nullable(),
-  pontosUsados: z.number().optional().default(0),
+  pontosUsados: z.number().min(0).optional().default(0),
   ivaTaxa: z.number().min(0).optional().nullable(),
   // Identificador único gerado pelo cliente — torna o registo idempotente
   // (reenvios não criam vendas duplicadas).
@@ -200,7 +200,11 @@ salesRouter.post("/sales/:id/void", requirePermission("quebras"), async (req, re
   if (sale.voided) return res.status(409).json({ error: "Venda já cancelada." });
   const items = (await query("SELECT * FROM sale_items WHERE sale_id = $1", [id])).rows;
 
+  let alreadyVoided = false;
   await withTransaction(async (client) => {
+    // Marca como cancelada de forma atómica: dois pedidos simultâneos não repõem o stock duas vezes.
+    const mark = await client.query("UPDATE sales SET voided = true, void_reason = $1 WHERE id = $2 AND voided = false RETURNING id", [reason, id]);
+    if (!mark.rows.length) { alreadyVoided = true; return; }
     for (const it of items) {
       // eslint-disable-next-line no-await-in-loop
       await incrementStock(client, it.product_id, it.variant_id, Number(it.qty));
@@ -215,11 +219,11 @@ salesRouter.post("/sales/:id/void", requirePermission("quebras"), async (req, re
         Number(sale.pontos_ganhos || 0), Number(sale.pontos_usados || 0), sale.client_id,
       ]);
     }
-    await client.query("UPDATE sales SET voided = true, void_reason = $1 WHERE id = $2", [reason, id]);
     await client.query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,$4,$5,$6)", [
       businessId, employee.id, employee.name, "CANCELAMENTO", `Venda ${sale.numero || id} — motivo: ${reason || "não indicado"}`, sale.total,
     ]);
   });
+  if (alreadyVoided) return res.status(409).json({ error: "Venda já cancelada." });
 
   await respond(res, businessId);
 });
