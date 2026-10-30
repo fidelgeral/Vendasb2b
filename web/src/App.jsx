@@ -29,6 +29,7 @@ export default function App() {
   } else if (session.type === "super") {
     inner = viewingBusiness ? (
       <PdvApp
+        key={viewingBusiness.id}
         businessId={viewingBusiness.id}
         isSuperAdmin
         onExitBusiness={() => setViewingBusiness(null)}

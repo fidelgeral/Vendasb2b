@@ -186,7 +186,7 @@ function RecursosHumanosSection({ store, api, showToast }) {
         descontos: Number(form.descontos) || 0,
         notas: form.notas,
       });
-      setRows(updated);
+      setRows(updated.filter((r) => Number(r.mes) === Number(mes) && Number(r.ano) === Number(ano)));
       setForm({ employeeId: "", salarioBase: "", bonus: "", descontos: "", notas: "" });
       setShowForm(false);
       showToast?.("Salário processado com sucesso");

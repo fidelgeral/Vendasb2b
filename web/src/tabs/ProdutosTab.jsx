@@ -134,6 +134,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
       prazoReembolso: p.prazoReembolso || 0,
       foto: p.foto || "",
       parentId: p.parentId || "",
+      estoqueFornecedor: p.fornecedorId || "",
       consumo: p.consumo || 1,
       ingredientes: p.ingredientes || [],
     });

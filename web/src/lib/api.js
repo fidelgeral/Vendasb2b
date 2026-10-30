@@ -36,7 +36,7 @@ class ApiError extends Error {
   }
 }
 
-async function request(method, path, body) {
+async function request(method, path, body, retried = false) {
   const headers = { "Content-Type": "application/json" };
   const token = getToken();
   if (token) headers.Authorization = "Bearer " + token;
@@ -54,8 +54,9 @@ async function request(method, path, body) {
   const data = isJson ? await res.json().catch(() => ({})) : null;
   if (!res.ok) {
     if (res.status === 401) {
-      const refreshed = await tryRefresh();
-      if (refreshed) return request(method, path, body);
+      const isLogin = path === "/api/auth/login" || path === "/api/super/login";
+      const refreshed = !retried && !isLogin && (await tryRefresh());
+      if (refreshed) return request(method, path, body, true);
       clearSession();
     }
     throw new ApiError((data && data.error) || `Erro (${res.status})`, res.status);

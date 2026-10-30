@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT, toggleDarkMode, isDarkMode } from "./lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./lib/theme.js";
 import { BRAND_LOGO } from "./lib/logo.js";
@@ -47,7 +47,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
 
-  const api = businessApi(businessId);
+  const api = useMemo(() => businessApi(businessId), [businessId]);
   const session = getSession();
 
   const load = useCallback(() => {
@@ -441,7 +441,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
               <ChevronLeft size={12} /> Contas
             </button>
           )}
-          <button onClick={() => { toggleDarkMode(); setToast(isDarkMode() ? "Modo escuro activado" : "Modo claro activado"); }} style={{ background: "rgba(255,255,255,0.15)" }} className="p-2 rounded-lg text-white text-xs" title="Alternar modo escuro">
+          <button onClick={() => { toggleDarkMode(); showToast(isDarkMode() ? "Modo escuro activado" : "Modo claro activado"); }} style={{ background: "rgba(255,255,255,0.15)" }} className="p-2 rounded-lg text-white text-xs" title="Alternar modo escuro">
             {isDarkMode() ? "☀️" : "🌙"}
           </button>
           <NotificationBell alerts={alerts} onGo={(t) => setTab(t)} />

@@ -15,7 +15,7 @@ export default function ComprasTab({ store, setStore, api }) {
   const [productId, setProductId] = useState("");
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
-  const [expiryDate, setExpiryDate] = useState(todayStr());
+  const [expiryDate, setExpiryDate] = useState("");
 
   const addSupplier = async () => {
     if (!sup.name.trim()) return;

@@ -232,7 +232,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
       showToast("Abra o caixa antes de vender", "warn");
       return;
     }
-    await finalizeSale({
+    const sale = await finalizeSale({
       items: cart.map((l) => ({ productId: l.productId, variantId: l.variantId, name: l.name, qty: l.qty, price: l.price, cost: l.cost })),
       total,
       discount,
@@ -241,7 +241,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
       pontosUsados,
       ivaTaxa,
     });
-    setCart([]);
+    if (sale) setCart([]);
   };
 
   // leitor de código de barras: deteta digitação muito rápida terminada em Enter
