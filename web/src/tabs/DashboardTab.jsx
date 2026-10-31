@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { CARD, BORDER, INK, MUTED, TEAL, GREEN, BRICK, SOFTGOLD } from "../lib/theme.js";
-import { isLowStock, getStock, nearExpiry, fmtMT } from "../lib/utils.js";
+import { isLowStock, getStock, nearExpiry, fmtMT, todayStr } from "../lib/utils.js";
 import { AreaChart, DonutChart, StatCardChart } from "../lib/charts.jsx";
 import { AlertTriangle } from "../lib/icons.jsx";
 
@@ -205,7 +205,7 @@ export default function DashboardTab({ store, shiftOpen, currentShift }) {
             <div className="text-xs text-center py-8" style={{ color: MUTED }}>Sem vendas hoje</div>
           ) : (
             <div className="space-y-1.5 max-h-48 overflow-auto">
-              {vendasHoje.slice(-8).reverse().map((s) => (
+              {vendasHoje.slice(0, 8).map((s) => (
                 <div key={s.id} className="flex justify-between text-xs py-1" style={{ borderBottom: `1px solid ${BORDER}` }}>
                   <span style={{ color: MUTED }}>{new Date(s.date).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
                   <span style={{ color: INK }}>{(s.items || []).length} {(s.items || []).length === 1 ? "item" : "itens"}</span>

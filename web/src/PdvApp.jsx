@@ -120,8 +120,9 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           await removePending(item.localId);
           enviados += 1;
         } catch (e) {
-          if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 402) {
+          if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 402 && e.status !== 409) {
             // Erro permanente (ex.: dados inválidos): não adianta repetir — descarta.
+            // 409 (ex.: caixa fechado) NÃO descarta: a venda fica na fila até o caixa abrir.
             // eslint-disable-next-line no-await-in-loop
             await removePending(item.localId);
             enviados += 1;

@@ -116,8 +116,8 @@ export default function ComprasTab({ store, setStore, api }) {
       </div>
 
       <div className="space-y-1">
-        {[...store.purchases]
-          .reverse()
+        {/* store.purchases já vem ordenado do mais recente para o mais antigo */}
+        {store.purchases
           .slice(0, 10)
           .map((p) => {
             const supplier = store.suppliers.find((s) => s.id === p.supplierId);
