@@ -184,7 +184,7 @@ authRouter.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
               <div style="font-size:20px;font-weight:bold">VENDASB2B</div>
             </div>
             <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
-              <p>Olá <strong>${emp.name}</strong>,</p>
+              <p>Olá <strong>${escHtml(emp.name)}</strong>,</p>
               <p>O seu código de recuperação é:</p>
               <div style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#4F46E5;margin:16px 0">${code}</div>
               <p style="color:#64748B;font-size:13px">Este código expira em 15 minutos.</p>
@@ -211,6 +211,8 @@ authRouter.post("/auth/reset-password", forgotLimiter, async (req, res) => {
   const hash = await hashPassword(newPassword);
   await query("UPDATE employees SET password_hash = $1 WHERE id = $2", [hash, emp.id]);
   await query("DELETE FROM password_reset_tokens WHERE employee_id = $1", [emp.id]);
+  // A nova senha invalida as sessões existentes (refresh tokens).
+  await query("UPDATE refresh_tokens SET revoked = true WHERE employee_id = $1", [emp.id]);
   res.json({ ok: true });
 });
 
@@ -224,6 +226,8 @@ const demoSchema = z.object({
   phone: z.string().max(50).optional().default(""),
   representative: z.string().min(2).max(200),
 });
+
+const escHtml = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 function generatePassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
@@ -272,14 +276,14 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
               <div style="font-size:13px;opacity:.85">Conta Demonstração</div>
             </div>
             <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
-              <p>Olá <strong>${ownerName}</strong>,</p>
+              <p>Olá <strong>${escHtml(ownerName)}</strong>,</p>
               <p>A sua conta demonstração foi criada com sucesso! Tem <strong>3 dias</strong> para avaliar o sistema.</p>
               <div style="background:#F8FAFC;border-radius:8px;padding:16px;margin:16px 0">
-                <p style="margin:4px 0"><strong>Negócio:</strong> ${businessName}</p>
-                <p style="margin:4px 0"><strong>Email:</strong> ${email}</p>
+                <p style="margin:4px 0"><strong>Negócio:</strong> ${escHtml(businessName)}</p>
+                <p style="margin:4px 0"><strong>Email:</strong> ${escHtml(email)}</p>
                 <p style="margin:4px 0"><strong>Senha:</strong> <code style="background:#E0E7FF;padding:2px 8px;border-radius:4px;font-size:16px;letter-spacing:1px">${password}</code></p>
               </div>
-              <p style="color:#64748B;font-size:13px">Representante: ${representative}</p>
+              <p style="color:#64748B;font-size:13px">Representante: ${escHtml(representative)}</p>
               <p style="color:#64748B;font-size:12px">Após os 3 dias, contacte o seu representante para activar a subscrição.</p>
             </div>
           </div>`,

@@ -24,8 +24,17 @@ export default function DashboardTab({ store, shiftOpen, currentShift }) {
     return () => clearInterval(id);
   }, []);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const vendasHoje = useMemo(() => store.sales.filter((s) => s.status !== "void" && s.date?.slice(0, 10) === today), [store.sales, today]);
+  const today = todayStr();
+  const vendasHoje = useMemo(() => {
+    // dia local (as datas das vendas vêm em UTC/ISO)
+    const inicio = new Date(today + "T00:00:00").getTime();
+    const fim = inicio + 86400000;
+    return store.sales.filter((s) => {
+      if (s.status === "void" || !s.date) return false;
+      const t = new Date(s.date).getTime();
+      return t >= inicio && t < fim;
+    });
+  }, [store.sales, today]);
   const faturacaoHoje = vendasHoje.reduce((a, s) => a + Number(s.total), 0);
 
   const lucroHoje = useMemo(() => {

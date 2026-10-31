@@ -82,11 +82,19 @@ caixaRouter.post("/shortages/:shortageId/pay", requirePermission("caixaAbrirFech
 caixaRouter.post("/loyalty/redeem", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;
   const { clientId, points } = req.body || {};
-  if (!clientId || !points || points <= 0) return res.status(400).json({ error: "Dados inválidos." });
-  const lp = (await query("SELECT * FROM loyalty_points WHERE business_id = $1 AND client_id = $2", [businessId, clientId])).rows[0];
-  if (!lp || Number(lp.points) < points) return res.status(409).json({ error: "Pontos insuficientes." });
-  await query("UPDATE loyalty_points SET points = points - $1, total_redeemed = total_redeemed + $1, updated_at = now() WHERE business_id = $2 AND client_id = $3", [points, businessId, clientId]);
-  await query("INSERT INTO loyalty_history (business_id, client_id, points, tipo, descricao) VALUES ($1,$2,$3,'resgate',$4)", [businessId, clientId, -points, `Resgate de ${points} pontos`]);
+  const pts = Math.floor(Number(points));
+  if (!clientId || !Number.isFinite(pts) || pts <= 0) return res.status(400).json({ error: "Dados inválidos." });
+  // UPDATE condicional e atómico: dois resgates simultâneos não deixam os pontos negativos.
+  const redeemed = await withTransaction(async (client) => {
+    const upd = await client.query(
+      "UPDATE loyalty_points SET points = points - $1, total_redeemed = total_redeemed + $1, updated_at = now() WHERE business_id = $2 AND client_id = $3 AND points >= $1 RETURNING id",
+      [pts, businessId, clientId]
+    );
+    if (!upd.rows.length) return false;
+    await client.query("INSERT INTO loyalty_history (business_id, client_id, points, tipo, descricao) VALUES ($1,$2,$3,'resgate',$4)", [businessId, clientId, -pts, `Resgate de ${pts} pontos`]);
+    return true;
+  });
+  if (!redeemed) return res.status(409).json({ error: "Pontos insuficientes." });
   await respond(res, businessId);
 });
 
@@ -106,6 +114,9 @@ caixaRouter.post("/quebras", requirePermission("quebras"), async (req, res) => {
 
   const product = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [productId, businessId])).rows[0];
   if (!product) return res.status(404).json({ error: "Produto não encontrado." });
+  if (variantId && !(await query("SELECT 1 FROM product_variants WHERE id = $1 AND product_id = $2", [variantId, productId])).rows.length) {
+    return res.status(400).json({ error: "Variação inválida para este produto." });
+  }
   const currentShift = (await query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
   const custoImpacto = Number(product.cost) * qty;
 
@@ -155,7 +166,7 @@ caixaRouter.post("/movimentos", (req, res, next) => requirePermission(req.body &
 
 // Aplica um decremento de stock respeitando variação/composição/lotes — usado por quebras e vendas.
 export async function decrementStock(client, productId, variantId, qty) {
-  const product = (await client.query("SELECT * FROM products WHERE id = $1", [productId])).rows[0];
+  const product = (await client.query("SELECT * FROM products WHERE id = $1 FOR UPDATE", [productId])).rows[0];
   if (!product) return;
 
   if (product.tipo === "variacao" && product.parent_id) {
@@ -174,7 +185,7 @@ export async function decrementStock(client, productId, variantId, qty) {
     await client.query("UPDATE product_variants SET stock = GREATEST(0, stock - $1) WHERE id = $2", [qty, variantId]);
     return;
   }
-  const batches = (await client.query("SELECT * FROM product_batches WHERE product_id = $1 ORDER BY expiry_date ASC NULLS LAST", [productId])).rows;
+  const batches = (await client.query("SELECT * FROM product_batches WHERE product_id = $1 ORDER BY expiry_date ASC NULLS LAST FOR UPDATE", [productId])).rows;
   if (batches.length) {
     let remaining = qty;
     for (const b of batches) {

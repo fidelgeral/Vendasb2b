@@ -199,6 +199,8 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     const handler = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
       const key = e.key;
+      // No ecrã Vender, F2 (finalizar), F3 (pesquisar) e Esc (limpar) são do VenderTab.
+      if (tab === "vender" && (key === "F2" || key === "F3" || key === "Escape")) return;
       if (key === "F1") { e.preventDefault(); setTab("vender"); }
       else if (key === "F2") { e.preventDefault(); setTab("produtos"); }
       else if (key === "F3") { e.preventDefault(); setTab("clientes"); }
@@ -211,7 +213,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [load]);
+  }, [load, tab]);
 
   if (suspended) {
     return (

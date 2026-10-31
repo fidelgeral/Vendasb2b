@@ -405,7 +405,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             ))}
           </div>
           <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-2 mt-2">
-            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} onQuote={gerarCotacao} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} />
+            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} onQuote={gerarCotacao} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} loyalty={store.loyalty} />
           </div>
         </div>
       </div>

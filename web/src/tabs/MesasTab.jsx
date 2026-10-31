@@ -42,22 +42,23 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
     setOpenTableId(null);
   };
 
-  const closeComanda = async ({ total, discount, payments, clientId, ivaTaxa }) => {
+  const closeComanda = async ({ total, discount, payments, clientId, pontosUsados, ivaTaxa }) => {
     if (!shiftOpen) {
       showToast("Abra o caixa antes de fechar contas", "warn");
       return;
     }
     const comanda = comandaOf(openTableId);
-    await finalizeSale({
+    const sale = await finalizeSale({
       items: comanda.items.map((it) => ({ productId: it.productId, name: it.name, qty: it.qty, price: it.price, cost: it.cost })),
       total,
       discount,
       payments,
       clientId,
+      pontosUsados,
       ivaTaxa,
       tableId: openTableId,
     });
-    setOpenTableId(null);
+    if (sale) setOpenTableId(null);
   };
 
   const filtered = store.products.filter((p) => p.active !== false && p.name.toLowerCase().includes(query.toLowerCase()));
@@ -133,6 +134,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
                   paymentMethods={paymentMethods}
                   ivaConfig={store.config.iva}
                   config={store.config}
+                  loyalty={store.loyalty}
                 />
               </div>
             </div>

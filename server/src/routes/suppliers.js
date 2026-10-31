@@ -4,6 +4,7 @@ import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStoreAndCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
+import { requirePermission } from "../permissions.js";
 
 export const suppliersRouter = Router({ mergeParams: true });
 suppliersRouter.use(requireAuth, requireBusiness);
@@ -20,7 +21,7 @@ const supplierSchema = z.object({
   prazo: z.string().optional().default(""),
 });
 
-suppliersRouter.post("/suppliers", async (req, res) => {
+suppliersRouter.post("/suppliers", requirePermission("produtoEditar"), async (req, res) => {
   const parsed = supplierSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados do fornecedor inválidos." });
   const f = parsed.data;
@@ -35,7 +36,7 @@ suppliersRouter.post("/suppliers", async (req, res) => {
   await respond(res, businessId, 201);
 });
 
-suppliersRouter.patch("/suppliers/:id", async (req, res) => {
+suppliersRouter.patch("/suppliers/:id", requirePermission("produtoEditar"), async (req, res) => {
   const parsed = supplierSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados do fornecedor inválidos." });
   const { businessId, id } = req.params;
@@ -54,7 +55,7 @@ suppliersRouter.patch("/suppliers/:id", async (req, res) => {
   await respond(res, businessId);
 });
 
-suppliersRouter.delete("/suppliers/:id", async (req, res) => {
+suppliersRouter.delete("/suppliers/:id", requirePermission("produtoApagar"), async (req, res) => {
   const { businessId, id } = req.params;
   const antes = (await query("SELECT name FROM suppliers WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   await query("DELETE FROM suppliers WHERE id = $1 AND business_id = $2", [id, businessId]);
@@ -70,7 +71,7 @@ const purchaseSchema = z.object({
   expiryDate: z.string().optional().nullable(),
 });
 
-suppliersRouter.post("/purchases", async (req, res) => {
+suppliersRouter.post("/purchases", requirePermission("loteNovo"), async (req, res) => {
   const parsed = purchaseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados da compra inválidos." });
   const { supplierId, productId, qty, cost, expiryDate } = parsed.data;
@@ -78,6 +79,9 @@ suppliersRouter.post("/purchases", async (req, res) => {
 
   const product = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [productId, businessId])).rows[0];
   if (!product) return res.status(404).json({ error: "Produto não encontrado." });
+  if (!(await query("SELECT 1 FROM suppliers WHERE id = $1 AND business_id = $2", [supplierId, businessId])).rows.length) {
+    return res.status(404).json({ error: "Fornecedor não encontrado." });
+  }
 
   const hasBatches = (await query("SELECT 1 FROM product_batches WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;
   const hasVariants = (await query("SELECT 1 FROM product_variants WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;

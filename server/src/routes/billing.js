@@ -135,9 +135,9 @@ superBillingRouter.post("/:id/reactivate", async (req, res) => {
 // Confirmar um comprovativo: marca como confirmado, reactiva a conta e empurra a
 // data de vencimento 30 dias para a frente.
 superBillingRouter.post("/submissions/:subId/confirm", async (req, res) => {
-  const sub = (await query("SELECT business_id FROM payment_submissions WHERE id = $1 AND status = 'pendente'", [req.params.subId])).rows[0];
+  // Transição atómica pendente -> confirmado: um duplo clique não soma 30 dias duas vezes.
+  const sub = (await query("UPDATE payment_submissions SET status = 'confirmado', reviewed_at = now() WHERE id = $1 AND status = 'pendente' RETURNING business_id", [req.params.subId])).rows[0];
   if (!sub) return res.status(404).json({ error: "Comprovativo não encontrado ou já tratado." });
-  await query("UPDATE payment_submissions SET status = 'confirmado', reviewed_at = now() WHERE id = $1", [req.params.subId]);
   await query(
     `UPDATE businesses
      SET subscription_status = 'ativo',
@@ -196,9 +196,8 @@ superBillingRouter.get("/proofs", async (req, res) => {
 });
 
 superBillingRouter.post("/proofs/:id/confirm", async (req, res) => {
-  const proof = (await query("SELECT business_id FROM payment_proofs WHERE id = $1 AND status = 'pendente'", [req.params.id])).rows[0];
+  const proof = (await query("UPDATE payment_proofs SET status = 'confirmado', reviewed_at = now() WHERE id = $1 AND status = 'pendente' RETURNING business_id", [req.params.id])).rows[0];
   if (!proof) return res.status(404).json({ error: "Comprovativo não encontrado ou já tratado." });
-  await query("UPDATE payment_proofs SET status = 'confirmado', reviewed_at = now() WHERE id = $1", [req.params.id]);
   await query(
     `UPDATE businesses
      SET subscription_status = 'ativo',

@@ -2,11 +2,18 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const fmtMT = (n) => new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 0 }).format(Math.round(n || 0)) + " MT";
 
-export const todayStr = () => new Date().toISOString().slice(0, 10);
+// Data de hoje no fuso LOCAL (toISOString daria o dia UTC e, em Moçambique (UTC+2),
+// o dia errado entre as 00:00 e as 02:00).
+export const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export const daysUntil = (dateStr) => {
   if (!dateStr) return 999;
-  const diff = new Date(dateStr + "T00:00:00") - new Date(todayStr() + "T00:00:00");
+  // expiryDate/vencimento chegam da API como ISO completo ("2026-11-05T00:00:00.000Z"):
+  // usar só a parte YYYY-MM-DD, senão "…ZT00:00:00" dá Invalid Date (NaN).
+  const diff = new Date(String(dateStr).slice(0, 10) + "T00:00:00") - new Date(todayStr() + "T00:00:00");
   return Math.round(diff / 86400000);
 };
 

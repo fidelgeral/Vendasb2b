@@ -576,7 +576,7 @@ export function CategoriasModal({ categories, onAdd, onRemove, onRename, onClose
 }
 
 // ================= Checkout partilhado =================
-export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, onQuote, mesas = null, onGuardarMesa, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config }) {
+export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount, onConfirm, onPark, onAddClient, onQuote, mesas = null, onGuardarMesa, label = "Total", guardarLabel = "Guardar venda", paymentMethods, ivaConfig, config, loyalty }) {
   const [discount, setDiscount] = useState(0);
   const [clientId, setClientId] = useState("");
   const [recebido, setRecebido] = useState("");
@@ -601,7 +601,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const [ncBusy, setNcBusy] = useState(false);
 
   const cliente = clients.find((c) => c.id === clientId);
-  const valorPorPonto = (config && config.valorPorPonto) || 1;
+  const valorPorPonto = loyalty && loyalty.enabled ? Number(loyalty.mtPerPoint) || 0 : 0;
   const pontosDisponiveis = cliente ? cliente.points || 0 : 0;
   const subtotal = items.reduce((s, l) => s + l.price * l.qty, 0);
   const serviceCharge = subtotal * (extraChargePct / 100);
@@ -744,7 +744,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
         </div>
       )}
 
-      {cliente && pontosDisponiveis > 0 && (
+      {cliente && pontosDisponiveis > 0 && valorPorPonto > 0 && (
         <label className="flex items-center gap-2 text-xs mb-2" style={{ color: TEAL }}>
           <input type="checkbox" checked={usarPontos} onChange={(e) => setUsarPontos(e.target.checked)} />
           Usar {pontosDisponiveis} pontos ({fmtMT(pontosDisponiveis * valorPorPonto)} de desconto)

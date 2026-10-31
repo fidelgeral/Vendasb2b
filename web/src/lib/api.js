@@ -57,7 +57,9 @@ async function request(method, path, body, retried = false) {
       const isLogin = path === "/api/auth/login" || path === "/api/super/login";
       const refreshed = !retried && !isLogin && (await tryRefresh());
       if (refreshed) return request(method, path, body, true);
-      clearSession();
+      // Um 401 num pedido de login (ex.: senha errada na troca de utilizador)
+      // não pode apagar a sessão que já está activa.
+      if (!isLogin) clearSession();
     }
     throw new ApiError((data && data.error) || `Erro (${res.status})`, res.status);
   }

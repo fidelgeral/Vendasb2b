@@ -32,7 +32,7 @@ async function getProduct(client, productId, businessId) {
 async function getLote(client, loteId, businessId) {
   return (
     await client.query(
-      "SELECT b.* FROM product_batches b JOIN products p ON p.id = b.product_id WHERE b.id = $1 AND p.business_id = $2",
+      "SELECT b.* FROM product_batches b JOIN products p ON p.id = b.product_id WHERE b.id = $1 AND p.business_id = $2 FOR UPDATE OF b",
       [loteId, businessId]
     )
   ).rows[0];
@@ -169,6 +169,7 @@ lotesRouter.patch(
       const costTotal = b.costTotal != null ? Number(b.costTotal) : Number(lote.cost_total);
       const supplierId = b.supplierId !== undefined ? b.supplierId || null : lote.supplier_id;
       const novaQty = b.qty != null ? Number(b.qty) : Number(lote.qty);
+      if (!Number.isFinite(novaQty) || novaQty < 0 || !Number.isFinite(costTotal) || costTotal < 0) throw httpErr(400, "Quantidade ou custo inválido.");
       await client.query(
         "UPDATE product_batches SET name = $1, expiry_date = $2, cost_total = $3, supplier_id = $4, qty = $5 WHERE id = $6",
         [name, expiry, costTotal, supplierId, novaQty, lote.id]

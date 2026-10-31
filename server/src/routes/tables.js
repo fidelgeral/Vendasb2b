@@ -28,7 +28,7 @@ tablesRouter.patch("/tables/:id", requirePermission("guardarPedido"), async (req
 
 tablesRouter.delete("/tables/:id", requirePermission("guardarPedido"), async (req, res) => {
   const { businessId, id } = req.params;
-  const occupied = (await query("SELECT 1 FROM comandas WHERE table_id = $1", [id])).rows.length > 0;
+  const occupied = (await query("SELECT 1 FROM comandas WHERE table_id = $1 AND business_id = $2", [id, businessId])).rows.length > 0;
   if (occupied) return res.status(409).json({ error: "Mesa ocupada, não pode ser removida." });
   await query("DELETE FROM tables WHERE id = $1 AND business_id = $2", [id, businessId]);
   await respond(res, businessId);
@@ -38,6 +38,9 @@ const comandaItemSchema = z.object({ productId: z.string().uuid(), name: z.strin
 
 tablesRouter.post("/tables/:tableId/comanda/open", requirePermission("guardarPedido"), async (req, res) => {
   const { businessId, tableId } = req.params;
+  if (!(await query("SELECT 1 FROM tables WHERE id = $1 AND business_id = $2", [tableId, businessId])).rows.length) {
+    return res.status(404).json({ error: "Mesa não encontrada." });
+  }
   const existing = (await query("SELECT id FROM comandas WHERE table_id = $1", [tableId])).rows[0];
   if (!existing) {
     await query("INSERT INTO comandas (business_id, table_id, items, service_charge_pct) VALUES ($1,$2,'[]'::jsonb,10)", [businessId, tableId]);

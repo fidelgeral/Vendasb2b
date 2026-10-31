@@ -51,6 +51,26 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   if (!shift) return res.status(409).json({ error: "Abra o caixa antes de vender." });
 
   const fiadoAmount = f.payments.filter((p) => p.method === "fiado").reduce((s, p) => s + p.amount, 0);
+  if (fiadoAmount > 0 && !f.clientId) return res.status(400).json({ error: "Venda a fiado exige um cliente." });
+
+  // Tudo o que a venda referencia (produtos, variantes, cliente, mesa) tem de
+  // pertencer a ESTE negócio — senão seria possível mexer no stock/clientes de outro.
+  const prodIds = [...new Set(f.items.map((i) => i.productId))];
+  const prodOk = (await query("SELECT id FROM products WHERE business_id = $1 AND id = ANY($2::uuid[])", [businessId, prodIds])).rows.length;
+  if (prodOk !== prodIds.length) return res.status(400).json({ error: "Produto inválido para este negócio." });
+  const varIds = [...new Set(f.items.map((i) => i.variantId).filter(Boolean))];
+  if (varIds.length) {
+    const varOk = (
+      await query("SELECT v.id FROM product_variants v JOIN products p ON p.id = v.product_id WHERE p.business_id = $1 AND v.id = ANY($2::uuid[])", [businessId, varIds])
+    ).rows.length;
+    if (varOk !== varIds.length) return res.status(400).json({ error: "Variação inválida para este negócio." });
+  }
+  if (f.clientId && !(await query("SELECT 1 FROM clients WHERE id = $1 AND business_id = $2", [f.clientId, businessId])).rows.length) {
+    return res.status(400).json({ error: "Cliente inválido para este negócio." });
+  }
+  if (f.tableId && !(await query("SELECT 1 FROM tables WHERE id = $1 AND business_id = $2", [f.tableId, businessId])).rows.length) {
+    return res.status(400).json({ error: "Mesa inválida para este negócio." });
+  }
 
   let duplicate = false;
   const sale = await withTransaction(async (client) => {
@@ -111,7 +131,7 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
       }
     }
     if (f.tableId) {
-      await client.query("DELETE FROM comandas WHERE table_id = $1", [f.tableId]);
+      await client.query("DELETE FROM comandas WHERE table_id = $1 AND business_id = $2", [f.tableId, businessId]);
     }
     await client.query("UPDATE businesses SET config = jsonb_set(config, '{docSeries}', $1::jsonb) WHERE id = $2", [
       JSON.stringify(doc.nextSeries), businessId,
@@ -148,7 +168,9 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   }
 });
 
-salesRouter.post("/sales/:id/email-receipt", async (req, res) => {
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+salesRouter.post("/sales/:id/email-receipt", requirePermission("vender"), async (req, res) => {
   const { businessId, id } = req.params;
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: "Email obrigatório." });
@@ -159,13 +181,13 @@ salesRouter.post("/sales/:id/email-receipt", async (req, res) => {
   const items = (await query("SELECT * FROM sale_items WHERE sale_id = $1", [id])).rows;
   const biz = (await query("SELECT name, config FROM businesses WHERE id = $1", [businessId])).rows[0];
   const emp = (biz.config || {}).empresa || {};
-  const empresaNome = emp.nome || biz.name || "Loja";
+  const empresaNome = esc(emp.nome || biz.name || "Loja");
 
-  const linhasHtml = items.map((it) => `<tr><td style="padding:4px 8px">${it.name_snapshot}</td><td style="padding:4px 8px;text-align:right">${it.qty}</td><td style="padding:4px 8px;text-align:right">${Number(it.price).toFixed(2)} MT</td><td style="padding:4px 8px;text-align:right">${(Number(it.price) * Number(it.qty)).toFixed(2)} MT</td></tr>`).join("");
+  const linhasHtml = items.map((it) => `<tr><td style="padding:4px 8px">${esc(it.name_snapshot)}</td><td style="padding:4px 8px;text-align:right">${it.qty}</td><td style="padding:4px 8px;text-align:right">${Number(it.price).toFixed(2)} MT</td><td style="padding:4px 8px;text-align:right">${(Number(it.price) * Number(it.qty)).toFixed(2)} MT</td></tr>`).join("");
 
   const html = `<div style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:20px">
     <h2 style="color:#4F46E5">${empresaNome}</h2>
-    ${emp.endereco ? `<p style="color:#666;font-size:12px">${emp.endereco}${emp.contacto ? " · Tel: " + emp.contacto : ""}${emp.nuit ? " · NUIT: " + emp.nuit : ""}</p>` : ""}
+    ${emp.endereco ? `<p style="color:#666;font-size:12px">${esc(emp.endereco)}${emp.contacto ? " · Tel: " + esc(emp.contacto) : ""}${emp.nuit ? " · NUIT: " + esc(emp.nuit) : ""}</p>` : ""}
     <hr style="border:none;border-top:1px solid #eee"/>
     <p><strong>Documento:</strong> ${sale.numero || "—"}</p>
     <p><strong>Data:</strong> ${new Date(sale.created_at).toLocaleString("pt-PT")}</p>
@@ -175,7 +197,7 @@ salesRouter.post("/sales/:id/email-receipt", async (req, res) => {
     </table>
     <div style="text-align:right;font-size:18px;font-weight:bold;margin:12px 0;color:#4F46E5">TOTAL: ${Number(sale.total).toFixed(2)} MT</div>
     <hr style="border:none;border-top:1px solid #eee"/>
-    <p style="color:#999;font-size:11px;text-align:center">${(biz.config || {}).receiptMessage || "Obrigado pela preferência!"}</p>
+    <p style="color:#999;font-size:11px;text-align:center">${esc((biz.config || {}).receiptMessage || "Obrigado pela preferência!")}</p>
     <p style="color:#bbb;font-size:10px;text-align:center">Processado por VENDASB2B</p>
   </div>`;
 
@@ -183,7 +205,7 @@ salesRouter.post("/sales/:id/email-receipt", async (req, res) => {
     const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-      body: JSON.stringify({ from: process.env.RESEND_FROM || "noreply@vendasb2b.com", to: [email], subject: `Recibo ${sale.numero || ""} — ${empresaNome}`, html }),
+      body: JSON.stringify({ from: process.env.RESEND_FROM || "noreply@vendasb2b.com", to: [email], subject: `Recibo ${sale.numero || ""} — ${emp.nome || biz.name || "Loja"}`, html }),
     });
     if (!resp.ok) return res.status(502).json({ error: "Falha ao enviar email." });
     res.json({ ok: true });
@@ -218,6 +240,21 @@ salesRouter.post("/sales/:id/void", requirePermission("quebras"), async (req, re
       await client.query("UPDATE clients SET points = GREATEST(0, points - $1 + $2) WHERE id = $3", [
         Number(sale.pontos_ganhos || 0), Number(sale.pontos_usados || 0), sale.client_id,
       ]);
+    }
+    // Estorna também os pontos registados na tabela de fidelidade (loyalty_points).
+    if (sale.client_id) {
+      const ganhos = Number(
+        (await client.query("SELECT COALESCE(SUM(points),0) AS p FROM loyalty_history WHERE sale_id = $1 AND tipo = 'ganho'", [id])).rows[0].p
+      );
+      if (ganhos > 0) {
+        await client.query(
+          "UPDATE loyalty_points SET points = GREATEST(0, points - $1), total_earned = GREATEST(0, total_earned - $1), updated_at = now() WHERE business_id = $2 AND client_id = $3",
+          [ganhos, businessId, sale.client_id]
+        );
+        await client.query("INSERT INTO loyalty_history (business_id, client_id, points, tipo, descricao) VALUES ($1,$2,$3,'estorno',$4)", [
+          businessId, sale.client_id, -ganhos, `Cancelamento da venda ${sale.numero || id}`,
+        ]);
+      }
     }
     await client.query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,$4,$5,$6)", [
       businessId, employee.id, employee.name, "CANCELAMENTO", `Venda ${sale.numero || id} — motivo: ${reason || "não indicado"}`, sale.total,

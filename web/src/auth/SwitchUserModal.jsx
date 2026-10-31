@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
-import { auth, setSession } from "../lib/api.js";
+import { auth, setSession, getRefreshToken, setRefreshToken } from "../lib/api.js";
 
 // Troca rápida de utilizador: a pessoa introduz o seu próprio email/senha —
 // substitui o selector de nomes do protótipo original por segurança (evita
@@ -15,9 +15,12 @@ export default function SwitchUserModal({ businessId, onSwitched, onClose }) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    const prevRefresh = getRefreshToken();
     try {
       const res = await auth.login(email.trim(), password);
       if (res.business.id !== businessId) {
+        // auth.login já gravou o refresh token da outra conta: repor o actual.
+        setRefreshToken(prevRefresh);
         setError("Essa conta pertence a outro negócio.");
         setLoading(false);
         return;

@@ -33,7 +33,12 @@ payrollRouter.get("/payroll", async (req, res) => {
 
 payrollRouter.post("/payroll", requirePermission("gerirEquipa"), async (req, res) => {
   const businessId = req.params.businessId;
-  const f = schema.parse(req.body);
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Dados do salário inválidos." });
+  const f = parsed.data;
+  if (!(await query("SELECT 1 FROM employees WHERE id = $1 AND business_id = $2", [f.employeeId, businessId])).rows.length) {
+    return res.status(404).json({ error: "Funcionário não encontrado neste negócio." });
+  }
   const total = f.salarioBase + f.bonus - f.descontos;
   const dup = (await query(
     "SELECT 1 FROM payroll WHERE business_id = $1 AND employee_id = $2 AND mes = $3 AND ano = $4",

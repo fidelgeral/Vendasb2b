@@ -47,8 +47,11 @@ contasRouter.post("/contas-pagar/:id/pagar", requirePermission("caixaSaida"), as
 
   const currentShift = (await query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
 
+  let jaPaga = false;
   await withTransaction(async (client) => {
-    await client.query("UPDATE contas_pagar SET estado = 'paga', paga_em = CURRENT_DATE WHERE id = $1", [id]);
+    // Condicional: dois pedidos simultâneos não registam a saída de caixa duas vezes.
+    const paga = await client.query("UPDATE contas_pagar SET estado = 'paga', paga_em = CURRENT_DATE WHERE id = $1 AND estado = 'aberta' RETURNING id", [id]);
+    if (!paga.rows.length) { jaPaga = true; return; }
     if (currentShift) {
       await client.query(
         "INSERT INTO movimentos_caixa (business_id, shift_id, tipo, categoria, amount, descricao, employee_id) VALUES ($1,$2,'saida',$3,$4,$5,$6)",
@@ -59,6 +62,7 @@ contasRouter.post("/contas-pagar/:id/pagar", requirePermission("caixaSaida"), as
       businessId, employee.id, employee.name, "CONTA PAGA", conta.descricao, Number(conta.valor),
     ]);
   });
+  if (jaPaga) return res.status(404).json({ error: "Conta não encontrada ou já paga." });
 
   await respond(res, businessId);
 });

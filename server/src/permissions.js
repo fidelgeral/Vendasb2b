@@ -25,10 +25,17 @@ export function requirePermission(permId) {
     try {
       if (req.auth?.type === "super") return next();
       if (req.auth?.type !== "employee") return res.status(403).json({ error: "Sem permissão para esta acção." });
+      // O dono/gerente de um grupo acede às filiais (groupBusinessIds, já validado
+      // pelo requireBusiness), por isso o funcionário vive no negócio-base e não
+      // na filial do URL. Funcionários desactivados perdem o acesso de imediato.
       const emp = (
-        await query("SELECT role, permissions FROM employees WHERE id = $1 AND business_id = $2", [req.auth.employeeId, req.params.businessId])
+        await query("SELECT role, permissions, business_id FROM employees WHERE id = $1 AND active = true", [req.auth.employeeId])
       ).rows[0];
       if (!emp) return res.status(403).json({ error: "Sem permissão para esta acção." });
+      const grupo = Array.isArray(req.auth.groupBusinessIds) && req.auth.groupBusinessIds.length ? req.auth.groupBusinessIds : [emp.business_id];
+      if (emp.business_id !== req.params.businessId && !grupo.includes(req.params.businessId)) {
+        return res.status(403).json({ error: "Sem acesso a este negócio." });
+      }
       if (temPermissao(emp.role, emp.permissions, permId)) return next();
       return res.status(403).json({ error: "Não tem permissão para esta acção." });
     } catch (e) {

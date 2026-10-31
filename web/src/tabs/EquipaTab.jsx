@@ -25,7 +25,8 @@ export default function EquipaTab({ store, setStore, api }) {
   const validate = () => {
     if (!form.name.trim()) return "Indique o nome completo.";
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Indique um email válido.";
-    if (!editingId && form.password.length < 4) return "A senha deve ter pelo menos 4 caracteres.";
+    // Mesma regra do servidor (employees.js passwordRule).
+    if ((!editingId || form.password) && (form.password.length < 6 || !/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password))) return "A senha deve ter pelo menos 6 caracteres, com letras e números.";
     const dup = store.employees.find((e) => e.email && e.email.toLowerCase() === form.email.trim().toLowerCase() && e.id !== editingId);
     if (dup) return "Já existe uma conta com esse email.";
     return "";

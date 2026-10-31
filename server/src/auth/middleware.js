@@ -37,7 +37,16 @@ export function requireBusiness(req, res, next) {
 // Bloqueia o negócio quando a assinatura está suspensa (devolve 402 para o
 // frontend mostrar o ecrã "conta suspensa"). O super-admin nunca é bloqueado.
 export async function requireActiveSubscription(req, res, next) {
-  if (req.auth?.type === "super") return next();
+  // Este middleware corre ANTES do requireAuth dos routers, logo req.auth ainda
+  // não existe: descodifica aqui o token para o super-admin nunca ser bloqueado.
+  let auth = req.auth;
+  if (!auth) {
+    const h = req.headers.authorization || "";
+    if (h.startsWith("Bearer ")) {
+      try { auth = verifyToken(h.slice(7)); } catch { /* token inválido: o requireAuth do router trata */ }
+    }
+  }
+  if (auth?.type === "super") return next();
   try {
     const biz = (await query("SELECT subscription_status FROM businesses WHERE id = $1", [req.params.businessId])).rows[0];
     if (biz && biz.subscription_status === "suspenso") {

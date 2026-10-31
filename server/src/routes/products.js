@@ -86,8 +86,11 @@ productsRouter.post("/transfer-stock", requirePermission("loteNovo"), async (req
 
   const who = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
 
+  try {
   await withTransaction(async (client) => {
-    await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
+    // Débito condicional: duas transferências simultâneas não deixam o stock negativo.
+    const debit = await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id", [qty, productId]);
+    if (!debit.rows.length) throw Object.assign(new Error("Stock insuficiente na filial de origem."), { http: 400 });
     const target = (await client.query("SELECT id FROM products WHERE business_id = $1 AND lower(name) = lower($2) AND tipo = 'simples'", [toBusinessId, prod.name])).rows[0];
     if (target) {
       await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, target.id]);
@@ -115,6 +118,10 @@ productsRouter.post("/transfer-stock", requirePermission("loteNovo"), async (req
       [toBusinessId, who.id, who.name, `${prod.name} × ${qty} recebido de ${fromBiz?.name || "outra filial"}`, Number(prod.cost) * qty]
     );
   });
+  } catch (err) {
+    if (err && err.http) return res.status(err.http).json({ error: err.message });
+    throw err;
+  }
 
   await respond(res, fromId);
 });
@@ -142,6 +149,21 @@ const productSchema = z.object({
   estoqueValidade: z.string().optional().nullable(),
 });
 
+// parentId / ingredientes / fornecedor têm de pertencer ao mesmo negócio (evita
+// ligar produtos de outro negócio e, depois, mexer no stock deles nas vendas).
+async function refsInvalidas(businessId, { parentId, ingredientes, fornecedorId }) {
+  const ids = [...new Set([...(parentId ? [parentId] : []), ...(ingredientes || []).map((i) => i.productId)])];
+  if (ids.length) {
+    const n = (await query("SELECT COUNT(*)::int AS n FROM products WHERE business_id = $1 AND id = ANY($2::uuid[])", [businessId, ids])).rows[0].n;
+    if (n !== ids.length) return "Produto-pai ou ingrediente inválido para este negócio.";
+  }
+  if (fornecedorId) {
+    const n = (await query("SELECT COUNT(*)::int AS n FROM suppliers WHERE business_id = $1 AND id = $2", [businessId, fornecedorId])).rows[0].n;
+    if (!n) return "Fornecedor inválido para este negócio.";
+  }
+  return null;
+}
+
 productsRouter.post("/products", requirePermission("produtoAdicionar"), async (req, res) => {
   const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados do produto inválidos.", details: parsed.error.flatten() });
@@ -150,6 +172,8 @@ productsRouter.post("/products", requirePermission("produtoAdicionar"), async (r
 
   if (f.tipo === "variacao" && !f.parentId) return res.status(400).json({ error: "Escolha o produto-pai." });
   if (f.tipo === "composicao" && f.ingredientes.length === 0) return res.status(400).json({ error: "Adicione ao menos um ingrediente." });
+  const refErr = await refsInvalidas(businessId, f);
+  if (refErr) return res.status(400).json({ error: refErr });
 
   await withTransaction(async (client) => {
     let cost = f.cost;
@@ -228,6 +252,11 @@ productsRouter.patch("/products/:id", requirePermission("produtoEditar"), async 
 
   const existing = (await query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (!existing) return res.status(404).json({ error: "Produto não encontrado." });
+  if (f.parentId === id || (f.ingredientes || []).some((i) => i.productId === id)) {
+    return res.status(400).json({ error: "Um produto não pode depender de si próprio." });
+  }
+  const refErr = await refsInvalidas(businessId, f);
+  if (refErr) return res.status(400).json({ error: refErr });
 
   await withTransaction(async (client) => {
     await client.query(
@@ -422,7 +451,7 @@ productsRouter.post("/categories", requirePermission("categoriaAdicionar"), asyn
 });
 
 // Renomear uma categoria (actualiza também os produtos que a usam).
-productsRouter.patch("/categories/:name", async (req, res) => {
+productsRouter.patch("/categories/:name", requirePermission("produtoEditar"), async (req, res) => {
   const businessId = req.params.businessId;
   const antigo = req.params.name;
   const novo = String(req.body?.name || "").trim();
@@ -437,7 +466,7 @@ productsRouter.patch("/categories/:name", async (req, res) => {
   await respond(res, businessId);
 });
 
-productsRouter.delete("/categories/:name", async (req, res) => {
+productsRouter.delete("/categories/:name", requirePermission("produtoApagar"), async (req, res) => {
   const businessId = req.params.businessId;
   await query("DELETE FROM categories WHERE business_id = $1 AND name = $2", [businessId, req.params.name]);
   await logAudit({ businessId, employee: authEmployee(req), acao: "CATEGORIA", detalhe: `Apagou a categoria "${req.params.name}"`, entityType: "categoria", entityId: req.params.name });

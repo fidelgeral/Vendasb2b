@@ -87,7 +87,10 @@ clientsRouter.post("/clients/:id/pay-debt", requirePermission("fiadoReceber"), a
   const { businessId, id } = req.params;
   const debtId = req.body?.debtId;
   if (!debtId) return res.status(400).json({ error: "Indique a dívida." });
-  await query("DELETE FROM client_debts WHERE id = $1 AND client_id = $2", [debtId, id]);
+  await query(
+    "DELETE FROM client_debts WHERE id = $1 AND client_id = $2 AND client_id IN (SELECT id FROM clients WHERE business_id = $3)",
+    [debtId, id, businessId]
+  );
   await respond(res, businessId);
 });
 
@@ -97,8 +100,10 @@ clientsRouter.post("/clients/:id/pay-partial", requirePermission("fiadoReceber")
   if (remaining <= 0) return res.status(400).json({ error: "Valor inválido." });
 
   await withTransaction(async (client) => {
+    const dono = (await client.query("SELECT 1 FROM clients WHERE id = $1 AND business_id = $2", [id, businessId])).rows.length;
+    if (!dono) return;
     const debts = (
-      await client.query("SELECT * FROM client_debts WHERE client_id = $1 ORDER BY created_at ASC", [id])
+      await client.query("SELECT * FROM client_debts WHERE client_id = $1 ORDER BY created_at ASC FOR UPDATE", [id])
     ).rows;
     for (const d of debts) {
       if (remaining <= 0) break;
