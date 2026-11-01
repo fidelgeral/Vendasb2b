@@ -86,25 +86,14 @@ async function sendViaSMTP(to, subject, html) {
 }
 
 export async function sendEmail(to, subject, html) {
-  // Try Resend first
-  if (process.env.RESEND_API_KEY) {
-    const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
-    try {
-      return await doSendEmail(primary, to, subject, html);
-    } catch (e) {
-      console.error("[email] Resend failed:", e.message);
-      if (primary !== RESEND_FALLBACK) {
-        try { return await doSendEmail(RESEND_FALLBACK, to, subject, html); } catch (e2) {
-          console.error("[email] Resend fallback failed:", e2.message);
-        }
-      }
-    }
-  }
-  // Try SMTP (Nodemailer) as fallback
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     return await sendViaSMTP(to, subject, html);
   }
-  throw new Error("No email provider configured or all providers failed");
+  if (process.env.RESEND_API_KEY) {
+    const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
+    return await doSendEmail(primary, to, subject, html);
+  }
+  throw new Error("No email provider configured");
 }
 
 export const PLANOS = [
