@@ -56,7 +56,7 @@ export const PLANOS = [
   },
   {
     id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499,
-    treinamento: { presencial: 3000, presencialLabel: "3.000 MT/pessoa", online: "Grátis" },
+    treinamento: { presencial: 3500, presencialLabel: "3.500 MT/pessoa", online: "Grátis" },
     recursos: ["Tudo do Básico +", "Até 5 utilizadores", "Relatórios avançados (DRE, Balanço)", "Gestão de clientes e dívidas", "Contas a pagar", "Programa de fidelidade", "Cotações e orçamentos", "Exportação PDF e Excel"],
   },
   {
