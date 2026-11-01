@@ -158,13 +158,13 @@ function ResetPasswordModal({ email: initialEmail, onClose }) {
 }
 
 const PLANOS_UI = [
-  { id: "starter", nome: "Starter", valor: 1500, desc: "Até 2 utilizadores" },
-  { id: "profissional", nome: "Profissional", valor: 3500, desc: "Até 5 utilizadores + relatórios" },
-  { id: "empresarial", nome: "Empresarial", valor: 7000, desc: "Ilimitado + multi-filial" },
+  { id: "basico", nome: "Básico", mensal: 1199, anual: 10000, treino: "Presencial: 2.500 MT/pessoa · Online: grátis" },
+  { id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499, treino: "Presencial: 3.000 MT/pessoa · Online: grátis" },
+  { id: "vitalicio", nome: "Vitalício", unico: 85000, treino: "Presencial: 10.000 MT (grupo) · Online: grátis" },
 ];
 
 function DemoForm() {
-  const [form, setForm] = useState({ businessName: "", ownerName: "", email: "", phone: "", representative: "", plan: "starter" });
+  const [form, setForm] = useState({ businessName: "", ownerName: "", email: "", phone: "", representative: "", plan: "basico" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -198,7 +198,7 @@ function DemoForm() {
           <div className="text-xs"><strong>Email:</strong> {success.email}</div>
           <div className="text-xs"><strong>Senha:</strong> {success.password}</div>
           <div className="text-xs"><strong>Negócio:</strong> {success.businessName}</div>
-          {selectedPlan && <div className="text-xs"><strong>Plano:</strong> {selectedPlan.nome} — {selectedPlan.valor.toLocaleString("pt-MZ")} MT/mês</div>}
+          {selectedPlan && <div className="text-xs"><strong>Plano:</strong> {selectedPlan.nome} — {selectedPlan.unico ? `${selectedPlan.unico.toLocaleString("pt-MZ")} MT (único)` : `${selectedPlan.mensal.toLocaleString("pt-MZ")} MT/mês`}</div>}
         </div>
         <div className="text-xs" style={{ color: MUTED }}>Enviámos os dados e instruções de pagamento para o seu email.</div>
       </div>
@@ -237,8 +237,8 @@ function DemoForm() {
             <label key={p.id} onClick={() => setForm({ ...form, plan: p.id })} style={{ borderColor: form.plan === p.id ? "#4F46E5" : BORDER, background: form.plan === p.id ? "#EEF2FF" : "#fff", cursor: "pointer" }} className="flex items-center gap-2 border rounded-lg px-3 py-2 transition-all">
               <input type="radio" name="plan" value={p.id} checked={form.plan === p.id} onChange={() => setForm({ ...form, plan: p.id })} className="accent-indigo-600" />
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold" style={{ color: INK }}>{p.nome} <span style={{ color: "#4F46E5" }}>— {p.valor.toLocaleString("pt-MZ")} MT/mês</span></div>
-                <div className="text-xs" style={{ color: MUTED }}>{p.desc}</div>
+                <div className="text-xs font-bold" style={{ color: INK }}>{p.nome} <span style={{ color: "#4F46E5" }}>— {p.unico ? `${p.unico.toLocaleString("pt-MZ")} MT (único)` : `${p.mensal.toLocaleString("pt-MZ")} MT/mês · ${p.anual.toLocaleString("pt-MZ")} MT/ano`}</span></div>
+                <div className="text-xs" style={{ color: MUTED }}>{p.treino}</div>
               </div>
             </label>
           ))}

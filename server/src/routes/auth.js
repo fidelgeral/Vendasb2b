@@ -222,7 +222,7 @@ const demoSchema = z.object({
   email: z.string().email(),
   phone: z.string().max(50).optional().default(""),
   representative: z.string().min(2).max(200),
-  plan: z.enum(["starter", "profissional", "empresarial"]).optional().default("starter"),
+  plan: z.enum(["basico", "profissional", "vitalicio"]).optional().default("basico"),
 });
 
 function generatePassword() {

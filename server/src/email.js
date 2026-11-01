@@ -49,9 +49,9 @@ export async function sendEmail(to, subject, html) {
 }
 
 export const PLANOS = [
-  { id: "starter", nome: "Starter", valor: 1500, desc: "Ideal para pequenos negócios — até 2 utilizadores" },
-  { id: "profissional", nome: "Profissional", valor: 3500, desc: "Para negócios em crescimento — até 5 utilizadores + relatórios avançados" },
-  { id: "empresarial", nome: "Empresarial", valor: 7000, desc: "Para médias empresas — utilizadores ilimitados + multi-filial + suporte prioritário" },
+  { id: "basico", nome: "Básico", mensal: 1199, anual: 10000, treino: "Presencial: 2.500 MT/pessoa · Online: grátis" },
+  { id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499, treino: "Presencial: 3.000 MT/pessoa · Online: grátis" },
+  { id: "vitalicio", nome: "Vitalício", mensal: null, anual: null, unico: 85000, treino: "Presencial: 10.000 MT (grupo) · Online: grátis" },
 ];
 
 function fmt(n) { return new Intl.NumberFormat("pt-MZ").format(n); }
@@ -87,13 +87,19 @@ function vantagensHtml() {
 </div>`;
 }
 
-function pagamentoHtml(planNome, planValor) {
+function precoHtml(plano) {
+  if (plano.unico) return `<strong>${fmt(plano.unico)} MT</strong> (pagamento único — vitalício)`;
+  return `<strong>${fmt(plano.mensal)} MT/mês</strong> ou <strong>${fmt(plano.anual)} MT/ano</strong>`;
+}
+
+function pagamentoHtml(plano) {
   const whatsLink = "https://wa.me/258861132245";
   return `<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:18px;margin:20px 0">
-  <div style="font-size:14px;font-weight:bold;color:#92400E;margin-bottom:8px">💳 Como pagar a sua mensalidade</div>
+  <div style="font-size:14px;font-weight:bold;color:#92400E;margin-bottom:8px">💳 Como pagar</div>
   <div style="font-size:13px;color:#78350F;line-height:1.6">
-    <p style="margin:0 0 8px"><strong>Plano escolhido:</strong> ${esc(planNome)} — <strong>${fmt(planValor)} MT/mês</strong></p>
-    <p style="margin:0 0 6px">Faça a transferência por:</p>
+    <p style="margin:0 0 8px"><strong>Plano:</strong> ${esc(plano.nome)} — ${precoHtml(plano)}</p>
+    <p style="margin:0 0 4px"><strong>Treinamento:</strong> ${esc(plano.treino)}</p>
+    <p style="margin:8px 0 6px">Faça a transferência por:</p>
     <div style="background:#FFF;border-radius:6px;padding:10px;margin:6px 0">
       <p style="margin:2px 0"><strong>📲 M-Pesa:</strong> <code style="background:#E0E7FF;padding:2px 6px;border-radius:3px;font-size:14px">845508667</code></p>
       <p style="margin:2px 0"><strong>📲 E-Mola:</strong> <code style="background:#E0E7FF;padding:2px 6px;border-radius:3px;font-size:14px">861132245</code></p>
@@ -112,7 +118,7 @@ function pagamentoHtml(planNome, planValor) {
 }
 
 export function welcomeBusinessEmail({ ownerName, businessName, email, password, plan, monthlyFee }) {
-  const plano = PLANOS.find((p) => p.id === plan) || { nome: plan || "Básico", valor: monthlyFee || 0 };
+  const plano = PLANOS.find((p) => p.id === plan) || PLANOS[0];
   const appUrl = process.env.APP_URL || "https://vendasb2b.vercel.app";
   return emailWrapper(`
     <p style="font-size:15px;color:#1E293B">Olá <strong>${esc(ownerName)}</strong>,</p>
@@ -130,12 +136,13 @@ export function welcomeBusinessEmail({ ownerName, businessName, email, password,
       <div style="font-size:14px;font-weight:bold;color:#059669;margin-bottom:8px">📋 O seu plano</div>
       <table style="font-size:13px;color:#374151">
         <tr><td style="padding:3px 0"><strong>Plano:</strong></td><td style="padding:3px 8px">${esc(plano.nome)}</td></tr>
-        <tr><td style="padding:3px 0"><strong>Valor:</strong></td><td style="padding:3px 8px"><strong>${fmt(plano.valor)} MT/mês</strong></td></tr>
+        <tr><td style="padding:3px 0"><strong>Valor:</strong></td><td style="padding:3px 8px">${precoHtml(plano)}</td></tr>
+        <tr><td style="padding:3px 0"><strong>Treinamento:</strong></td><td style="padding:3px 8px">${esc(plano.treino)}</td></tr>
       </table>
     </div>
 
     ${vantagensHtml()}
-    ${pagamentoHtml(plano.nome, plano.valor)}
+    ${pagamentoHtml(plano)}
 
     <div style="text-align:center;margin:24px 0">
       <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;text-decoration:none;padding:14px 40px;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 12px rgba(79,70,229,0.3)">Aceder ao VENDASB2B →</a>
@@ -167,11 +174,11 @@ export function demoBizEmail({ ownerName, businessName, email, password, represe
       <div style="font-size:14px;font-weight:bold;color:#92400E;margin-bottom:8px">⏰ Período de teste: 3 dias</div>
       <p style="font-size:13px;color:#78350F;margin:0 0 8px">Aproveite para testar todas as funcionalidades sem compromisso. Após o período de teste, escolha o plano ideal para o seu negócio:</p>
       <table style="width:100%;font-size:12px;border-collapse:collapse;color:#374151">
-        ${PLANOS.map((p) => `<tr style="border-bottom:1px solid #FDE68A"><td style="padding:6px 0;font-weight:bold">${esc(p.nome)}</td><td style="padding:6px 4px;text-align:right;white-space:nowrap"><strong>${fmt(p.valor)} MT/mês</strong></td><td style="padding:6px 0 6px 8px;color:#78350F">${esc(p.desc)}</td></tr>`).join("")}
+        ${PLANOS.map((p) => `<tr style="border-bottom:1px solid #FDE68A"><td style="padding:6px 0;font-weight:bold">${esc(p.nome)}</td><td style="padding:6px 4px;text-align:right;white-space:nowrap">${p.unico ? `<strong>${fmt(p.unico)} MT</strong> (único)` : `<strong>${fmt(p.mensal)} MT/mês</strong> ou ${fmt(p.anual)} MT/ano`}</td><td style="padding:6px 0 6px 8px;color:#78350F">${esc(p.treino)}</td></tr>`).join("")}
       </table>
     </div>
 
-    ${plano ? pagamentoHtml(plano.nome, plano.valor) : `<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:18px;margin:20px 0">
+    ${plano ? pagamentoHtml(plano) : `<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:18px;margin:20px 0">
       <div style="font-size:14px;font-weight:bold;color:#92400E;margin-bottom:8px">💳 Pagamento</div>
       <div style="font-size:13px;color:#78350F;line-height:1.6">
         <p style="margin:0 0 6px">Quando estiver pronto para activar, faça a transferência por:</p>
