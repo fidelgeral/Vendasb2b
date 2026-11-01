@@ -211,12 +211,8 @@ function DemoForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("form"); // "form" → "code" → success
-  const [code, setCode] = useState("");
-  const [countdown, setCountdown] = useState(0);
 
-  // Passo 1: enviar código de verificação
-  const sendCode = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.businessName.trim() || !form.ownerName.trim() || !form.email.trim()) {
       setError("Preencha o nome do negócio, o seu nome e o email.");
@@ -225,42 +221,10 @@ function DemoForm() {
     setLoading(true);
     setError("");
     try {
-      await auth.sendDemoCode(form);
-      setStep("code");
-      setCountdown(60);
-      const timer = setInterval(() => setCountdown((c) => { if (c <= 1) { clearInterval(timer); return 0; } return c - 1; }), 1000);
-    } catch (err) {
-      setError(err.message || "Erro ao enviar código.");
-    }
-    setLoading(false);
-  };
-
-  // Passo 2: confirmar código e criar conta
-  const confirmCode = async (e) => {
-    e.preventDefault();
-    if (!code.trim()) { setError("Introduza o código recebido por email."); return; }
-    setLoading(true);
-    setError("");
-    try {
-      const res = await auth.createDemo({ email: form.email, code: code.trim() });
+      const res = await auth.createDemo(form);
       setSuccess(res);
     } catch (err) {
       setError(err.message || "Erro ao criar conta.");
-    }
-    setLoading(false);
-  };
-
-  // Reenviar código
-  const resend = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      await auth.sendDemoCode(form);
-      setCountdown(60);
-      const timer = setInterval(() => setCountdown((c) => { if (c <= 1) { clearInterval(timer); return 0; } return c - 1; }), 1000);
-      setError("");
-    } catch (err) {
-      setError(err.message || "Erro ao reenviar código.");
     }
     setLoading(false);
   };
@@ -287,39 +251,8 @@ function DemoForm() {
     );
   }
 
-  if (step === "code") {
-    return (
-      <form onSubmit={confirmCode} className="space-y-3">
-        <div className="text-center">
-          <div className="text-3xl mb-2">📧</div>
-          <div className="text-sm font-bold" style={{ color: INK }}>Verifique o seu email</div>
-          <div className="text-xs mt-1" style={{ color: MUTED }}>
-            Enviámos um código de 6 dígitos para <strong>{form.email}</strong>
-          </div>
-        </div>
-        <div>
-          <label className="text-xs" style={{ color: MUTED }}>Código de verificação</label>
-          <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            style={{ borderColor: BORDER, fontSize: 24, letterSpacing: 8, textAlign: "center" }}
-            className="w-full border rounded-lg px-2.5 py-3 mt-1 font-bold" placeholder="000000" maxLength={6} autoFocus />
-        </div>
-        {error && <div className="text-xs" style={{ color: BRICK }}>{error}</div>}
-        <button type="submit" disabled={loading || code.length < 6} style={{ background: GRADIENT, color: "#fff", boxShadow: "0 6px 16px rgba(79,70,229,0.35)" }} className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
-          {loading ? "A verificar…" : "Confirmar e criar conta"}
-        </button>
-        <div className="flex items-center justify-between text-xs" style={{ color: MUTED }}>
-          <button type="button" onClick={() => { setStep("form"); setCode(""); setError(""); }} className="underline">← Voltar</button>
-          {countdown > 0
-            ? <span>Reenviar em {countdown}s</span>
-            : <button type="button" onClick={resend} disabled={loading} className="underline">Reenviar código</button>
-          }
-        </div>
-      </form>
-    );
-  }
-
   return (
-    <form onSubmit={sendCode} className="space-y-2.5">
+    <form onSubmit={submit} className="space-y-2.5">
       <div className="text-xs text-center mb-2" style={{ color: MUTED }}>
         Crie uma conta gratuita por 3 dias para avaliar o sistema.
       </div>
@@ -375,7 +308,7 @@ function DemoForm() {
       </div>
       {error && <div className="text-xs" style={{ color: BRICK }}>{error}</div>}
       <button type="submit" disabled={loading} style={{ background: GRADIENT, color: "#fff", boxShadow: "0 6px 16px rgba(79,70,229,0.35)" }} className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
-        {loading ? "A verificar email…" : "Enviar código de verificação"}
+        {loading ? "A criar conta…" : "Criar conta demonstração"}
       </button>
       <div className="text-xs text-center" style={{ color: MUTED }}>
         Pagamento: M-Pesa (845508667) ou E-Mola (861132245)
