@@ -14,6 +14,8 @@ cronRouter.use((req, res, next) => {
   next();
 });
 
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 async function sendEmail(to, subject, html) {
   if (!process.env.RESEND_API_KEY) return { skipped: true };
   const res = await fetch("https://api.resend.com/emails", {
@@ -86,7 +88,7 @@ cronRouter.post("/daily-summary", async (req, res) => {
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
         <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED,#DB2777);color:#fff;padding:16px;border-radius:12px 12px 0 0">
           <div style="font-size:12px;opacity:.85">VENDASB2B · resumo do dia</div>
-          <div style="font-size:20px;font-weight:bold">${nome}</div>
+          <div style="font-size:20px;font-weight:bold">${esc(nome)}</div>
           <div style="font-size:12px;opacity:.85">${hoje}</div>
         </div>
         <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:16px">
@@ -94,7 +96,7 @@ cronRouter.post("/daily-summary", async (req, res) => {
             <tr><td style="padding:6px 0">Nº de vendas</td><td style="text-align:right;font-weight:bold">${vendas.length}</td></tr>
             <tr><td style="padding:6px 0">Facturação</td><td style="text-align:right;font-weight:bold;color:#4F46E5">${fmt(faturacao)}</td></tr>
             <tr><td style="padding:6px 0">Lucro estimado</td><td style="text-align:right;font-weight:bold;color:#059669">${fmt(lucro)}</td></tr>
-            <tr><td style="padding:6px 0">Produto mais vendido</td><td style="text-align:right">${top ? top[0] + " (" + top[1] + ")" : "—"}</td></tr>
+            <tr><td style="padding:6px 0">Produto mais vendido</td><td style="text-align:right">${top ? esc(top[0]) + " (" + top[1] + ")" : "—"}</td></tr>
             <tr><td style="padding:6px 0">Dívidas de clientes (total)</td><td style="text-align:right">${fmt(dividas)}</td></tr>
           </table>
           <div style="color:#64748B;font-size:11px;margin-top:12px">Resumo automático enviado pelo VENDASB2B.</div>
@@ -170,13 +172,13 @@ cronRouter.post("/periodic-report", async (req, res) => {
     const fmt = (n) => new Intl.NumberFormat("pt-MZ").format(Math.round(n)) + " MT";
     const nome = biz.config?.businessName || biz.name;
     const hoje = new Date().toLocaleDateString("pt-PT");
-    const topHtml = topProds.map(([n, q]) => `<tr><td style="padding:4px 0;border-bottom:1px solid #F3F4F6">${n}</td><td style="text-align:right;border-bottom:1px solid #F3F4F6">${q}</td></tr>`).join("");
+    const topHtml = topProds.map(([n, q]) => `<tr><td style="padding:4px 0;border-bottom:1px solid #F3F4F6">${esc(n)}</td><td style="text-align:right;border-bottom:1px solid #F3F4F6">${q}</td></tr>`).join("");
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
         <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED,#DB2777);color:#fff;padding:16px;border-radius:12px 12px 0 0">
           <div style="font-size:12px;opacity:.85">VENDASB2B · ${labelPeriodo}</div>
-          <div style="font-size:20px;font-weight:bold">${nome}</div>
+          <div style="font-size:20px;font-weight:bold">${esc(nome)}</div>
           <div style="font-size:12px;opacity:.85">${hoje} — últimos ${dias} dias</div>
         </div>
         <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:16px">

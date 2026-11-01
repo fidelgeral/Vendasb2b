@@ -129,6 +129,11 @@ authRouter.post("/auth/refresh", async (req, res) => {
      WHERE e.id = $1 AND e.active = true`, [rt.employee_id]
   )).rows[0];
   if (!emp || !emp.business_active) return res.status(401).json({ error: "Conta inactiva." });
+  // Conta demonstração expirada não pode continuar a renovar a sessão (o login já o bloqueia).
+  const demoBiz = (await query("SELECT is_demo, demo_expires_at FROM businesses WHERE id = $1", [emp.business_id])).rows[0];
+  if (demoBiz && demoBiz.is_demo && demoBiz.demo_expires_at && new Date(demoBiz.demo_expires_at) < new Date()) {
+    return res.status(401).json({ error: "Conta demonstração expirada." });
+  }
 
   let filiais = [{ id: emp.business_id, name: emp.business_name }];
   if (emp.role === "dono" || emp.role === "gerente") {

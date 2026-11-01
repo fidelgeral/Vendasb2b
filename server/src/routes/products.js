@@ -422,7 +422,7 @@ productsRouter.post("/products/bulk-import", requirePermission("produtoAdicionar
         }
         // eslint-disable-next-line no-await-in-loop
         await client.query(
-          "UPDATE products SET price = COALESCE(NULLIF($1,0), price), cost = COALESCE(NULLIF($2,0), cost), stock = stock + $3 WHERE id = $4",
+          "UPDATE products SET price = COALESCE(NULLIF($1::numeric,0), price), cost = COALESCE(NULLIF($2::numeric,0), cost), stock = stock + $3::numeric WHERE id = $4",
           [Number(row.price) || 0, Number(row.cost) || 0, Number(row.stock) || 0, existing.id]
         );
         updated++;

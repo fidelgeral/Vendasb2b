@@ -13,10 +13,16 @@ const respond = async (res, businessId, status = 200) => res.status(status).json
 caixaRouter.post("/shifts/open", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;
   const openingCash = Number(req.body?.openingCash) || 0;
-  const open = (await query("SELECT 1 FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows.length;
-  if (open) return res.status(409).json({ error: "Já existe um turno aberto." });
   const employeeId = req.auth.type === "employee" ? req.auth.employeeId : null;
-  await query("INSERT INTO shifts (business_id, opened_by, opening_cash) VALUES ($1,$2,$3)", [businessId, employeeId, openingCash]);
+  // Bloqueia a linha do negócio: dois pedidos simultâneos não abrem dois turnos.
+  const jaAberto = await withTransaction(async (client) => {
+    await client.query("SELECT 1 FROM businesses WHERE id = $1 FOR UPDATE", [businessId]);
+    const open = (await client.query("SELECT 1 FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows.length;
+    if (open) return true;
+    await client.query("INSERT INTO shifts (business_id, opened_by, opening_cash) VALUES ($1,$2,$3)", [businessId, employeeId, openingCash]);
+    return false;
+  });
+  if (jaAberto) return res.status(409).json({ error: "Já existe um turno aberto." });
   await respond(res, businessId, 201);
 });
 
@@ -45,9 +51,11 @@ caixaRouter.post("/shifts/close", requirePermission("caixaAbrirFechar"), async (
   ).rows[0];
 
   const expected = Number(shift.opening_cash) + Number(cashIn) + Number(movs.entradas) - Number(movs.saidas);
-  await query("UPDATE shifts SET closed_at = now(), closing_cash = $1, expected_cash = $2, closed_by = $3 WHERE id = $4", [
+  // Condicional: dois fechos simultâneos não duplicam a quebra de caixa.
+  const fechado = await query("UPDATE shifts SET closed_at = now(), closing_cash = $1, expected_cash = $2, closed_by = $3 WHERE id = $4 AND closed_at IS NULL RETURNING id", [
     closingCash, expected, employeeId, shift.id,
   ]);
+  if (!fechado.rows.length) return res.status(409).json({ error: "Não há turno aberto." });
 
   const shortage = +(expected - closingCash).toFixed(2);
   if (shortage > 0) {
@@ -72,7 +80,8 @@ caixaRouter.post("/shortages/:shortageId/pay", requirePermission("caixaAbrirFech
   if (!row) return res.status(404).json({ error: "Registo não encontrado." });
   if (row.paid) return res.status(409).json({ error: "Já foi pago." });
 
-  await query("UPDATE cash_shortages SET paid = true, paid_at = now() WHERE id = $1", [shortageId]);
+  const pago = await query("UPDATE cash_shortages SET paid = true, paid_at = now() WHERE id = $1 AND paid = false RETURNING id", [shortageId]);
+  if (!pago.rows.length) return res.status(409).json({ error: "Já foi pago." });
   await query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,$4,$5,$6)", [
     businessId, employeeId, empName, "PAGAMENTO QUEBRA CAIXA", `Operador pagou diferença de ${row.shortage} MT do próprio bolso`, Number(row.shortage),
   ]);

@@ -30,7 +30,13 @@ const quotationSchema = z.object({
 // Numeração simples não-fiscal: COT<ano>/<sequencial>
 async function nextCotacaoNumber(businessId) {
   const ano = new Date().getFullYear();
-  const n = (await query("SELECT COUNT(*)::int AS c FROM quotations WHERE business_id = $1 AND date_part('year', created_at) = $2", [businessId, ano])).rows[0].c;
+  // MAX do sufixo (e não COUNT): apagar uma cotação não pode repetir números já usados.
+  const n = (
+    await query(
+      "SELECT COALESCE(MAX(substring(numero from '/([0-9]+)$')::int), 0) AS c FROM quotations WHERE business_id = $1 AND numero LIKE $2",
+      [businessId, "COT" + ano + "/%"]
+    )
+  ).rows[0].c;
   return "COT" + ano + "/" + String(n + 1).padStart(4, "0");
 }
 
