@@ -52,23 +52,32 @@ export async function hasValidMxRecords(email) {
   }
 }
 
-export async function sendEmail(to, subject, html) {
-  if (!process.env.RESEND_API_KEY) return { skipped: true };
+async function doSendEmail(from, to, subject, html) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-    }),
+    body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html }),
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error("Resend " + res.status + " " + t);
   }
   return { ok: true };
+}
+
+const RESEND_FALLBACK = "VENDASB2B <onboarding@resend.dev>";
+
+export async function sendEmail(to, subject, html) {
+  if (!process.env.RESEND_API_KEY) return { skipped: true };
+  const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
+  try {
+    return await doSendEmail(primary, to, subject, html);
+  } catch (e) {
+    if (primary !== RESEND_FALLBACK) {
+      return await doSendEmail(RESEND_FALLBACK, to, subject, html);
+    }
+    throw e;
+  }
 }
 
 export const PLANOS = [
