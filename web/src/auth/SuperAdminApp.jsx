@@ -317,49 +317,104 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
   );
 }
 
+const ADMIN_PLANOS = [
+  { id: "basico", nome: "Básico", mensal: 1199, anual: 10000 },
+  { id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499 },
+  { id: "vitalicio", nome: "Vitalício", unico: 85000 },
+  { id: "demo", nome: "Demonstração (3 dias)", mensal: 0, anual: 0 },
+];
+
 function BillingControls({ b, onChanged }) {
   const [open, setOpen] = useState(false);
-  const [plan, setPlan] = useState(b.plan || "Gratuito");
-  const [fee, setFee] = useState(b.monthlyFee || 0);
+  const [plan, setPlan] = useState(b.plan || "basico");
+  const [ciclo, setCiclo] = useState("mensal");
   const [due, setDue] = useState(b.nextDueDate ? String(b.nextDueDate).slice(0, 10) : "");
+  const [saving, setSaving] = useState(false);
   const sub = b.subscriptionStatus || "ativo";
   const subColor = sub === "ativo" ? GREEN : sub === "suspenso" ? BRICK : "#F59E0B";
-  const subLabel = sub === "ativo" ? "Assinatura activa" : sub === "suspenso" ? "Assinatura SUSPENSA" : "Pagamento em análise";
+  const subLabel = sub === "ativo" ? "Activa" : sub === "suspenso" ? "SUSPENSA" : "Pendente";
+
+  const selectedPlan = ADMIN_PLANOS.find((p) => p.id === plan) || ADMIN_PLANOS[0];
+  const fee = selectedPlan.unico ? selectedPlan.unico : (ciclo === "anual" ? selectedPlan.anual : selectedPlan.mensal);
 
   const save = async () => {
-    await superApi.setPlan(b.id, { plan, monthlyFee: Number(fee) || 0, nextDueDate: due || null });
+    setSaving(true);
+    const planLabel = selectedPlan.unico ? selectedPlan.nome : `${selectedPlan.nome} (${ciclo})`;
+    await superApi.setPlan(b.id, { plan: planLabel, monthlyFee: fee || 0, nextDueDate: due || null });
     setOpen(false);
+    setSaving(false);
     onChanged();
   };
 
+  const fmtMt = (v) => v ? Number(v).toLocaleString("pt-MZ") + " MT" : "—";
+
   return (
-    <div className="mt-2 pt-2 flex items-center justify-between gap-2 flex-wrap text-xs" style={{ borderTop: "1px solid " + BORDER }}>
-      <span style={{ color: subColor }} className="font-semibold">
-        {subLabel} · {b.plan || "Gratuito"}{b.monthlyFee > 0 ? ` · ${b.monthlyFee} MT/mês` : ""}
-        {b.nextDueDate ? ` · vence ${new Date(b.nextDueDate).toLocaleDateString("pt-PT")}` : ""}
-      </span>
-      <span className="flex gap-2 items-center">
-        <button onClick={() => setOpen((o) => !o)} style={{ color: TEAL }} className="font-semibold">
-          {open ? "Fechar" : "Definir plano"}
-        </button>
-        {sub === "suspenso" ? (
-          <button onClick={async () => { await superApi.reactivate(b.id); onChanged(); }} style={{ color: GREEN }} className="font-semibold">
-            Reactivar cobrança
+    <div className="mt-2 pt-2 text-xs" style={{ borderTop: "1px solid " + BORDER }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span>
+          <span style={{ background: subColor + "22", color: subColor, padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>{subLabel}</span>
+          <span className="ml-2">{b.plan || "Sem plano"}</span>
+          {b.monthlyFee > 0 && <span className="ml-1 font-semibold">· {fmtMt(b.monthlyFee)}</span>}
+          {b.nextDueDate && <span className="ml-1">· vence {new Date(b.nextDueDate).toLocaleDateString("pt-PT")}</span>}
+        </span>
+        <span className="flex gap-2 items-center">
+          <button onClick={() => setOpen((o) => !o)} style={{ color: TEAL }} className="font-semibold">
+            {open ? "Fechar" : "Alterar plano"}
           </button>
-        ) : (
-          <button onClick={async () => { await superApi.suspend(b.id); onChanged(); }} style={{ color: BRICK }} className="font-semibold">
-            Suspender por falta de pagamento
-          </button>
-        )}
-      </span>
+          {sub === "suspenso" ? (
+            <button onClick={async () => { await superApi.reactivate(b.id); onChanged(); }} style={{ color: GREEN }} className="font-semibold">
+              Reactivar
+            </button>
+          ) : (
+            <button onClick={async () => { await superApi.suspend(b.id); onChanged(); }} style={{ color: BRICK }} className="font-semibold">
+              Suspender
+            </button>
+          )}
+        </span>
+      </div>
       {open && (
-        <div className="w-full grid grid-cols-1 sm:grid-cols-4 gap-2 mt-1">
-          <input value={plan} onChange={(e) => setPlan(e.target.value)} placeholder="Nome do plano" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5" />
-          <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Mensalidade (MT)" style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5" />
-          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5" />
-          <button onClick={save} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-3 py-1.5 font-semibold">
-            Guardar plano
-          </button>
+        <div style={{ background: "#F8FAFC", borderColor: BORDER }} className="border rounded-lg p-3 mt-2 space-y-2">
+          <div className="font-semibold text-sm" style={{ color: INK }}>Alterar plano do cliente</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            {ADMIN_PLANOS.map((p) => (
+              <button key={p.id} onClick={() => setPlan(p.id)}
+                style={{ background: plan === p.id ? "#4F46E5" : CARD, color: plan === p.id ? "#fff" : INK, borderColor: plan === p.id ? "#4F46E5" : BORDER }}
+                className="border rounded-lg px-2 py-2 text-xs font-semibold text-center transition-all">
+                {p.nome}
+                <div className="font-normal mt-0.5" style={{ fontSize: 10, opacity: 0.85 }}>
+                  {p.unico ? `${p.unico.toLocaleString("pt-MZ")} MT (único)` : p.mensal > 0 ? `${p.mensal.toLocaleString("pt-MZ")} MT/mês` : "Grátis"}
+                </div>
+              </button>
+            ))}
+          </div>
+          {selectedPlan.mensal > 0 && !selectedPlan.unico && (
+            <div className="flex gap-2 items-center">
+              <span style={{ color: MUTED }}>Ciclo:</span>
+              <button onClick={() => setCiclo("mensal")}
+                style={{ background: ciclo === "mensal" ? "#4F46E5" : CARD, color: ciclo === "mensal" ? "#fff" : INK, borderColor: BORDER }}
+                className="border rounded-lg px-3 py-1 font-semibold">
+                Mensal ({selectedPlan.mensal.toLocaleString("pt-MZ")} MT)
+              </button>
+              <button onClick={() => setCiclo("anual")}
+                style={{ background: ciclo === "anual" ? "#059669" : CARD, color: ciclo === "anual" ? "#fff" : INK, borderColor: BORDER }}
+                className="border rounded-lg px-3 py-1 font-semibold">
+                Anual ({selectedPlan.anual.toLocaleString("pt-MZ")} MT)
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+            <div>
+              <div className="text-xs mb-1" style={{ color: MUTED }}>Valor a cobrar</div>
+              <div className="text-lg font-bold" style={{ color: "#4F46E5" }}>{fmtMt(fee)}{selectedPlan.unico ? "" : ciclo === "anual" ? "/ano" : "/mês"}</div>
+            </div>
+            <div>
+              <div className="text-xs mb-1" style={{ color: MUTED }}>Próximo vencimento</div>
+              <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5" />
+            </div>
+            <button onClick={save} disabled={saving} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-4 py-2 font-semibold disabled:opacity-50">
+              {saving ? "A guardar…" : "Guardar alteração"}
+            </button>
+          </div>
         </div>
       )}
     </div>

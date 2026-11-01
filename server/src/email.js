@@ -49,9 +49,21 @@ export async function sendEmail(to, subject, html) {
 }
 
 export const PLANOS = [
-  { id: "basico", nome: "Básico", mensal: 1199, anual: 10000, treino: "Presencial: 2.500 MT/pessoa · Online: grátis" },
-  { id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499, treino: "Presencial: 3.000 MT/pessoa · Online: grátis" },
-  { id: "vitalicio", nome: "Vitalício", mensal: null, anual: null, unico: 85000, treino: "Presencial: 10.000 MT (grupo) · Online: grátis" },
+  {
+    id: "basico", nome: "Básico", mensal: 1199, anual: 10000,
+    treinamento: { presencial: 2500, presencialLabel: "2.500 MT/pessoa", online: "Grátis" },
+    recursos: ["POS de vendas completo", "Gestão de stock", "Até 2 utilizadores", "Relatórios básicos", "Leitor de código de barras", "Suporte por WhatsApp"],
+  },
+  {
+    id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499,
+    treinamento: { presencial: 3000, presencialLabel: "3.000 MT/pessoa", online: "Grátis" },
+    recursos: ["Tudo do Básico +", "Até 5 utilizadores", "Relatórios avançados (DRE, Balanço)", "Gestão de clientes e dívidas", "Contas a pagar", "Programa de fidelidade", "Cotações e orçamentos", "Exportação PDF e Excel"],
+  },
+  {
+    id: "vitalicio", nome: "Vitalício", mensal: null, anual: null, unico: 85000,
+    treinamento: { presencial: 10000, presencialLabel: "10.000 MT (grupo, opcional)", online: "Grátis" },
+    recursos: ["Tudo do Profissional +", "Utilizadores ilimitados", "Multi-filial com transferência de stock", "Processamento de salários", "Assistente IA", "Funciona offline (PWA)", "Resumo diário por email", "Suporte prioritário", "Sem mensalidade — pague uma vez, use para sempre"],
+  },
 ];
 
 function fmt(n) { return new Intl.NumberFormat("pt-MZ").format(n); }
@@ -98,7 +110,7 @@ function pagamentoHtml(plano) {
   <div style="font-size:14px;font-weight:bold;color:#92400E;margin-bottom:8px">💳 Como pagar</div>
   <div style="font-size:13px;color:#78350F;line-height:1.6">
     <p style="margin:0 0 8px"><strong>Plano:</strong> ${esc(plano.nome)} — ${precoHtml(plano)}</p>
-    <p style="margin:0 0 4px"><strong>Treinamento:</strong> ${esc(plano.treino)}</p>
+    <p style="margin:0 0 4px"><strong>Treinamento presencial:</strong> ${esc(plano.treinamento.presencialLabel)} · <strong>Online:</strong> ${esc(plano.treinamento.online)}</p>
     <p style="margin:8px 0 6px">Faça a transferência por:</p>
     <div style="background:#FFF;border-radius:6px;padding:10px;margin:6px 0">
       <p style="margin:2px 0"><strong>📲 M-Pesa:</strong> <code style="background:#E0E7FF;padding:2px 6px;border-radius:3px;font-size:14px">845508667</code></p>
@@ -137,7 +149,8 @@ export function welcomeBusinessEmail({ ownerName, businessName, email, password,
       <table style="font-size:13px;color:#374151">
         <tr><td style="padding:3px 0"><strong>Plano:</strong></td><td style="padding:3px 8px">${esc(plano.nome)}</td></tr>
         <tr><td style="padding:3px 0"><strong>Valor:</strong></td><td style="padding:3px 8px">${precoHtml(plano)}</td></tr>
-        <tr><td style="padding:3px 0"><strong>Treinamento:</strong></td><td style="padding:3px 8px">${esc(plano.treino)}</td></tr>
+        <tr><td style="padding:3px 0"><strong>Treinamento presencial:</strong></td><td style="padding:3px 8px">${esc(plano.treinamento.presencialLabel)}</td></tr>
+        <tr><td style="padding:3px 0"><strong>Treinamento online:</strong></td><td style="padding:3px 8px">${esc(plano.treinamento.online)}</td></tr>
       </table>
     </div>
 
@@ -174,7 +187,7 @@ export function demoBizEmail({ ownerName, businessName, email, password, represe
       <div style="font-size:14px;font-weight:bold;color:#92400E;margin-bottom:8px">⏰ Período de teste: 3 dias</div>
       <p style="font-size:13px;color:#78350F;margin:0 0 8px">Aproveite para testar todas as funcionalidades sem compromisso. Após o período de teste, escolha o plano ideal para o seu negócio:</p>
       <table style="width:100%;font-size:12px;border-collapse:collapse;color:#374151">
-        ${PLANOS.map((p) => `<tr style="border-bottom:1px solid #FDE68A"><td style="padding:6px 0;font-weight:bold">${esc(p.nome)}</td><td style="padding:6px 4px;text-align:right;white-space:nowrap">${p.unico ? `<strong>${fmt(p.unico)} MT</strong> (único)` : `<strong>${fmt(p.mensal)} MT/mês</strong> ou ${fmt(p.anual)} MT/ano`}</td><td style="padding:6px 0 6px 8px;color:#78350F">${esc(p.treino)}</td></tr>`).join("")}
+        ${PLANOS.map((p) => `<tr style="border-bottom:1px solid #FDE68A"><td style="padding:6px 0;font-weight:bold">${esc(p.nome)}</td><td style="padding:6px 4px;text-align:right;white-space:nowrap">${p.unico ? `<strong>${fmt(p.unico)} MT</strong> (único)` : `<strong>${fmt(p.mensal)} MT/mês</strong> ou ${fmt(p.anual)} MT/ano`}</td><td style="padding:6px 0 6px 8px;color:#78350F">Trein. presencial: ${esc(p.treinamento.presencialLabel)}</td></tr>`).join("")}
       </table>
     </div>
 

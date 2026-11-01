@@ -158,9 +158,21 @@ function ResetPasswordModal({ email: initialEmail, onClose }) {
 }
 
 const PLANOS_UI = [
-  { id: "basico", nome: "Básico", mensal: 1199, anual: 10000, treino: "Presencial: 2.500 MT/pessoa · Online: grátis" },
-  { id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499, treino: "Presencial: 3.000 MT/pessoa · Online: grátis" },
-  { id: "vitalicio", nome: "Vitalício", unico: 85000, treino: "Presencial: 10.000 MT (grupo) · Online: grátis" },
+  {
+    id: "basico", nome: "Básico", mensal: 1199, anual: 10000,
+    treinamento: { presencial: "2.500 MT/pessoa", online: "Grátis" },
+    recursos: ["POS de vendas completo", "Gestão de stock", "Até 2 utilizadores", "Relatórios básicos", "Leitor de código de barras", "Suporte por WhatsApp"],
+  },
+  {
+    id: "profissional", nome: "Profissional", mensal: 1999, anual: 15499, popular: true,
+    treinamento: { presencial: "3.000 MT/pessoa", online: "Grátis" },
+    recursos: ["Tudo do Básico +", "Até 5 utilizadores", "Relatórios avançados (DRE, Balanço)", "Gestão de clientes e dívidas", "Contas a pagar", "Programa de fidelidade", "Cotações e orçamentos", "Exportação PDF e Excel"],
+  },
+  {
+    id: "vitalicio", nome: "Vitalício", unico: 85000,
+    treinamento: { presencial: "10.000 MT (grupo, opcional)", online: "Grátis" },
+    recursos: ["Tudo do Profissional +", "Utilizadores ilimitados", "Multi-filial + transferência de stock", "Processamento de salários", "Assistente IA", "Funciona offline (PWA)", "Resumo diário por email", "Suporte prioritário", "Pague uma vez, use para sempre"],
+  },
 ];
 
 function DemoForm() {
@@ -198,7 +210,10 @@ function DemoForm() {
           <div className="text-xs"><strong>Email:</strong> {success.email}</div>
           <div className="text-xs"><strong>Senha:</strong> {success.password}</div>
           <div className="text-xs"><strong>Negócio:</strong> {success.businessName}</div>
-          {selectedPlan && <div className="text-xs"><strong>Plano:</strong> {selectedPlan.nome} — {selectedPlan.unico ? `${selectedPlan.unico.toLocaleString("pt-MZ")} MT (único)` : `${selectedPlan.mensal.toLocaleString("pt-MZ")} MT/mês`}</div>}
+          {selectedPlan && <>
+            <div className="text-xs"><strong>Plano:</strong> {selectedPlan.nome} — {selectedPlan.unico ? `${selectedPlan.unico.toLocaleString("pt-MZ")} MT (pagamento único)` : `${selectedPlan.mensal.toLocaleString("pt-MZ")} MT/mês ou ${selectedPlan.anual.toLocaleString("pt-MZ")} MT/ano`}</div>
+            <div className="text-xs"><strong>Treinamento presencial:</strong> {selectedPlan.treinamento.presencial} · <strong>Online:</strong> {selectedPlan.treinamento.online}</div>
+          </>}
         </div>
         <div className="text-xs" style={{ color: MUTED }}>Enviámos os dados e instruções de pagamento para o seu email.</div>
       </div>
@@ -231,14 +246,30 @@ function DemoForm() {
         <input value={form.representative} onChange={(e) => setForm({ ...form, representative: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" placeholder="Quem lhe apresentou o sistema?" />
       </div>
       <div>
-        <label className="text-xs font-semibold" style={{ color: INK }}>Escolha o plano (após período de teste)</label>
-        <div className="space-y-1.5 mt-1.5">
+        <label className="text-xs font-semibold" style={{ color: INK }}>Escolha o plano (após período de teste de 3 dias)</label>
+        <div className="space-y-2 mt-2">
           {PLANOS_UI.map((p) => (
-            <label key={p.id} onClick={() => setForm({ ...form, plan: p.id })} style={{ borderColor: form.plan === p.id ? "#4F46E5" : BORDER, background: form.plan === p.id ? "#EEF2FF" : "#fff", cursor: "pointer" }} className="flex items-center gap-2 border rounded-lg px-3 py-2 transition-all">
-              <input type="radio" name="plan" value={p.id} checked={form.plan === p.id} onChange={() => setForm({ ...form, plan: p.id })} className="accent-indigo-600" />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold" style={{ color: INK }}>{p.nome} <span style={{ color: "#4F46E5" }}>— {p.unico ? `${p.unico.toLocaleString("pt-MZ")} MT (único)` : `${p.mensal.toLocaleString("pt-MZ")} MT/mês · ${p.anual.toLocaleString("pt-MZ")} MT/ano`}</span></div>
-                <div className="text-xs" style={{ color: MUTED }}>{p.treino}</div>
+            <label key={p.id} onClick={() => setForm({ ...form, plan: p.id })}
+              style={{ borderColor: form.plan === p.id ? "#4F46E5" : BORDER, background: form.plan === p.id ? "#EEF2FF" : "#fff", cursor: "pointer", position: "relative" }}
+              className="block border-2 rounded-xl px-3 py-2.5 transition-all">
+              {p.popular && <span style={{ background: "#4F46E5", color: "#fff", position: "absolute", top: -8, right: 12, fontSize: 10, padding: "1px 8px", borderRadius: 20 }}>Mais popular</span>}
+              <div className="flex items-start gap-2">
+                <input type="radio" name="plan" value={p.id} checked={form.plan === p.id} onChange={() => setForm({ ...form, plan: p.id })} className="accent-indigo-600 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold" style={{ color: INK }}>{p.nome}</div>
+                  <div className="text-xs font-semibold mt-0.5" style={{ color: "#4F46E5" }}>
+                    {p.unico ? `${p.unico.toLocaleString("pt-MZ")} MT (pagamento único)` : `${p.mensal.toLocaleString("pt-MZ")} MT/mês · ${p.anual.toLocaleString("pt-MZ")} MT/ano`}
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: MUTED }}>
+                    <span>Treinamento presencial: {p.treinamento.presencial}</span>
+                    <span className="ml-2">· Online: {p.treinamento.online}</span>
+                  </div>
+                  {form.plan === p.id && (
+                    <ul className="mt-1.5 space-y-0.5">
+                      {p.recursos.map((r, i) => <li key={i} className="text-xs" style={{ color: "#374151" }}>✓ {r}</li>)}
+                    </ul>
+                  )}
+                </div>
               </div>
             </label>
           ))}
