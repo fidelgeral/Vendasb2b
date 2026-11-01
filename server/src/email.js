@@ -53,13 +53,16 @@ export async function hasValidMxRecords(email) {
 }
 
 async function doSendEmail(from, to, subject, html) {
+  const key = process.env.RESEND_API_KEY;
+  console.log("[email] Sending from:", from, "to:", to, "key present:", !!key, "key prefix:", key ? key.slice(0, 8) + "..." : "none");
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html }),
   });
+  const t = await res.text().catch(() => "");
+  console.log("[email] Resend response:", res.status, t);
   if (!res.ok) {
-    const t = await res.text().catch(() => "");
     throw new Error("Resend " + res.status + " " + t);
   }
   return { ok: true };
