@@ -1,4 +1,5 @@
 import dns from "node:dns/promises";
+import nodemailer from "nodemailer";
 
 export const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -70,17 +71,40 @@ async function doSendEmail(from, to, subject, html) {
 
 const RESEND_FALLBACK = "VENDASB2B <onboarding@resend.dev>";
 
+async function sendViaSMTP(to, subject, html) {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) throw new Error("SMTP not configured");
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT || "465", 10);
+  const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  const from = process.env.SMTP_FROM || `VENDASB2B <${user}>`;
+  console.log("[email] SMTP sending from:", from, "to:", to);
+  await transporter.sendMail({ from, to, subject, html });
+  console.log("[email] SMTP sent OK");
+  return { ok: true };
+}
+
 export async function sendEmail(to, subject, html) {
-  if (!process.env.RESEND_API_KEY) return { skipped: true };
-  const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
-  try {
-    return await doSendEmail(primary, to, subject, html);
-  } catch (e) {
-    if (primary !== RESEND_FALLBACK) {
-      return await doSendEmail(RESEND_FALLBACK, to, subject, html);
+  // Try Resend first
+  if (process.env.RESEND_API_KEY) {
+    const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
+    try {
+      return await doSendEmail(primary, to, subject, html);
+    } catch (e) {
+      console.error("[email] Resend failed:", e.message);
+      if (primary !== RESEND_FALLBACK) {
+        try { return await doSendEmail(RESEND_FALLBACK, to, subject, html); } catch (e2) {
+          console.error("[email] Resend fallback failed:", e2.message);
+        }
+      }
     }
-    throw e;
   }
+  // Try SMTP (Nodemailer) as fallback
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return await sendViaSMTP(to, subject, html);
+  }
+  throw new Error("No email provider configured or all providers failed");
 }
 
 export const PLANOS = [
