@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CARD, BORDER, INK, TEAL, MUTED, BRICK, GRADIENT } from "../lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "../lib/theme.js";
 import { BRAND_LOGO } from "../lib/logo.js";
@@ -52,6 +52,13 @@ function BusinessLoginForm({ onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  useEffect(() => {
+    if (window.PublicKeyCredential) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then((ok) => setBiometricAvailable(ok)).catch(() => {});
+    }
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -71,6 +78,23 @@ function BusinessLoginForm({ onLogin }) {
     setLoading(false);
   };
 
+  const loginBiometric = async () => {
+    if (!email.trim()) { setError("Insira o email para usar a impressão digital."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const { startAuthentication } = await import("@simplewebauthn/browser");
+      const options = await auth.webauthnLoginOptions(email.trim());
+      const credential = await startAuthentication({ optionsJSON: options });
+      const res = await auth.webauthnLoginVerify(credential, options.employeeId);
+      setSession(res.token, { type: "employee", businessId: res.business.id, businessName: res.business.name, employeeId: res.employee.id, employeeName: res.employee.name, role: res.employee.role, filiais: res.filiais || [] });
+      onLogin();
+    } catch (err) {
+      setError(err.message || "Autenticação biométrica falhou.");
+    }
+    setLoading(false);
+  };
+
   return (
     <form onSubmit={submit} className="space-y-2.5">
       <div>
@@ -85,6 +109,13 @@ function BusinessLoginForm({ onLogin }) {
       <button type="submit" disabled={loading} style={{ background: GRADIENT, color: "#fff", boxShadow: "0 6px 16px rgba(79,70,229,0.35)" }} className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
         {loading ? "A entrar…" : "Entrar"}
       </button>
+      {biometricAvailable && (
+        <button type="button" onClick={loginBiometric} disabled={loading}
+          style={{ background: "#fff", color: INK, border: `2px solid ${BORDER}` }}
+          className="w-full rounded-xl py-2.5 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+          <span style={{ fontSize: 18 }}>🔐</span> Entrar com impressão digital
+        </button>
+      )}
       <div className="text-center mt-2">
         <button type="button" onClick={() => setShowReset(true)} className="text-xs underline" style={{ color: TEAL }}>Esqueci a minha senha</button>
       </div>

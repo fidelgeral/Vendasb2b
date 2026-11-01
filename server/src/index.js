@@ -24,6 +24,7 @@ import { lotesRouter } from "./routes/lotes.js";
 import { quotationsRouter } from "./routes/quotations.js";
 import { cronRouter } from "./routes/cron.js";
 import { payrollRouter } from "./routes/payroll.js";
+import { webauthnRouter } from "./routes/webauthn.js";
 import { uploadRouter } from "./routes/upload.js";
 import { requireActiveSubscription } from "./auth/middleware.js";
 import { initSentry } from "./sentry.js";
@@ -67,6 +68,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api", authRouter);
+app.use("/api", webauthnRouter);
 app.use("/api/super/businesses", businessesRouter);
 app.use("/api/super/billing", superBillingRouter);
 

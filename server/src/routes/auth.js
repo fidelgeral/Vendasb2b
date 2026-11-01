@@ -274,7 +274,8 @@ authRouter.post("/auth/demo/send-code", demoLimiter, async (req, res) => {
         </div>
       </div>`);
   } catch (e) {
-    return res.status(500).json({ error: "Não foi possível enviar o email de verificação. Verifique se o email está correcto." });
+    console.error("Erro ao enviar código de verificação para", email, e.message);
+    return res.status(500).json({ error: "Não foi possível enviar o email de verificação. Tente novamente ou use outro email." });
   }
 
   res.json({ ok: true, message: "Código enviado para o email." });

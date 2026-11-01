@@ -58,7 +58,7 @@ export async function sendEmail(to, subject, html) {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM || "VENDASB2B <vendasb2b.geral@gmail.com>",
+      from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
       to: Array.isArray(to) ? to : [to],
       subject,
       html,

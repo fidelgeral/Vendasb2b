@@ -103,6 +103,12 @@ export const auth = {
   resetPassword: (email, code, newPassword) => post("/api/auth/reset-password", { email, code, newPassword }),
   sendDemoCode: (data) => post("/api/auth/demo/send-code", data),
   createDemo: (data) => post("/api/auth/demo", data),
+  webauthnRegisterOptions: () => post("/api/webauthn/register/options", {}),
+  webauthnRegisterVerify: (credential, deviceName) => post("/api/webauthn/register/verify", { credential, deviceName }),
+  webauthnLoginOptions: (email) => post("/api/webauthn/login/options", { email }),
+  webauthnLoginVerify: (credential, employeeId) => post("/api/webauthn/login/verify", { credential, employeeId }).then((d) => { if (d.refreshToken) setRefreshToken(d.refreshToken); return d; }),
+  webauthnCredentials: () => get("/api/webauthn/credentials"),
+  webauthnDeleteCredential: (id) => del(`/api/webauthn/credentials/${id}`),
 };
 
 export const superApi = {

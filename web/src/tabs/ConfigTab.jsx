@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
 import { ALL_MODULES } from "../lib/utils.js";
 import { processarLogo } from "../lib/logoProcess.js";
@@ -518,6 +518,7 @@ function SegurancaConfig({ store, api }) {
 
   return (
     <div className="space-y-3">
+      <BiometriaConfig api={api} />
       <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
         <div className="text-sm font-semibold">Cópia de segurança (Backup)</div>
         <div className="text-xs" style={{ color: MUTED }}>
@@ -532,6 +533,81 @@ function SegurancaConfig({ store, api }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function BiometriaConfig({ api }) {
+  const [creds, setCreds] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [available, setAvailable] = useState(false);
+
+  useEffect(() => {
+    if (window.PublicKeyCredential) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then((ok) => setAvailable(ok)).catch(() => {});
+    }
+    loadCreds();
+  }, []);
+
+  const loadCreds = async () => {
+    try {
+      const { auth: authApi } = await import("../lib/api.js");
+      const list = await authApi.webauthnCredentials();
+      setCreds(list);
+    } catch {}
+  };
+
+  const register = async () => {
+    setLoading(true);
+    setMsg("");
+    try {
+      const { startRegistration } = await import("@simplewebauthn/browser");
+      const { auth: authApi } = await import("../lib/api.js");
+      const options = await authApi.webauthnRegisterOptions();
+      const credential = await startRegistration({ optionsJSON: options });
+      const deviceName = navigator.userAgent.includes("Mobile") ? "Telemóvel" : "Computador";
+      await authApi.webauthnRegisterVerify(credential, deviceName);
+      setMsg("Impressão digital registada com sucesso!");
+      loadCreds();
+    } catch (e) {
+      setMsg("Erro: " + (e.message || "Não foi possível registar."));
+    }
+    setLoading(false);
+  };
+
+  const remove = async (id) => {
+    try {
+      const { auth: authApi } = await import("../lib/api.js");
+      await authApi.webauthnDeleteCredential(id);
+      setCreds(creds.filter((c) => c.id !== id));
+    } catch {}
+  };
+
+  if (!available) return null;
+
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3 space-y-2">
+      <div className="text-sm font-semibold flex items-center gap-2">
+        <span style={{ fontSize: 18 }}>🔐</span> Login por impressão digital
+      </div>
+      <div className="text-xs" style={{ color: MUTED }}>
+        Registe a sua impressão digital ou Face ID para entrar sem digitar a senha.
+      </div>
+      {creds.length > 0 && (
+        <div className="space-y-1">
+          {creds.map((c) => (
+            <div key={c.id} className="flex items-center justify-between text-xs p-2 rounded" style={{ background: "#F1F5F9" }}>
+              <span>{c.device_name} — {new Date(c.created_at).toLocaleDateString("pt-PT")}</span>
+              <button onClick={() => remove(c.id)} className="text-xs underline" style={{ color: BRICK }}>Remover</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={register} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-50">
+        {loading ? "A registar..." : creds.length > 0 ? "Adicionar outro dispositivo" : "Registar impressão digital"}
+      </button>
+      {msg && <div className="text-xs" style={{ color: msg.includes("Erro") ? BRICK : MUTED }}>{msg}</div>}
     </div>
   );
 }
