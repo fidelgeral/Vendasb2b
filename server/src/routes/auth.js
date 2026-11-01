@@ -6,7 +6,7 @@ import { query } from "../db.js";
 import { verifyPassword, hashPassword } from "../auth/hash.js";
 import { signToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
-import { isDisposableEmail, isValidEmailFormat, sendEmail, demoBizEmail } from "../email.js";
+import { isDisposableEmail, isValidEmailFormat, hasValidMxRecords, sendEmail, demoBizEmail } from "../email.js";
 
 function generateRefreshToken() { return crypto.randomBytes(64).toString("hex"); }
 const REFRESH_DAYS = 30;
@@ -239,6 +239,7 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
 
   if (!isValidEmailFormat(email)) return res.status(400).json({ error: "Formato de email inválido." });
   if (isDisposableEmail(email)) return res.status(400).json({ error: "Não são aceites emails temporários/descartáveis. Use um email real." });
+  if (!(await hasValidMxRecords(email))) return res.status(400).json({ error: "O domínio do email não existe ou não aceita emails. Use um email real (ex: Gmail, Outlook, email empresarial)." });
 
   const existing = (await query("SELECT id FROM employees WHERE lower(email) = lower($1)", [email])).rows[0];
   if (existing) return res.status(409).json({ error: "Já existe uma conta com este email." });

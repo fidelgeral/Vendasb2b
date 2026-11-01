@@ -1,3 +1,5 @@
+import dns from "node:dns/promises";
+
 const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const DISPOSABLE_DOMAINS = new Set([
@@ -7,6 +9,16 @@ const DISPOSABLE_DOMAINS = new Set([
   "10minutemail.com","minutemail.com","emailondeck.com","getnada.com","mohmal.com",
   "harakirimail.com","mailsac.com","burnermail.io","inboxbear.com","tempinbox.com",
   "mytemp.email","tempr.email","discard.email","mailcatch.com","tmail.ws",
+  "guerrillamail.info","guerrillamail.net","guerrillamail.de","guerrillamail.biz",
+  "tempmailo.com","temp-mail.io","emailfake.com","crazymailing.com","armyspy.com",
+  "dayrep.com","einrot.com","fleckens.hu","gustr.com","jourrapide.com","rhyta.com",
+  "superrito.com","teleworm.us","tempmailaddress.com","trash-mail.com","trashmail.net",
+  "trashmail.org","wegwerfmail.de","wegwerfmail.net","mytrashmail.com","mt2015.com",
+  "thankyou2010.com","trash2009.com","binkmail.com","bobmail.info","chammy.info",
+  "devnullmail.com","jetable.org","mailexpire.com","mailforspam.com","mailmoat.com",
+  "mailnull.com","mailshell.com","mailzilla.com","nomail.xl.cx","nowmymail.com",
+  "spambox.us","spamfree24.org","spamgourmet.com","spamhole.com","spaml.com",
+  "uggsrock.com","mailtemp.info","tempinbox.co.uk","tempomail.fr","disposableemailaddresses.emailmiser.com",
 ]);
 
 export function isDisposableEmail(email) {
@@ -27,6 +39,17 @@ export function isValidEmailFormat(email) {
   const tld = domainParts[domainParts.length - 1];
   if (tld.length < 2) return false;
   return true;
+}
+
+export async function hasValidMxRecords(email) {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return false;
+  try {
+    const records = await dns.resolveMx(domain);
+    return records && records.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function sendEmail(to, subject, html) {

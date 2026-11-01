@@ -3,7 +3,7 @@ import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { hashPassword } from "../auth/hash.js";
 import { requireAuth, requireSuperAdmin } from "../auth/middleware.js";
-import { isDisposableEmail, isValidEmailFormat, sendEmail, welcomeBusinessEmail } from "../email.js";
+import { isDisposableEmail, isValidEmailFormat, hasValidMxRecords, sendEmail, welcomeBusinessEmail } from "../email.js";
 
 export const businessesRouter = Router();
 businessesRouter.use(requireAuth, requireSuperAdmin);
@@ -56,6 +56,7 @@ businessesRouter.post("/", async (req, res) => {
 
   if (!isValidEmailFormat(ownerEmail)) return res.status(400).json({ error: "Formato de email inválido." });
   if (isDisposableEmail(ownerEmail)) return res.status(400).json({ error: "Não são aceites emails temporários/descartáveis. Use um email real." });
+  if (!(await hasValidMxRecords(ownerEmail))) return res.status(400).json({ error: "O domínio do email não existe ou não aceita emails. Use um email real (ex: Gmail, Outlook, email empresarial)." });
 
   const dup = (await query("SELECT 1 FROM employees WHERE lower(email) = lower($1)", [ownerEmail])).rows.length;
   if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email noutro negócio." });
