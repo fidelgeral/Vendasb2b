@@ -6,7 +6,7 @@ import { query } from "../db.js";
 import { verifyPassword, hashPassword } from "../auth/hash.js";
 import { signToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
-import { isDisposableEmail, isValidEmailFormat, hasValidMxRecords, sendEmail, demoBizEmail } from "../email.js";
+import { esc, isDisposableEmail, isValidEmailFormat, hasValidMxRecords, sendEmail, demoBizEmail } from "../email.js";
 
 function generateRefreshToken() { return crypto.randomBytes(64).toString("hex"); }
 const REFRESH_DAYS = 30;
@@ -213,16 +213,21 @@ authRouter.post("/auth/reset-password", forgotLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Conta demonstração ---
-const demoLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, standardHeaders: true, legacyHeaders: false });
+// --- Conta demonstração (2 passos: enviar código → confirmar e criar) ---
+const demoLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
 
-const demoSchema = z.object({
+const demoSendCodeSchema = z.object({
   businessName: z.string().min(2).max(200),
   ownerName: z.string().min(2).max(200),
   email: z.string().email(),
   phone: z.string().max(50).optional().default(""),
   representative: z.string().min(2).max(200),
   plan: z.enum(["basico", "profissional", "vitalicio"]).optional().default("basico"),
+});
+
+const demoConfirmSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(4).max(10),
 });
 
 function generatePassword() {
@@ -232,8 +237,9 @@ function generatePassword() {
   return pwd;
 }
 
-authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
-  const parsed = demoSchema.safeParse(req.body);
+// Passo 1: validar dados e enviar código de verificação por email
+authRouter.post("/auth/demo/send-code", demoLimiter, async (req, res) => {
+  const parsed = demoSendCodeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
   const { businessName, ownerName, email, phone, representative, plan } = parsed.data;
 
@@ -243,6 +249,55 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
 
   const existing = (await query("SELECT id FROM employees WHERE lower(email) = lower($1)", [email])).rows[0];
   if (existing) return res.status(409).json({ error: "Já existe uma conta com este email." });
+
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await query("UPDATE email_verifications SET used = true WHERE lower(email) = lower($1) AND used = false", [email]);
+  await query(
+    "INSERT INTO email_verifications (email, code, payload, expires_at) VALUES ($1, $2, $3, $4)",
+    [email.toLowerCase(), code, JSON.stringify({ businessName, ownerName, phone, representative, plan }), expiresAt]
+  );
+
+  try {
+    await sendEmail(email, "Código de verificação — VENDASB2B",
+      `<div style="font-family:Arial,sans-serif;max-width:400px;margin:auto;text-align:center">
+        <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:20px;border-radius:12px 12px 0 0">
+          <div style="font-size:20px;font-weight:bold">VENDASB2B</div>
+        </div>
+        <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
+          <p>Olá <strong>${esc(ownerName)}</strong>,</p>
+          <p>O seu código de verificação para criar a conta demonstração é:</p>
+          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#4F46E5;margin:16px 0">${code}</div>
+          <p style="color:#64748B;font-size:13px">Este código expira em 10 minutos.</p>
+          <p style="color:#64748B;font-size:12px">Se não solicitou esta conta, ignore este email.</p>
+        </div>
+      </div>`);
+  } catch (e) {
+    return res.status(500).json({ error: "Não foi possível enviar o email de verificação. Verifique se o email está correcto." });
+  }
+
+  res.json({ ok: true, message: "Código enviado para o email." });
+});
+
+// Passo 2: confirmar código e criar a conta
+authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
+  const parsed = demoConfirmSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Email e código são obrigatórios." });
+  const { email, code } = parsed.data;
+
+  const verification = (await query(
+    "SELECT * FROM email_verifications WHERE lower(email) = lower($1) AND code = $2 AND used = false AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1",
+    [email, code]
+  )).rows[0];
+  if (!verification) return res.status(400).json({ error: "Código inválido ou expirado. Peça um novo código." });
+
+  await query("UPDATE email_verifications SET used = true WHERE id = $1", [verification.id]);
+
+  const existing = (await query("SELECT id FROM employees WHERE lower(email) = lower($1)", [email])).rows[0];
+  if (existing) return res.status(409).json({ error: "Já existe uma conta com este email." });
+
+  const { businessName, ownerName, phone, representative, plan } = verification.payload;
 
   const password = generatePassword();
   const hash = await hashPassword(password);

@@ -1,6 +1,6 @@
 import dns from "node:dns/promises";
 
-const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const DISPOSABLE_DOMAINS = new Set([
   "mailinator.com","guerrillamail.com","tempmail.com","throwaway.email","yopmail.com",

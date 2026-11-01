@@ -101,6 +101,7 @@ export const auth = {
   logout: () => { const rt = getRefreshToken(); clearSession(); if (rt) post("/api/auth/logout", { refreshToken: rt }).catch(() => {}); },
   forgotPassword: (email) => post("/api/auth/forgot-password", { email }),
   resetPassword: (email, code, newPassword) => post("/api/auth/reset-password", { email, code, newPassword }),
+  sendDemoCode: (data) => post("/api/auth/demo/send-code", data),
   createDemo: (data) => post("/api/auth/demo", data),
 };
 
