@@ -222,6 +222,7 @@ const demoSchema = z.object({
   email: z.string().email(),
   phone: z.string().max(50).optional().default(""),
   representative: z.string().min(2).max(200),
+  plan: z.enum(["starter", "profissional", "empresarial"]).optional().default("starter"),
 });
 
 function generatePassword() {
@@ -234,7 +235,7 @@ function generatePassword() {
 authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
   const parsed = demoSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
-  const { businessName, ownerName, email, phone, representative } = parsed.data;
+  const { businessName, ownerName, email, phone, representative, plan } = parsed.data;
 
   if (!isValidEmailFormat(email)) return res.status(400).json({ error: "Formato de email inválido." });
   if (isDisposableEmail(email)) return res.status(400).json({ error: "Não são aceites emails temporários/descartáveis. Use um email real." });
@@ -248,9 +249,9 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
 
   const biz = (await query(
     `INSERT INTO businesses (name, slug, is_demo, demo_expires_at, demo_representative, demo_contact_email, demo_contact_phone, subscription_status, plan, config)
-     VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', 'demo', '{}')
+     VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', $6, '{}')
      RETURNING id`,
-    [businessName, slug, representative, email, phone]
+    [businessName, slug, representative, email, phone, plan]
   )).rows[0];
 
   await query(
@@ -261,8 +262,8 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
 
   try {
     await sendEmail(email, "Conta demonstração VENDASB2B — Os seus dados de acesso",
-      demoBizEmail({ ownerName, businessName, email, password, representative }));
+      demoBizEmail({ ownerName, businessName, email, password, representative, plan }));
   } catch {}
 
-  res.status(201).json({ ok: true, email, password, businessName });
+  res.status(201).json({ ok: true, email, password, businessName, plan });
 });

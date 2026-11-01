@@ -157,8 +157,14 @@ function ResetPasswordModal({ email: initialEmail, onClose }) {
   );
 }
 
+const PLANOS_UI = [
+  { id: "starter", nome: "Starter", valor: 1500, desc: "Até 2 utilizadores" },
+  { id: "profissional", nome: "Profissional", valor: 3500, desc: "Até 5 utilizadores + relatórios" },
+  { id: "empresarial", nome: "Empresarial", valor: 7000, desc: "Ilimitado + multi-filial" },
+];
+
 function DemoForm() {
-  const [form, setForm] = useState({ businessName: "", ownerName: "", email: "", phone: "", representative: "" });
+  const [form, setForm] = useState({ businessName: "", ownerName: "", email: "", phone: "", representative: "", plan: "starter" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -180,6 +186,8 @@ function DemoForm() {
     setLoading(false);
   };
 
+  const selectedPlan = PLANOS_UI.find((p) => p.id === (success?.plan || form.plan));
+
   if (success) {
     return (
       <div className="space-y-3 text-center">
@@ -190,8 +198,9 @@ function DemoForm() {
           <div className="text-xs"><strong>Email:</strong> {success.email}</div>
           <div className="text-xs"><strong>Senha:</strong> {success.password}</div>
           <div className="text-xs"><strong>Negócio:</strong> {success.businessName}</div>
+          {selectedPlan && <div className="text-xs"><strong>Plano:</strong> {selectedPlan.nome} — {selectedPlan.valor.toLocaleString("pt-MZ")} MT/mês</div>}
         </div>
-        <div className="text-xs" style={{ color: MUTED }}>Guarde estes dados. Também enviámos por email (se configurado).</div>
+        <div className="text-xs" style={{ color: MUTED }}>Enviámos os dados e instruções de pagamento para o seu email.</div>
       </div>
     );
   }
@@ -210,8 +219,8 @@ function DemoForm() {
         <input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
       </div>
       <div>
-        <label className="text-xs" style={{ color: MUTED }}>Email</label>
-        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" />
+        <label className="text-xs" style={{ color: MUTED }}>Email (obrigatório — deve ser um email real)</label>
+        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" placeholder="Ex: joao@empresa.co.mz" />
       </div>
       <div>
         <label className="text-xs" style={{ color: MUTED }}>Telefone</label>
@@ -221,10 +230,27 @@ function DemoForm() {
         <label className="text-xs" style={{ color: MUTED }}>Nome do representante VendasB2B</label>
         <input value={form.representative} onChange={(e) => setForm({ ...form, representative: e.target.value })} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mt-1" placeholder="Quem lhe apresentou o sistema?" />
       </div>
+      <div>
+        <label className="text-xs font-semibold" style={{ color: INK }}>Escolha o plano (após período de teste)</label>
+        <div className="space-y-1.5 mt-1.5">
+          {PLANOS_UI.map((p) => (
+            <label key={p.id} onClick={() => setForm({ ...form, plan: p.id })} style={{ borderColor: form.plan === p.id ? "#4F46E5" : BORDER, background: form.plan === p.id ? "#EEF2FF" : "#fff", cursor: "pointer" }} className="flex items-center gap-2 border rounded-lg px-3 py-2 transition-all">
+              <input type="radio" name="plan" value={p.id} checked={form.plan === p.id} onChange={() => setForm({ ...form, plan: p.id })} className="accent-indigo-600" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold" style={{ color: INK }}>{p.nome} <span style={{ color: "#4F46E5" }}>— {p.valor.toLocaleString("pt-MZ")} MT/mês</span></div>
+                <div className="text-xs" style={{ color: MUTED }}>{p.desc}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
       {error && <div className="text-xs" style={{ color: BRICK }}>{error}</div>}
       <button type="submit" disabled={loading} style={{ background: GRADIENT, color: "#fff", boxShadow: "0 6px 16px rgba(79,70,229,0.35)" }} className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
-        {loading ? "A criar…" : "Criar conta demonstração"}
+        {loading ? "A criar…" : "Criar conta demonstração (3 dias grátis)"}
       </button>
+      <div className="text-xs text-center" style={{ color: MUTED }}>
+        Pagamento: M-Pesa (845508667) ou E-Mola (861132245)
+      </div>
     </form>
   );
 }
