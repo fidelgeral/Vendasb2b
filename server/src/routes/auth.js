@@ -6,6 +6,7 @@ import { query } from "../db.js";
 import { verifyPassword, hashPassword } from "../auth/hash.js";
 import { signToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
+import { isDisposableEmail, isValidEmailFormat, sendEmail, demoBizEmail } from "../email.js";
 
 function generateRefreshToken() { return crypto.randomBytes(64).toString("hex"); }
 const REFRESH_DAYS = 30;
@@ -175,30 +176,21 @@ authRouter.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
   await query("DELETE FROM password_reset_tokens WHERE employee_id = $1", [emp.id]);
   await query("INSERT INTO password_reset_tokens (employee_id, code, expires_at) VALUES ($1,$2,$3)", [emp.id, code, expiresAt]);
-  if (process.env.RESEND_API_KEY) {
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
-          to: [emp.email],
-          subject: "Código de recuperação — VENDASB2B",
-          html: `<div style="font-family:Arial,sans-serif;max-width:400px;margin:auto;text-align:center">
-            <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:20px;border-radius:12px 12px 0 0">
-              <div style="font-size:20px;font-weight:bold">VENDASB2B</div>
-            </div>
-            <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
-              <p>Olá <strong>${escHtml(emp.name)}</strong>,</p>
-              <p>O seu código de recuperação é:</p>
-              <div style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#4F46E5;margin:16px 0">${code}</div>
-              <p style="color:#64748B;font-size:13px">Este código expira em 15 minutos.</p>
-            </div>
-          </div>`,
-        }),
-      });
-    } catch {}
-  }
+  try {
+    const escHtml = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    await sendEmail(emp.email, "Código de recuperação — VENDASB2B",
+      `<div style="font-family:Arial,sans-serif;max-width:400px;margin:auto;text-align:center">
+        <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:20px;border-radius:12px 12px 0 0">
+          <div style="font-size:20px;font-weight:bold">VENDASB2B</div>
+        </div>
+        <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
+          <p>Olá <strong>${escHtml(emp.name)}</strong>,</p>
+          <p>O seu código de recuperação é:</p>
+          <div style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#4F46E5;margin:16px 0">${code}</div>
+          <p style="color:#64748B;font-size:13px">Este código expira em 15 minutos.</p>
+        </div>
+      </div>`);
+  } catch {}
   res.json({ ok: true });
 });
 
@@ -232,8 +224,6 @@ const demoSchema = z.object({
   representative: z.string().min(2).max(200),
 });
 
-const escHtml = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
 function generatePassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let pwd = "";
@@ -245,6 +235,9 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
   const parsed = demoSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
   const { businessName, ownerName, email, phone, representative } = parsed.data;
+
+  if (!isValidEmailFormat(email)) return res.status(400).json({ error: "Formato de email inválido." });
+  if (isDisposableEmail(email)) return res.status(400).json({ error: "Não são aceites emails temporários/descartáveis. Use um email real." });
 
   const existing = (await query("SELECT id FROM employees WHERE lower(email) = lower($1)", [email])).rows[0];
   if (existing) return res.status(409).json({ error: "Já existe uma conta com este email." });
@@ -266,36 +259,10 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
     [biz.id, ownerName, email.toLowerCase(), hash]
   );
 
-  if (process.env.RESEND_API_KEY) {
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
-          to: [email],
-          subject: "Conta demonstração VENDASB2B — Os seus dados de acesso",
-          html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
-            <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:20px;border-radius:12px 12px 0 0;text-align:center">
-              <div style="font-size:22px;font-weight:bold">VENDASB2B</div>
-              <div style="font-size:13px;opacity:.85">Conta Demonstração</div>
-            </div>
-            <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:24px">
-              <p>Olá <strong>${escHtml(ownerName)}</strong>,</p>
-              <p>A sua conta demonstração foi criada com sucesso! Tem <strong>3 dias</strong> para avaliar o sistema.</p>
-              <div style="background:#F8FAFC;border-radius:8px;padding:16px;margin:16px 0">
-                <p style="margin:4px 0"><strong>Negócio:</strong> ${escHtml(businessName)}</p>
-                <p style="margin:4px 0"><strong>Email:</strong> ${escHtml(email)}</p>
-                <p style="margin:4px 0"><strong>Senha:</strong> <code style="background:#E0E7FF;padding:2px 8px;border-radius:4px;font-size:16px;letter-spacing:1px">${password}</code></p>
-              </div>
-              <p style="color:#64748B;font-size:13px">Representante: ${escHtml(representative)}</p>
-              <p style="color:#64748B;font-size:12px">Após os 3 dias, contacte o seu representante para activar a subscrição.</p>
-            </div>
-          </div>`,
-        }),
-      });
-    } catch {}
-  }
+  try {
+    await sendEmail(email, "Conta demonstração VENDASB2B — Os seus dados de acesso",
+      demoBizEmail({ ownerName, businessName, email, password, representative }));
+  } catch {}
 
   res.status(201).json({ ok: true, email, password, businessName });
 });

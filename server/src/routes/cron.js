@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { query } from "../db.js";
 import { temPermissao } from "../permissions.js";
+import { sendEmail } from "../email.js";
+
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 export const cronRouter = Router();
 
@@ -13,27 +16,6 @@ cronRouter.use((req, res, next) => {
   }
   next();
 });
-
-const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-async function sendEmail(to, subject, html) {
-  if (!process.env.RESEND_API_KEY) return { skipped: true };
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM || "VENDASB2B <onboarding@resend.dev>",
-      to: [to],
-      subject,
-      html,
-    }),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error("Resend " + res.status + " " + t);
-  }
-  return { ok: true };
-}
 
 // Monta e envia o resumo do dia de cada negócio activo para o email do dono.
 cronRouter.post("/daily-summary", async (req, res) => {
