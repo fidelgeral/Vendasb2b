@@ -67,6 +67,21 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/email-diag", async (req, res) => {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key) return res.json({ keySet: false, from: from || null });
+  try {
+    const r = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const data = await r.json().catch(() => ({}));
+    res.json({ keySet: true, from: from || null, resendStatus: r.status, domains: data });
+  } catch (e) {
+    res.json({ error: e.message, keySet: true, from: from || null });
+  }
+});
+
 app.use("/api", authRouter);
 app.use("/api", webauthnRouter);
 app.use("/api/super/businesses", businessesRouter);
