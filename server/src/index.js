@@ -26,7 +26,7 @@ import { cronRouter } from "./routes/cron.js";
 import { payrollRouter } from "./routes/payroll.js";
 import { webauthnRouter } from "./routes/webauthn.js";
 import { uploadRouter } from "./routes/upload.js";
-import { requireActiveSubscription } from "./auth/middleware.js";
+import { requireActiveSubscription, requireAuth, requireSuperAdmin } from "./auth/middleware.js";
 import { initSentry } from "./sentry.js";
 
 const app = express();
@@ -67,7 +67,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.get("/api/email-diag", async (req, res) => {
+app.get("/api/email-diag", requireAuth, requireSuperAdmin, async (req, res) => {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
   if (!key) return res.json({ keySet: false, from: from || null });

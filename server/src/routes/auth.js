@@ -112,7 +112,8 @@ authRouter.post("/auth/refresh", async (req, res) => {
   }
 
   // Revogar o token usado e gerar um novo (rotation)
-  await query("UPDATE refresh_tokens SET revoked = true WHERE id = $1", [rt.id]);
+  const claimed = await query("UPDATE refresh_tokens SET revoked = true WHERE id = $1 AND revoked = false RETURNING id", [rt.id]);
+  if (!claimed.rows.length) return res.status(401).json({ error: "Sessão expirada. Faça login novamente." });
   const newRefresh = generateRefreshToken();
   const expiresAt = new Date(Date.now() + REFRESH_DAYS * 86400000);
 

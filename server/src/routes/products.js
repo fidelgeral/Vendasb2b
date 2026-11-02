@@ -375,7 +375,7 @@ productsRouter.post("/products/:id/variants/:variantId/adjust", requirePermissio
 productsRouter.post("/products/:id/batches", requirePermission("loteNovo"), async (req, res) => {
   const qty = Number(req.body?.qty);
   const expiryDate = req.body?.expiryDate || null;
-  if (!Number.isFinite(qty)) return res.status(400).json({ error: "Quantidade inválida." });
+  if (!Number.isFinite(qty) || qty <= 0) return res.status(400).json({ error: "Quantidade inválida." });
   const { businessId, id } = req.params;
   await query("INSERT INTO product_batches (product_id, qty, expiry_date) SELECT id, $1, $2 FROM products WHERE id = $3 AND business_id = $4", [
     qty, expiryDate, id, businessId,
@@ -456,6 +456,10 @@ productsRouter.patch("/categories/:name", requirePermission("produtoEditar"), as
   const antigo = req.params.name;
   const novo = String(req.body?.name || "").trim();
   if (!novo) return res.status(400).json({ error: "Indique o novo nome." });
+  if (novo !== antigo) {
+    const dup = await query("SELECT 1 FROM categories WHERE business_id = $1 AND name = $2", [businessId, novo]);
+    if (dup.rows.length) return res.status(409).json({ error: "Já existe uma categoria com esse nome." });
+  }
   await withTransaction(async (client) => {
     await client.query("UPDATE categories SET name = $1 WHERE business_id = $2 AND name = $3", [novo, businessId, antigo]);
     await client.query("UPDATE products SET category = $1 WHERE business_id = $2 AND category = $3", [novo, businessId, antigo]);
