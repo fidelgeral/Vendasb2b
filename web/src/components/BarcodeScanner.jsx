@@ -7,6 +7,8 @@ export default function BarcodeScanner({ onDetected, onClose }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const [error, setError] = useState("");
+  const cbRef = useRef(onDetected);
+  cbRef.current = onDetected;
 
   useEffect(() => {
     let cancelled = false;
@@ -18,10 +20,11 @@ export default function BarcodeScanner({ onDetected, onClose }) {
           if (result && !cancelled) {
             cancelled = true;
             if (controlsRef.current) controlsRef.current.stop();
-            onDetected(result.getText());
+            cbRef.current(result.getText());
           }
         });
         controlsRef.current = controls;
+        if (cancelled) controls.stop();
       } catch (e) {
         setError("Não foi possível aceder à câmara. Autorize a câmara no navegador e tente novamente.");
       }
@@ -30,7 +33,7 @@ export default function BarcodeScanner({ onDetected, onClose }) {
       cancelled = true;
       if (controlsRef.current) controlsRef.current.stop();
     };
-  }, [onDetected]);
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>

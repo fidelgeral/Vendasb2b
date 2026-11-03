@@ -5,6 +5,8 @@ import BillingPanel from "../components/BillingPanel.jsx";
 import { fmtMT } from "../lib/utils.js";
 import { code128SVG } from "../lib/barcode.js";
 
+const escHtml = (t) => String(t ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]);
+
 export default function OutrosServicosTab({ store, setStore, api, showToast }) {
   const [cat, setCat] = useState("assinatura");
 
@@ -59,7 +61,7 @@ function EtiquetasSection({ store }) {
       const bc = p.codigo ? code128SVG(p.codigo, { height: 50, moduleWidth: 1.5, showText: true, textSize: 11 }) : "";
       return `
       <div style="border:1px dashed #999;padding:10px;margin:4px;display:inline-block;font-family:monospace;text-align:center;min-width:220px">
-        <div style="font-weight:bold;font-size:13px;margin-bottom:6px">${p.name}</div>
+        <div style="font-weight:bold;font-size:13px;margin-bottom:6px">${escHtml(p.name)}</div>
         ${bc ? `<div style="margin:4px 0">${bc}</div>` : '<div style="font-size:11px;color:#999">Sem código de barras</div>'}
       </div>`;
     }).join("");
@@ -112,7 +114,7 @@ function PrecosSection({ store }) {
       const bc = p.codigo ? code128SVG(p.codigo, { height: 40, moduleWidth: 1.2, showText: true, textSize: 10 }) : "";
       return `
       <div style="border:1px solid #ccc;padding:12px;margin:4px;display:inline-block;text-align:center;min-width:200px;font-family:system-ui">
-        <div style="font-size:12px;color:#666">${p.name}</div>
+        <div style="font-size:12px;color:#666">${escHtml(p.name)}</div>
         <div style="font-size:28px;font-weight:bold;color:#000;margin:4px 0">${Number(p.price).toFixed(2)} MT</div>
         ${bc ? `<div style="margin:4px 0">${bc}</div>` : ""}
       </div>`;
@@ -217,7 +219,7 @@ function RecursosHumanosSection({ store, api, showToast }) {
     if (!win) return;
     const trs = rows.map((r) => `
       <tr>
-        <td style="border:1px solid #ddd;padding:6px">${r.employee_name}</td>
+        <td style="border:1px solid #ddd;padding:6px">${escHtml(r.employee_name)}</td>
         <td style="border:1px solid #ddd;padding:6px;text-align:right">${Number(r.salario_base).toFixed(2)}</td>
         <td style="border:1px solid #ddd;padding:6px;text-align:right">${Number(r.bonus).toFixed(2)}</td>
         <td style="border:1px solid #ddd;padding:6px;text-align:right">${Number(r.descontos).toFixed(2)}</td>
@@ -376,7 +378,7 @@ function RequisicoesSection({ store, setStore, api, showToast }) {
     if (!reqs.length) return;
     const win = window.open("", "_blank");
     if (!win) return;
-    const rows = reqs.map((r) => `<tr><td style="border:1px solid #ddd;padding:6px">${r.produtoNome}</td><td style="border:1px solid #ddd;padding:6px;text-align:center">${r.quantidade}</td><td style="border:1px solid #ddd;padding:6px">${r.destino || "—"}</td><td style="border:1px solid #ddd;padding:6px">${r.notas || "—"}</td></tr>`).join("");
+    const rows = reqs.map((r) => `<tr><td style="border:1px solid #ddd;padding:6px">${escHtml(r.produtoNome)}</td><td style="border:1px solid #ddd;padding:6px;text-align:center">${r.quantidade}</td><td style="border:1px solid #ddd;padding:6px">${escHtml(r.destino || "—")}</td><td style="border:1px solid #ddd;padding:6px">${escHtml(r.notas || "—")}</td></tr>`).join("");
     const html = `
       <div style="font-family:system-ui;max-width:700px;margin:0 auto;padding:20px">
         <h2>Requisição de Produtos</h2>

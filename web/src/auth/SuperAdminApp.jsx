@@ -326,7 +326,9 @@ const ADMIN_PLANOS = [
 
 function BillingControls({ b, onChanged }) {
   const [open, setOpen] = useState(false);
-  const [plan, setPlan] = useState(b.plan || "basico");
+  const [plan, setPlan] = useState(
+    ADMIN_PLANOS.find((p) => p.id === b.plan || (b.plan || "").toLowerCase().startsWith(p.nome.toLowerCase()))?.id || "basico"
+  );
   const [ciclo, setCiclo] = useState("mensal");
   const [due, setDue] = useState(b.nextDueDate ? String(b.nextDueDate).slice(0, 10) : "");
   const [saving, setSaving] = useState(false);

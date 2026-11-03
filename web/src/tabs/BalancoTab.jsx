@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, GREEN, SOFTGOLD } from "../lib/theme.js";
-import { fmtMT, getStock, isLowStock, nearExpiry, ROLE_LABELS } from "../lib/utils.js";
+import { todayStr, fmtMT, getStock, isLowStock, nearExpiry, ROLE_LABELS } from "../lib/utils.js";
 import { DonutChart, StatCardChart } from "../lib/charts.jsx";
 import { exportReportExcel, exportReportPDF } from "../lib/print.js";
 import { computeIva } from "../lib/iva.js";
@@ -265,8 +265,9 @@ export default function BalancoTab({ store, api }) {
 }
 
 function DashboardOverview({ store, sales }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const today = todayStr();
+  const _l = new Date(Date.now() - 7 * 86400000);
+  const weekAgo = `${_l.getFullYear()}-${String(_l.getMonth() + 1).padStart(2, "0")}-${String(_l.getDate()).padStart(2, "0")}`;
   const monthStart = today.slice(0, 8) + "01";
   const filter = (from) => sales.filter((s) => s.date >= from);
   const todaySales = filter(today);

@@ -9,6 +9,7 @@ import { imprimirCotacao } from "../lib/print.js";
 export default function VenderTab({ store, setStore, api, finalizeSale, voidSale, shiftOpen, canDiscount, canVoid, showToast, paymentMethods, restauranteAtivo }) {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
+  const [saleKey, setSaleKey] = useState(0);
   const [variantPicker, setVariantPicker] = useState(null);
   const [showParked, setShowParked] = useState(false);
   const [showCotacoes, setShowCotacoes] = useState(false);
@@ -241,7 +242,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
       pontosUsados,
       ivaTaxa,
     });
-    if (sale) setCart([]);
+    if (sale) { setCart([]); setSaleKey((k) => k + 1); }
   };
 
   // leitor de código de barras: deteta digitação muito rápida terminada em Enter
@@ -405,7 +406,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
             ))}
           </div>
           <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-2 mt-2">
-            <CheckoutPanel items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} onQuote={gerarCotacao} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} loyalty={store.loyalty} />
+            <CheckoutPanel key={saleKey} items={cart} clients={store.clients} canDiscount={canDiscount} onConfirm={handleConfirm} onPark={parkSale} onAddClient={addClientInline} onQuote={gerarCotacao} mesas={restauranteAtivo ? store.tables : null} onGuardarMesa={guardarEmMesa} paymentMethods={paymentMethods} ivaConfig={store.config.iva} config={store.config} loyalty={store.loyalty} />
           </div>
         </div>
       </div>
