@@ -261,10 +261,9 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
     [biz.id, ownerName, email.toLowerCase(), hash]
   );
 
-  try {
-    await sendEmail(email, "Conta demonstração VENDASB2B — Os seus dados de acesso",
-      demoBizEmail({ ownerName, businessName, email, password, representative, plan }));
-  } catch {}
+  sendEmail(email, "Conta demonstração VENDASB2B — Os seus dados de acesso",
+    demoBizEmail({ ownerName, businessName, email, password, representative, plan }))
+    .catch((e) => console.error("[demo] email failed:", e.message));
 
   res.status(201).json({ ok: true, email, password, businessName, plan });
 });

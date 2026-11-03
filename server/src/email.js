@@ -77,7 +77,7 @@ async function sendViaSMTP(to, subject, html) {
   if (!user || !pass) throw new Error("SMTP not configured");
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = parseInt(process.env.SMTP_PORT || "465", 10);
-  const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass }, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000 });
   const from = process.env.SMTP_FROM || `VENDASB2B <${user}>`;
   console.log("[email] SMTP sending from:", from, "to:", to);
   await transporter.sendMail({ from, to, subject, html });
