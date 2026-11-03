@@ -87,7 +87,16 @@ async function sendViaSMTP(to, subject, html) {
 
 export async function sendEmail(to, subject, html) {
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    return await sendViaSMTP(to, subject, html);
+    try {
+      return await sendViaSMTP(to, subject, html);
+    } catch (e) {
+      console.warn("[email] SMTP failed, trying Resend fallback:", e.message);
+      if (process.env.RESEND_API_KEY) {
+        const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
+        return await doSendEmail(primary, to, subject, html);
+      }
+      throw e;
+    }
   }
   if (process.env.RESEND_API_KEY) {
     const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
