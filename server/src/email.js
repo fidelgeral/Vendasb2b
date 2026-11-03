@@ -71,6 +71,23 @@ async function doSendEmail(from, to, subject, html) {
 
 const RESEND_FALLBACK = "VENDASB2B <onboarding@resend.dev>";
 
+async function sendViaBrevo(to, subject, html) {
+  const key = process.env.BREVO_API_KEY;
+  if (!key) throw new Error("Brevo not configured");
+  const senderEmail = process.env.BREVO_FROM_EMAIL || process.env.SMTP_USER || "noreply@vendasb2b.com";
+  const senderName = process.env.BREVO_FROM_NAME || "VENDASB2B";
+  console.log("[email] Brevo sending from:", senderName, `<${senderEmail}>`, "to:", to);
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": key },
+    body: JSON.stringify({ sender: { name: senderName, email: senderEmail }, to: [{ email: to }], subject, htmlContent: html }),
+  });
+  const t = await res.text().catch(() => "");
+  console.log("[email] Brevo response:", res.status, t);
+  if (!res.ok) throw new Error("Brevo " + res.status + " " + t);
+  return { ok: true };
+}
+
 async function sendViaSMTP(to, subject, html) {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
@@ -86,23 +103,26 @@ async function sendViaSMTP(to, subject, html) {
 }
 
 export async function sendEmail(to, subject, html) {
+  const errors = [];
+
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    try {
-      return await sendViaSMTP(to, subject, html);
-    } catch (e) {
-      console.warn("[email] SMTP failed, trying Resend fallback:", e.message);
-      if (process.env.RESEND_API_KEY) {
-        const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
-        return await doSendEmail(primary, to, subject, html);
-      }
-      throw e;
-    }
+    try { return await sendViaSMTP(to, subject, html); }
+    catch (e) { console.warn("[email] SMTP failed:", e.message); errors.push(e); }
   }
+
+  if (process.env.BREVO_API_KEY) {
+    try { return await sendViaBrevo(to, subject, html); }
+    catch (e) { console.warn("[email] Brevo failed:", e.message); errors.push(e); }
+  }
+
   if (process.env.RESEND_API_KEY) {
-    const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
-    return await doSendEmail(primary, to, subject, html);
+    try {
+      const primary = process.env.RESEND_FROM || RESEND_FALLBACK;
+      return await doSendEmail(primary, to, subject, html);
+    } catch (e) { console.warn("[email] Resend failed:", e.message); errors.push(e); }
   }
-  throw new Error("No email provider configured");
+
+  throw errors.length ? errors[errors.length - 1] : new Error("No email provider configured");
 }
 
 export const PLANOS = [
