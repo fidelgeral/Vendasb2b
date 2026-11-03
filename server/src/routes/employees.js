@@ -46,11 +46,20 @@ const employeeSchema = z.object({
   garcom: z.boolean().optional().default(false),
 });
 
+// Só o administrador (ou super-admin) pode criar/editar/remover administradores.
+const souAdmin = (req) => req.auth.type === "super" || req.auth.role === "dono";
+const NEGADO_ADMIN = { error: "Só o administrador gere administradores." };
+async function alvoEhDono(businessId, id) {
+  const r = (await query("SELECT role FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  return r?.role === "dono";
+}
+
 employeesRouter.post("/employees", requirePermission("gerirEquipa"), async (req, res) => {
   const parsed = employeeSchema.safeParse(req.body);
   if (!parsed.success || !parsed.data.password) return res.status(400).json({ error: "Dados inválidos: a senha deve ter pelo menos 6 caracteres, com letras e números." });
   const f = parsed.data;
   const businessId = req.params.businessId;
+  if (f.role === "dono" && !souAdmin(req)) return res.status(403).json(NEGADO_ADMIN);
 
   // O email é único em toda a plataforma (não só dentro deste negócio), pois é
   // ele que identifica a conta no ecrã de login (sem precisar de código de negócio).
@@ -89,6 +98,7 @@ employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async 
   const { businessId, id } = req.params;
   const existing = (await query("SELECT * FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (!existing) return res.status(404).json({ error: "Utilizador não encontrado." });
+  if (!souAdmin(req) && (existing.role === "dono" || f.role === "dono")) return res.status(403).json(NEGADO_ADMIN);
 
   // Não permitir tirar o papel de "dono" ao último administrador activo.
   if (existing.role === "dono" && existing.active && f.role && f.role !== "dono" && !(await outroDonoActivo(businessId, id))) {
@@ -124,6 +134,7 @@ employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async 
 
 employeesRouter.delete("/employees/:id", requirePermission("gerirEquipa"), async (req, res) => {
   const { businessId, id } = req.params;
+  if (!souAdmin(req) && (await alvoEhDono(businessId, id))) return res.status(403).json(NEGADO_ADMIN);
   const antes = (await query("SELECT name, role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (antes && antes.role === "dono" && antes.active && !(await outroDonoActivo(businessId, id))) {
     return res.status(409).json({ error: "Não pode remover o único administrador activo. Promova outro a Administrador primeiro." });
@@ -135,6 +146,7 @@ employeesRouter.delete("/employees/:id", requirePermission("gerirEquipa"), async
 
 employeesRouter.patch("/employees/:id/permissions", requirePermission("gerirEquipa"), async (req, res) => {
   const { businessId, id } = req.params;
+  if (!souAdmin(req) && (await alvoEhDono(businessId, id))) return res.status(403).json(NEGADO_ADMIN);
   const perms = req.body && typeof req.body.permissions === "object" && req.body.permissions ? req.body.permissions : {};
   // Só guarda valores booleanos (ignora lixo).
   const limpo = {};
@@ -148,6 +160,7 @@ employeesRouter.patch("/employees/:id/permissions", requirePermission("gerirEqui
 
 employeesRouter.post("/employees/:id/toggle-active", requirePermission("gerirEquipa"), async (req, res) => {
   const { businessId, id } = req.params;
+  if (!souAdmin(req) && (await alvoEhDono(businessId, id))) return res.status(403).json(NEGADO_ADMIN);
   const atual = (await query("SELECT role, active FROM employees WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
   if (atual && atual.role === "dono" && atual.active && !(await outroDonoActivo(businessId, id))) {
     return res.status(409).json({ error: "Não pode desativar o único administrador activo." });
