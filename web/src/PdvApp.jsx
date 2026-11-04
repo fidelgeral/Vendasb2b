@@ -92,9 +92,11 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     return () => clearTimeout(id);
   }, [store, businessId, suspended]);
 
+  const toastTimerRef = useRef(null);
   const showToast = useCallback((msg, tone = "ok") => {
     setToast({ msg, tone });
-    setTimeout(() => setToast(null), 2400);
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
   const refreshPending = useCallback(() => {
@@ -360,6 +362,10 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
       // internet voltar. A venda aparece já no ecrã (número "Offline").
       if (e instanceof ApiError && e.status === 0) {
         const entry = await enqueueSale({ businessId, payload: withId, employeeName });
+        if (!entry) {
+          showToast("Sem internet e não foi possível guardar a venda localmente", "warn");
+          return;
+        }
         setStore((s) => applyOfflineSale(s, withId, { localId: entry?.localId, employeeName }));
         refreshPending();
         showToast("Sem internet — venda guardada para sincronizar", "warn");

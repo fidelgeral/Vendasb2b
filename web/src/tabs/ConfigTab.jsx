@@ -97,7 +97,12 @@ function ImpressaoConfig({ store, setStore, api }) {
       await api.patchConfig({
         receiptMessage: mensagem,
         impressao: { ...store.config.impressao, papel, visorCliente, imprimirAoFinalizar, scannerUsb },
-        docSeries: { prefixo: (prefixo || "FT").toUpperCase(), ano: new Date().getFullYear(), proximo: Number(proximo) || 1 },
+        docSeries: {
+          prefixo: (prefixo || "FT").toUpperCase(),
+          ano: new Date().getFullYear(),
+          // só envia o contador se o utilizador o editou (evita repor números já usados)
+          ...(Number(proximo) !== Number(ds.proximo || 1) ? { proximo: Number(proximo) || 1 } : {}),
+        },
       })
     );
   };

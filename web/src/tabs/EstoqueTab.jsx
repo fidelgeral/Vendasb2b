@@ -136,7 +136,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   // para produtos que ainda não têm código, para a etiqueta ficar escaneável.
   const gerarCodigoInterno = () => "20" + String(Date.now()).slice(-7) + Math.floor(1000 + Math.random() * 9000);
   const imprimirEtiquetasComCodigo = async () => {
-    const produtos = linhas.map((l) => l.product);
+    const produtos = [...new Map(linhas.map((l) => [l.product.id, l.product])).values()];
     const semCodigo = produtos.filter((p) => !(p.codigo || "").trim());
     let lista = produtos;
     if (semCodigo.length) {
