@@ -121,6 +121,7 @@ initSentry(app);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  if (err && (err.code === "22P02" || err.code === "22007")) return res.status(400).json({ error: "Pedido inválido." });
   console.error(err);
   res.status(500).json({ error: "Erro interno do servidor." });
 });

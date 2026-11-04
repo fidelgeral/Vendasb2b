@@ -4,6 +4,7 @@ import { query } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { requirePermission } from "../permissions.js";
 import { logAudit, authEmployee } from "../audit.js";
+import { invalidateStoreCache } from "./store.js";
 
 export const payrollRouter = Router({ mergeParams: true });
 payrollRouter.use(requireAuth, requireBusiness);
@@ -19,7 +20,7 @@ const schema = z.object({
   notas: z.string().optional().default(""),
 });
 
-payrollRouter.get("/payroll", async (req, res) => {
+payrollRouter.get("/payroll", requirePermission("gerirEquipa"), async (req, res) => {
   const businessId = req.params.businessId;
   const ano = parseInt(req.query.ano) || new Date().getFullYear();
   const mes = parseInt(req.query.mes) || null;
@@ -51,6 +52,7 @@ payrollRouter.post("/payroll", requirePermission("gerirEquipa"), async (req, res
   );
   await logAudit({ businessId, employee: authEmployee(req), acao: "SALARIO", detalhe: `Processou salário de ${f.employeeName} (${f.mes}/${f.ano}): ${total.toFixed(2)} MT` });
   const rows = (await query("SELECT * FROM payroll WHERE business_id = $1 AND ano = $2 ORDER BY mes DESC, employee_name ASC", [businessId, f.ano])).rows;
+  invalidateStoreCache(businessId);
   res.json({ payroll: rows });
 });
 
@@ -60,6 +62,7 @@ payrollRouter.patch("/payroll/:id/pay", requirePermission("gerirEquipa"), async 
   if (!row) return res.status(404).json({ error: "Registo não encontrado." });
   await query("UPDATE payroll SET pago = true, pago_em = now() WHERE id = $1", [req.params.id]);
   await logAudit({ businessId, employee: authEmployee(req), acao: "SALARIO", detalhe: `Marcou salário de ${row.employee_name} (${row.mes}/${row.ano}) como pago` });
+  invalidateStoreCache(businessId);
   res.json({ ok: true });
 });
 
@@ -69,5 +72,6 @@ payrollRouter.delete("/payroll/:id", requirePermission("gerirEquipa"), async (re
   if (!row) return res.status(404).json({ error: "Registo não encontrado." });
   await query("DELETE FROM payroll WHERE id = $1", [req.params.id]);
   await logAudit({ businessId, employee: authEmployee(req), acao: "SALARIO", detalhe: `Apagou salário de ${row.employee_name} (${row.mes}/${row.ano})` });
+  invalidateStoreCache(businessId);
   res.json({ ok: true });
 });
