@@ -176,12 +176,12 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   }, [load, suspended]);
 
   // Notificações push do browser (stock baixo, lotes a vencer)
-  const prevAlertCountRef = useRef(0);
+  const prevAlertCountRef = useRef(null);
   useEffect(() => {
     if (!store) return;
     const alertCount = store.products.filter((p) => isLowStock(p, store.products)).length
       + store.products.filter((p) => nearExpiry(p).length > 0).length;
-    if (alertCount > prevAlertCountRef.current && prevAlertCountRef.current >= 0) {
+    if (prevAlertCountRef.current !== null && alertCount > prevAlertCountRef.current) {
       if ("Notification" in window && Notification.permission === "granted") {
         const novos = alertCount - prevAlertCountRef.current;
         new Notification("VENDASB2B — Alerta", { body: `${novos} novo(s) alerta(s) de stock/validade`, icon: "/icon-192.png" });
@@ -291,6 +291,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     { id: "servicos", label: "Outros Serviços", icon: Layers, show: true },
     { id: "config", label: "Config", icon: Settings, show: can("gerirConfig") },
   ].filter((t) => t.show);
+  const ver = (id) => tab === id && tabDefs.some((t) => t.id === id);
 
   const alerts = [
     ...store.products.filter((p) => isLowStock(p, store.products)).map((p) => ({ text: `${p.name} — stock baixo (${getStock(p, store.products)})`, color: BRICK, tab: "estoque" })),
@@ -517,7 +518,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             restauranteAtivo={modules.restaurante || modules.bar}
           />
         )}
-        {tab === "mesas" && (
+        {ver("mesas") && (
           <MesasTab
             store={store}
             setStore={setStore}
@@ -551,10 +552,10 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
         )}
         {tab === "clientes" && <ClientesTab store={store} setStore={setStore} api={api} can={can} />}
         {tab === "compras" && <ComprasTab store={store} setStore={setStore} api={api} />}
-        {tab === "equipa" && <EquipaTab store={store} setStore={setStore} api={api} />}
-        {tab === "balanco" && <BalancoTab store={store} api={api} />}
+        {ver("equipa") && <EquipaTab store={store} setStore={setStore} api={api} />}
+        {ver("balanco") && <BalancoTab store={store} api={api} />}
         {tab === "servicos" && <OutrosServicosTab store={store} setStore={setStore} api={api} showToast={showToast} />}
-        {tab === "config" && <ConfigTab store={store} setStore={setStore} api={api} />}
+        {ver("config") && <ConfigTab store={store} setStore={setStore} api={api} />}
       </div>
 
       {saveError && (

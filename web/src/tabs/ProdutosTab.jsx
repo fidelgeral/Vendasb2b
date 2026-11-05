@@ -545,7 +545,7 @@ export default function ProdutosTab({ store, setStore, api, onGoEstoque, can = (
             onVer={can("produtoVer") ? () => setVerProduto(p) : undefined}
             onHistorico={() => setHistProduto(p)}
             onToggleActive={can("produtoEditar") ? () => updateProduct(p.id, { active: p.active === false }) : undefined}
-            onDuplicate={can("produtoEditar") ? () => duplicarProduto(p.id) : undefined}
+            onDuplicate={can("produtoAdicionar") ? () => duplicarProduto(p.id) : undefined}
           />
         ))}
         {filteredProducts.length === 0 && (

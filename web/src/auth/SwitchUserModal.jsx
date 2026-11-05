@@ -18,7 +18,7 @@ export default function SwitchUserModal({ businessId, onSwitched, onClose }) {
     const prevRefresh = getRefreshToken();
     try {
       const res = await auth.login(email.trim(), password);
-      if (res.business.id !== businessId) {
+      if (res.business.id !== businessId && !(res.filiais || []).some((f) => f.id === businessId)) {
         // auth.login já gravou o refresh token da outra conta: repor o actual.
         setRefreshToken(prevRefresh);
         setError("Essa conta pertence a outro negócio.");
