@@ -244,6 +244,7 @@ lotesRouter.get(
 // eslint-disable-next-line no-unused-vars
 lotesRouter.use((err, req, res, next) => {
   if (err && err.http) return res.status(err.http).json({ error: err.message });
-  console.error(err);
-  res.status(500).json({ error: "Erro ao processar o lote." });
+  // Deixa o handler global (400/500 + Sentry) tratar o resto — este router é
+  // montado depois de store/products, cujos erros também passam por aqui.
+  return next(err);
 });
