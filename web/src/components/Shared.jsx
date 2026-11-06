@@ -368,7 +368,7 @@ export function DetalhesModal({ title, linhas, onClose, extra }) {
           {linhas.filter((l) => l).map((l, i) => (
             <div key={i} className="flex justify-between gap-3 text-sm">
               <span style={{ color: MUTED }}>{l.label}</span>
-              <span className="text-right font-medium break-words">{l.value || "—"}</span>
+              <span className="text-right font-medium break-words">{l.value === undefined || l.value === null || l.value === "" ? "—" : l.value}</span>
             </div>
           ))}
         </div>
@@ -606,7 +606,7 @@ export function CheckoutPanel({ items, extraChargePct = 0, clients, canDiscount,
   const subtotal = items.reduce((s, l) => s + l.price * l.qty, 0);
   const serviceCharge = subtotal * (extraChargePct / 100);
   const descontoPontos = usarPontos ? Math.min(pontosDisponiveis * valorPorPonto, subtotal + serviceCharge) : 0;
-  const pontosUsados = usarPontos ? Math.ceil(descontoPontos / valorPorPonto) : 0;
+  const pontosUsados = usarPontos && valorPorPonto > 0 ? Math.min(pontosDisponiveis, Math.ceil(descontoPontos / valorPorPonto - 1e-9)) : 0;
   const afterDiscount = Math.max(0, subtotal + serviceCharge - Number(discount || 0) - descontoPontos);
   const ivaRate = ivaConfig?.isento ? 0 : Number(ivaRateSel) || 0;
   const ivaOnTop = !ivaConfig?.isento && ivaRate > 0 && !ivaConfig?.precosIncluemIva;
