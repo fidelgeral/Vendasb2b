@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js";
-import { buildStoreAndCache } from "./store.js";
+import { buildStoreAndCache, invalidateStoreCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 import { requirePermission } from "../permissions.js";
 
@@ -123,6 +123,7 @@ productsRouter.post("/transfer-stock", requirePermission("loteNovo"), async (req
     throw err;
   }
 
+  invalidateStoreCache(toBusinessId);
   await respond(res, fromId);
 });
 

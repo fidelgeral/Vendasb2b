@@ -60,6 +60,7 @@ payrollRouter.patch("/payroll/:id/pay", requirePermission("gerirEquipa"), async 
   const businessId = req.params.businessId;
   const row = (await query("SELECT * FROM payroll WHERE id = $1 AND business_id = $2", [req.params.id, businessId])).rows[0];
   if (!row) return res.status(404).json({ error: "Registo não encontrado." });
+  if (row.pago) return res.json({ ok: true });
   await query("UPDATE payroll SET pago = true, pago_em = now() WHERE id = $1", [req.params.id]);
   await logAudit({ businessId, employee: authEmployee(req), acao: "SALARIO", detalhe: `Marcou salário de ${row.employee_name} (${row.mes}/${row.ano}) como pago` });
   invalidateStoreCache(businessId);

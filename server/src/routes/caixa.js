@@ -100,6 +100,7 @@ caixaRouter.post("/loyalty/redeem", requirePermission("caixaAbrirFechar"), async
       [pts, businessId, clientId]
     );
     if (!upd.rows.length) return false;
+    await client.query("UPDATE clients SET points = GREATEST(0, points - $1) WHERE id = $2 AND business_id = $3", [pts, clientId, businessId]);
     await client.query("INSERT INTO loyalty_history (business_id, client_id, points, tipo, descricao) VALUES ($1,$2,$3,'resgate',$4)", [businessId, clientId, -pts, `Resgate de ${pts} pontos`]);
     return true;
   });
