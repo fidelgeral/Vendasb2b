@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
+import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStoreAndCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 import { requirePermission } from "../permissions.js";
+import { ensureLoteMode } from "./lotes.js";
 
 export const suppliersRouter = Router({ mergeParams: true });
 suppliersRouter.use(requireAuth, requireBusiness);
@@ -87,16 +88,23 @@ suppliersRouter.post("/purchases", requirePermission("loteNovo"), async (req, re
   const hasVariants = (await query("SELECT 1 FROM product_variants WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;
   const finalCost = cost || Number(product.cost);
 
-  if (hasBatches || (!hasVariants && expiryDate)) {
-    await query("INSERT INTO product_batches (product_id, qty, expiry_date) VALUES ($1,$2,$3)", [productId, qty, expiryDate]);
-    await query("UPDATE products SET cost = $1 WHERE id = $2", [finalCost, productId]);
-  } else if (!hasVariants) {
-    await query("UPDATE products SET cost = $1, stock = stock + $2 WHERE id = $3", [finalCost, qty, productId]);
-  }
-
-  await query("INSERT INTO purchases (business_id, supplier_id, product_id, qty, cost, total) VALUES ($1,$2,$3,$4,$5,$6)", [
-    businessId, supplierId, productId, qty, finalCost, finalCost * qty,
-  ]);
+  // Tudo numa transacção: stock, custo e registo da compra ficam consistentes.
+  await withTransaction(async (client) => {
+    if (hasBatches || (!hasVariants && expiryDate)) {
+      // Converte stock simples existente em lote inicial antes de passar a gerir por lotes.
+      await ensureLoteMode(client, product, businessId, req.auth.type === "employee" ? req.auth.name : "Super-admin");
+      await client.query(
+        "INSERT INTO product_batches (product_id, qty, initial_qty, cost_total, supplier_id, expiry_date) VALUES ($1,$2,$2,$3,$4,$5)",
+        [productId, qty, finalCost * qty, supplierId, expiryDate || null]
+      );
+      await client.query("UPDATE products SET cost = $1 WHERE id = $2", [finalCost, productId]);
+    } else if (!hasVariants) {
+      await client.query("UPDATE products SET cost = $1, stock = stock + $2 WHERE id = $3", [finalCost, qty, productId]);
+    }
+    await client.query("INSERT INTO purchases (business_id, supplier_id, product_id, qty, cost, total) VALUES ($1,$2,$3,$4,$5,$6)", [
+      businessId, supplierId, productId, qty, finalCost, finalCost * qty,
+    ]);
+  });
 
   await respond(res, businessId, 201);
 });

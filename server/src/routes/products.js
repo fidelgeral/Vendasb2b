@@ -5,6 +5,7 @@ import { requireAuth, requireBusiness, requireRole } from "../auth/middleware.js
 import { buildStoreAndCache, invalidateStoreCache } from "./store.js";
 import { logAudit, authEmployee } from "../audit.js";
 import { requirePermission } from "../permissions.js";
+import { ensureLoteMode } from "./lotes.js";
 
 export const productsRouter = Router({ mergeParams: true });
 productsRouter.use(requireAuth, requireBusiness);
@@ -208,7 +209,7 @@ productsRouter.post("/products", requirePermission("produtoAdicionar"), async (r
       }
     }
     if (f.tipo === "simples" && f.addEstoque && f.estoqueValidade && f.estoqueQtd > 0) {
-      await client.query("INSERT INTO product_batches (product_id, qty, expiry_date) VALUES ($1,$2,$3)", [product.id, f.estoqueQtd, f.estoqueValidade]);
+      await client.query("INSERT INTO product_batches (product_id, qty, initial_qty, cost_total, expiry_date) VALUES ($1,$2,$2,$3,$4)", [product.id, f.estoqueQtd, cost * f.estoqueQtd, f.estoqueValidade]);
     }
     if (f.tipo === "simples" && f.addEstoque && f.estoqueQtd > 0) {
       await client.query("INSERT INTO purchases (business_id, supplier_id, product_id, qty, cost, total) VALUES ($1,$2,$3,$4,$5,$6)", [
@@ -378,9 +379,13 @@ productsRouter.post("/products/:id/batches", requirePermission("loteNovo"), asyn
   const expiryDate = req.body?.expiryDate || null;
   if (!Number.isFinite(qty) || qty <= 0) return res.status(400).json({ error: "Quantidade inválida." });
   const { businessId, id } = req.params;
-  await query("INSERT INTO product_batches (product_id, qty, expiry_date) SELECT id, $1, $2 FROM products WHERE id = $3 AND business_id = $4", [
-    qty, expiryDate, id, businessId,
-  ]);
+  await withTransaction(async (client) => {
+    const product = (await client.query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+    if (!product) return;
+    // Converte o stock simples existente num lote inicial, senão ficaria "escondido" ao passar a gerir por lotes.
+    await ensureLoteMode(client, product, businessId, authEmployee(req).name);
+    await client.query("INSERT INTO product_batches (product_id, qty, initial_qty, expiry_date) VALUES ($1,$2,$2,$3)", [id, qty, expiryDate]);
+  });
   await respond(res, businessId, 201);
 });
 

@@ -175,19 +175,21 @@ caixaRouter.post("/movimentos", (req, res, next) => requirePermission(req.body &
 });
 
 // Aplica um decremento de stock respeitando variação/composição/lotes — usado por quebras e vendas.
-export async function decrementStock(client, productId, variantId, qty) {
+export async function decrementStock(client, productId, variantId, qty, depth = 0) {
+  // Protecção contra ciclos (variação/composição a apontar uns para os outros) — evita recursão infinita.
+  if (depth > 10) throw new Error("Dependência circular de produtos (variação/composição).");
   const product = (await client.query("SELECT * FROM products WHERE id = $1 FOR UPDATE", [productId])).rows[0];
   if (!product) return;
 
   if (product.tipo === "variacao" && product.parent_id) {
     const consumo = Number(product.consumo) || 1;
-    return decrementStock(client, product.parent_id, null, qty * consumo);
+    return decrementStock(client, product.parent_id, null, qty * consumo, depth + 1);
   }
   if (product.tipo === "composicao") {
     const ingredientes = (await client.query("SELECT * FROM product_combo_items WHERE product_id = $1", [productId])).rows;
     for (const ing of ingredientes) {
       // eslint-disable-next-line no-await-in-loop
-      await decrementStock(client, ing.ingredient_product_id, null, qty * Number(ing.qty));
+      await decrementStock(client, ing.ingredient_product_id, null, qty * Number(ing.qty), depth + 1);
     }
     return;
   }
@@ -219,19 +221,20 @@ export async function decrementStock(client, productId, variantId, qty) {
 }
 
 // Inverso de decrementStock — usado ao cancelar uma venda.
-export async function incrementStock(client, productId, variantId, qty) {
+export async function incrementStock(client, productId, variantId, qty, depth = 0) {
+  if (depth > 10) throw new Error("Dependência circular de produtos (variação/composição).");
   const product = (await client.query("SELECT * FROM products WHERE id = $1", [productId])).rows[0];
   if (!product) return;
 
   if (product.tipo === "variacao" && product.parent_id) {
     const consumo = Number(product.consumo) || 1;
-    return incrementStock(client, product.parent_id, null, qty * consumo);
+    return incrementStock(client, product.parent_id, null, qty * consumo, depth + 1);
   }
   if (product.tipo === "composicao") {
     const ingredientes = (await client.query("SELECT * FROM product_combo_items WHERE product_id = $1", [productId])).rows;
     for (const ing of ingredientes) {
       // eslint-disable-next-line no-await-in-loop
-      await incrementStock(client, ing.ingredient_product_id, null, qty * Number(ing.qty));
+      await incrementStock(client, ing.ingredient_product_id, null, qty * Number(ing.qty), depth + 1);
     }
     return;
   }

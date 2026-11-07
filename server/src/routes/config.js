@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { query } from "../db.js";
+import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStoreAndCache } from "./store.js";
 import { requirePermission } from "../permissions.js";
@@ -15,15 +15,20 @@ configRouter.patch("/config", requirePermission("gerirConfig"), async (req, res)
   const businessId = req.params.businessId;
   const patch = req.body && typeof req.body === "object" ? req.body : {};
 
-  const biz = (await query("SELECT config FROM businesses WHERE id = $1", [businessId])).rows[0];
-  if (!biz) return res.status(404).json({ error: "Negócio não encontrado." });
-  const current = biz.config || {};
-  const next = { ...current };
-  for (const [key, value] of Object.entries(patch)) {
-    next[key] = value && typeof value === "object" && !Array.isArray(value) && typeof current[key] === "object" ? { ...current[key], ...value } : value;
-  }
-
-  await query("UPDATE businesses SET config = $1::jsonb WHERE id = $2", [JSON.stringify(next), businessId]);
+  // Transacção com FOR UPDATE: as vendas incrementam config.docSeries com o mesmo lock,
+  // por isso um PATCH concorrente não pode repor a numeração de documentos para trás.
+  const found = await withTransaction(async (client) => {
+    const biz = (await client.query("SELECT config FROM businesses WHERE id = $1 FOR UPDATE", [businessId])).rows[0];
+    if (!biz) return false;
+    const current = biz.config || {};
+    const next = { ...current };
+    for (const [key, value] of Object.entries(patch)) {
+      next[key] = value && typeof value === "object" && !Array.isArray(value) && typeof current[key] === "object" ? { ...current[key], ...value } : value;
+    }
+    await client.query("UPDATE businesses SET config = $1::jsonb WHERE id = $2", [JSON.stringify(next), businessId]);
+    return true;
+  });
+  if (!found) return res.status(404).json({ error: "Negócio não encontrado." });
   res.json({ store: await buildStoreAndCache(businessId) });
 });
 

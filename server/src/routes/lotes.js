@@ -41,7 +41,7 @@ async function getLote(client, loteId, businessId) {
 // Se o produto ainda usa o stock simples (products.stock) e não tem lotes,
 // converte esse stock num lote inicial para não se perder quantidade quando se
 // passa a gerir por lotes.
-async function ensureLoteMode(client, product, businessId, employeeName) {
+export async function ensureLoteMode(client, product, businessId, employeeName) {
   const temLote = (await client.query("SELECT 1 FROM product_batches WHERE product_id = $1 LIMIT 1", [product.id])).rows[0];
   if (temLote) return;
   const stock = Number(product.stock) || 0;
