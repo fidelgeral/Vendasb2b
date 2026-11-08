@@ -20,7 +20,7 @@ const itemSchema = z.object({
   price: z.number().min(0),
   cost: z.number().min(0).optional().default(0),
 });
-const paymentSchema = z.object({ method: z.string(), amount: z.number() });
+const paymentSchema = z.object({ method: z.string(), amount: z.number().min(0) });
 
 const saleSchema = z.object({
   items: z.array(itemSchema).min(1),

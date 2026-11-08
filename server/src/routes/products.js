@@ -16,8 +16,8 @@ productsRouter.get("/products/paginated", async (req, res) => {
   const businessId = req.params.businessId;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-  const search = (req.query.search || "").trim();
-  const category = (req.query.category || "").trim();
+  const search = String(req.query.search || "").trim();
+  const category = String(req.query.category || "").trim();
   const offset = (page - 1) * limit;
 
   let where = "business_id = $1";
@@ -94,6 +94,11 @@ productsRouter.post("/transfer-stock", requirePermission("loteNovo"), async (req
     if (!debit.rows.length) throw Object.assign(new Error("Stock insuficiente na filial de origem."), { http: 400 });
     const target = (await client.query("SELECT id FROM products WHERE business_id = $1 AND lower(name) = lower($2) AND tipo = 'simples'", [toBusinessId, prod.name])).rows[0];
     if (target) {
+      // Destino com lotes/variantes: o stock de products.stock ficaria "escondido" (não é usado nesse modo).
+      const destinoComLotes = Number(
+        (await client.query("SELECT (SELECT count(*) FROM product_batches WHERE product_id=$1)+(SELECT count(*) FROM product_variants WHERE product_id=$1) AS n", [target.id])).rows[0].n
+      );
+      if (destinoComLotes > 0) throw Object.assign(new Error("O produto de destino usa lotes/variantes e não pode receber a transferência automaticamente."), { http: 400 });
       await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, target.id]);
     } else {
       await client.query(
@@ -144,10 +149,10 @@ const productSchema = z.object({
   foto: z.string().optional().default(""),
   parentId: z.string().uuid().optional().nullable(),
   consumo: z.number().optional().default(1),
-  ingredientes: z.array(z.object({ productId: z.string().uuid(), qty: z.number() })).optional().default([]),
+  ingredientes: z.array(z.object({ productId: z.string().uuid(), qty: z.number().min(0) })).optional().default([]),
   fornecedorId: z.string().uuid().optional().nullable(),
   addEstoque: z.boolean().optional().default(false),
-  estoqueQtd: z.number().optional().default(0),
+  estoqueQtd: z.number().min(0).optional().default(0),
   estoqueValidade: z.string().optional().nullable(),
 });
 
@@ -241,7 +246,7 @@ const updateSchema = z.object({
   foto: z.string().optional(),
   parentId: z.string().uuid().nullable().optional(),
   consumo: z.number().optional(),
-  ingredientes: z.array(z.object({ productId: z.string().uuid(), qty: z.number() })).optional(),
+  ingredientes: z.array(z.object({ productId: z.string().uuid(), qty: z.number().min(0) })).optional(),
   fornecedorId: z.string().uuid().nullable().optional(),
   active: z.boolean().optional(),
 });
@@ -379,13 +384,15 @@ productsRouter.post("/products/:id/batches", requirePermission("loteNovo"), asyn
   const expiryDate = req.body?.expiryDate || null;
   if (!Number.isFinite(qty) || qty <= 0) return res.status(400).json({ error: "Quantidade inválida." });
   const { businessId, id } = req.params;
-  await withTransaction(async (client) => {
+  const encontrado = await withTransaction(async (client) => {
     const product = (await client.query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
-    if (!product) return;
+    if (!product) return false;
     // Converte o stock simples existente num lote inicial, senão ficaria "escondido" ao passar a gerir por lotes.
     await ensureLoteMode(client, product, businessId, authEmployee(req).name);
     await client.query("INSERT INTO product_batches (product_id, qty, initial_qty, expiry_date) VALUES ($1,$2,$2,$3)", [id, qty, expiryDate]);
+    return true;
   });
+  if (!encontrado) return res.status(404).json({ error: "Produto não encontrado." });
   await respond(res, businessId, 201);
 });
 
