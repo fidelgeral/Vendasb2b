@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, BRICK } from "../lib/theme.js";
-import { ALL_MODULES } from "../lib/utils.js";
+import { ALL_MODULES, saveBlob } from "../lib/utils.js";
 import { processarLogo } from "../lib/logoProcess.js";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
 import { Settings, Percent, Wallet, Users, Lock, Gift, Palette } from "../lib/icons.jsx";
@@ -508,12 +508,7 @@ function SegurancaConfig({ store, api }) {
     try {
       const data = await api.downloadBackup();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `backup-${store.slug || store.id}-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      saveBlob(`backup-${store.slug || store.id}-${new Date().toISOString().slice(0, 10)}.json`, blob);
       setMsg("Backup descarregado com sucesso.");
     } catch (e) {
       setMsg("Erro ao gerar backup: " + e.message);

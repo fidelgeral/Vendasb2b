@@ -189,7 +189,7 @@ salesRouter.post("/sales/:id/email-receipt", requirePermission("vender"), async 
     <h2 style="color:#4F46E5">${empresaNome}</h2>
     ${emp.endereco ? `<p style="color:#666;font-size:12px">${esc(emp.endereco)}${emp.contacto ? " · Tel: " + esc(emp.contacto) : ""}${emp.nuit ? " · NUIT: " + esc(emp.nuit) : ""}</p>` : ""}
     <hr style="border:none;border-top:1px solid #eee"/>
-    <p><strong>Documento:</strong> ${sale.numero || "—"}</p>
+    <p><strong>Documento:</strong> ${esc(sale.numero) || "—"}</p>
     <p><strong>Data:</strong> ${new Date(sale.created_at).toLocaleString("pt-PT")}</p>
     <table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:#4F46E5;color:#fff"><th style="padding:6px 8px;text-align:left">Artigo</th><th style="padding:6px 8px;text-align:right">Qtd</th><th style="padding:6px 8px;text-align:right">Preço</th><th style="padding:6px 8px;text-align:right">Total</th></tr></thead>

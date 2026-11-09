@@ -3,7 +3,7 @@ import { INK, TEAL, MUTED, BORDER, CARD } from "./theme.js";
 import { fmtMT } from "./utils.js";
 import { X } from "./icons.jsx";
 
-export function AreaChart({ points, height = 70, color = TEAL, fill = "rgba(79,70,229,0.14)", labels }) {
+export function AreaChart({ points, height = 70, color = TEAL, fill = "rgba(79,70,229,0.14)", labels, fmt = fmtMT }) {
   const [hover, setHover] = useState(null);
   if (!points || points.length === 0) return null;
   const max = Math.max(...points, 1);
@@ -30,7 +30,7 @@ export function AreaChart({ points, height = 70, color = TEAL, fill = "rgba(79,7
           className="absolute -top-1 text-[10px] px-1.5 py-0.5 rounded-lg pointer-events-none whitespace-nowrap -translate-x-1/2"
         >
           {labels && labels[hover] ? labels[hover] + ": " : ""}
-          {fmtMT(points[hover])}
+          {fmt(points[hover])}
         </div>
       )}
     </div>
@@ -99,7 +99,7 @@ export function DonutChart({ data, size = 120 }) {
   );
 }
 
-export function StatCardChart({ label, value, sub, points, labels, color }) {
+export function StatCardChart({ label, value, sub, points, labels, color, fmt }) {
   return (
     <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3.5 overflow-hidden relative">
       <div style={{ background: "linear-gradient(90deg,#4F46E5,#7C3AED,#DB2777)" }} className="absolute top-0 left-0 right-0 h-1" />
@@ -116,7 +116,7 @@ export function StatCardChart({ label, value, sub, points, labels, color }) {
       )}
       {points && points.length > 1 && (
         <div className="mt-2 -mx-3 -mb-3">
-          <AreaChart points={points} labels={labels} height={46} color={color || TEAL} />
+          <AreaChart points={points} labels={labels} height={46} color={color || TEAL} fmt={fmt} />
         </div>
       )}
     </div>

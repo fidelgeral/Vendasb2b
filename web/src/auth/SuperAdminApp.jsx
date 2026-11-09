@@ -342,10 +342,14 @@ function BillingControls({ b, onChanged }) {
   const save = async () => {
     setSaving(true);
     const planLabel = selectedPlan.unico ? selectedPlan.nome : `${selectedPlan.nome} (${ciclo})`;
-    await superApi.setPlan(b.id, { plan: planLabel, monthlyFee: fee || 0, nextDueDate: due || null });
-    setOpen(false);
+    try {
+      await superApi.setPlan(b.id, { plan: planLabel, monthlyFee: fee || 0, nextDueDate: due || null });
+      setOpen(false);
+      onChanged();
+    } catch (e) {
+      alert(e.message);
+    }
     setSaving(false);
-    onChanged();
   };
 
   const fmtMt = (v) => v ? Number(v).toLocaleString("pt-MZ") + " MT" : "—";

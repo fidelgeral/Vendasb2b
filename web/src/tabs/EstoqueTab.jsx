@@ -242,10 +242,14 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       </div>
 
       <BulkImportExport products={store.products} onImport={async (rows) => {
-        const res = await api.bulkImportProducts(rows);
-        setStore(res.store);
-        const { created, updated, skipped } = res.summary;
-        showToast(`Importação concluída: ${created} criado(s), ${updated} actualizado(s)${skipped ? `, ${skipped} ignorado(s)` : ""}`);
+        try {
+          const res = await api.bulkImportProducts(rows);
+          setStore(res.store);
+          const { created, updated, skipped } = res.summary;
+          showToast(`Importação concluída: ${created} criado(s), ${updated} actualizado(s)${skipped ? `, ${skipped} ignorado(s)` : ""}`);
+        } catch (e) {
+          showToast(e.message || "Falha na importação", "warn");
+        }
       }} />
 
       {/* Filtros por estado */}

@@ -130,7 +130,7 @@ export default function DashboardTab({ store, shiftOpen, currentShift }) {
 
       {/* KPIs com mini-gráficos */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCardChart label="Vendas hoje" value={vendasHoje.length} points={vendasPorHora} labels={horaLabels} color="#4F46E5" />
+        <StatCardChart label="Vendas hoje" value={vendasHoje.length} points={vendasPorHora} labels={horaLabels} color="#4F46E5" fmt={(v) => `${v} venda(s)`} />
         <StatCardChart label="Facturação" value={fmtMT(faturacaoHoje)} points={faturacaoPorHora} labels={horaLabels} color="#059669" />
         <StatCardChart label="Lucro estimado" value={fmtMT(lucroHoje)} sub={faturacaoHoje > 0 ? `Margem: ${Math.round((lucroHoje / faturacaoHoje) * 100)}%` : ""} color="#7C3AED" />
         <StatCardChart label="Caixa actual" value={fmtMT(caixaAtual)} sub={shiftOpen ? "Turno activo" : "Sem turno"} color={TEAL} />

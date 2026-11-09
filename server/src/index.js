@@ -122,6 +122,11 @@ initSentry(app);
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   if (err && (err.code === "22P02" || err.code === "22007")) return res.status(400).json({ error: "Pedido inválido." });
+  // Erros de cliente do body-parser/multer (JSON malformado, payload demasiado grande, ficheiro > limite)
+  // trazem status 4xx — não devem virar 500.
+  const st = err && (err.status || err.statusCode);
+  if (st === 413 || err?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "Pedido ou ficheiro demasiado grande." });
+  if (Number.isInteger(st) && st >= 400 && st < 500) return res.status(st).json({ error: "Pedido inválido." });
   console.error(err);
   res.status(500).json({ error: "Erro interno do servidor." });
 });

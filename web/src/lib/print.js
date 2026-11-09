@@ -362,7 +362,7 @@ export function imprimirCotacao(cot, store, clientes) {
       (emp.logo ? '<img src="' + emp.logo + '" style="max-height:26mm;max-width:70mm;display:block;margin-bottom:4mm"/>' : "") +
       "<h1>" + esc(emp.nome || store.config.businessName) + "</h1>" +
       '<div class="muted">' +
-      [emp.endereco, [emp.bairro, emp.cidade, emp.provincia].filter(Boolean).join(", "), emp.contacto ? "Tel: " + esc(emp.contacto) : "", emp.nuit ? "NUIT: " + esc(emp.nuit) : ""]
+      [emp.endereco, [emp.bairro, emp.cidade, emp.provincia].filter(Boolean).join(", "), emp.contacto ? "Tel: " + emp.contacto : "", emp.nuit ? "NUIT: " + emp.nuit : ""]
         .filter(Boolean)
         .map(esc)
         .join(" · ") +
