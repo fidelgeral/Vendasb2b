@@ -74,7 +74,7 @@ configRouter.get("/payment-accounts", async (req, res) => {
 
 configRouter.post("/payment-accounts", requirePermission("gerirConfig"), async (req, res) => {
   const { name, tipo, numero, activo } = req.body || {};
-  if (!name || !name.trim()) return res.status(400).json({ error: "Nome da conta obrigatório." });
+  if (typeof name !== "string" || !name.trim()) return res.status(400).json({ error: "Nome da conta obrigatório." });
   await query(
     "INSERT INTO payment_accounts (business_id, name, tipo, numero, activo) VALUES ($1,$2,$3,$4,$5)",
     [req.params.businessId, name.trim(), tipo || "outro", numero || "", activo !== false]
