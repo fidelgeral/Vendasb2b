@@ -164,7 +164,7 @@ function ResetPasswordModal({ email: initialEmail, onClose }) {
             <p className="text-xs mb-3" style={{ color: MUTED }}>Insira o email da sua conta para receber um código de recuperação.</p>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mb-2" />
             {error && <div className="text-xs mb-2" style={{ color: BRICK }}>{error}</div>}
-            <button onClick={sendCode} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold disabled:opacity-50">{loading ? "A enviar…" : "Enviar código"}</button>
+            <button type="button" onClick={sendCode} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold disabled:opacity-50">{loading ? "A enviar…" : "Enviar código"}</button>
           </>
         )}
         {step === 2 && (
@@ -173,16 +173,16 @@ function ResetPasswordModal({ email: initialEmail, onClose }) {
             <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código de 6 dígitos" maxLength={6} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mb-2 text-center tracking-widest text-lg font-bold" />
             <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nova senha (min. 6 chars, letras + números)" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2.5 py-2 text-sm mb-2" />
             {error && <div className="text-xs mb-2" style={{ color: BRICK }}>{error}</div>}
-            <button onClick={resetPwd} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold disabled:opacity-50">{loading ? "A redefinir…" : "Redefinir senha"}</button>
+            <button type="button" onClick={resetPwd} disabled={loading} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold disabled:opacity-50">{loading ? "A redefinir…" : "Redefinir senha"}</button>
           </>
         )}
         {step === 3 && (
           <>
             <div className="text-xs mb-3 text-center" style={{ color: "#059669" }}>{success}</div>
-            <button onClick={onClose} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold">Fechar</button>
+            <button type="button" onClick={onClose} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-xl py-2 text-sm font-bold">Fechar</button>
           </>
         )}
-        {step !== 3 && <button onClick={onClose} className="w-full text-xs mt-2 underline" style={{ color: MUTED }}>Cancelar</button>}
+        {step !== 3 && <button type="button" onClick={onClose} className="w-full text-xs mt-2 underline" style={{ color: MUTED }}>Cancelar</button>}
       </div>
     </div>
   );
