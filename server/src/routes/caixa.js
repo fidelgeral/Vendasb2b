@@ -13,6 +13,7 @@ const respond = async (res, businessId, status = 200) => res.status(status).json
 caixaRouter.post("/shifts/open", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;
   const openingCash = Number(req.body?.openingCash) || 0;
+  if (openingCash < 0) return res.status(400).json({ error: "Valor inicial inválido." });
   const employeeId = req.auth.type === "employee" ? req.auth.employeeId : null;
   // Bloqueia a linha do negócio: dois pedidos simultâneos não abrem dois turnos.
   const jaAberto = await withTransaction(async (client) => {
@@ -29,6 +30,7 @@ caixaRouter.post("/shifts/open", requirePermission("caixaAbrirFechar"), async (r
 caixaRouter.post("/shifts/close", requirePermission("caixaAbrirFechar"), async (req, res) => {
   const businessId = req.params.businessId;
   const closingCash = Number(req.body?.closingCash) || 0;
+  if (closingCash < 0) return res.status(400).json({ error: "Valor de fecho inválido." });
   const employeeId = req.auth.type === "employee" ? req.auth.employeeId : null;
 
   const shift = (await query("SELECT * FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];

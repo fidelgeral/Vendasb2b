@@ -2,7 +2,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { z } from "zod";
-import { query } from "../db.js";
+import { query, withTransaction } from "../db.js";
 import { verifyPassword, hashPassword } from "../auth/hash.js";
 import { signToken } from "../auth/jwt.js";
 import { requireAuth } from "../auth/middleware.js";
@@ -166,6 +166,7 @@ authRouter.get("/auth/me", requireAuth, async (req, res) => {
 
 // --- Recuperação de senha ---
 const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
 
 authRouter.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
   const { email } = req.body || {};
@@ -173,7 +174,7 @@ authRouter.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
   const emp = (await query("SELECT id, name, email FROM employees WHERE lower(email) = lower($1) AND active = true", [email])).rows[0];
   // Resposta genérica para não revelar se o email existe
   if (!emp) return res.json({ ok: true });
-  const code = crypto.randomInt(100000, 999999).toString();
+  const code = crypto.randomInt(100000, 1000000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
   await query("DELETE FROM password_reset_tokens WHERE employee_id = $1", [emp.id]);
   await query("INSERT INTO password_reset_tokens (employee_id, code, expires_at) VALUES ($1,$2,$3)", [emp.id, code, expiresAt]);
@@ -197,7 +198,7 @@ authRouter.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
 
 const passwordRule = z.string().min(6).regex(/[a-zA-Z]/).regex(/[0-9]/);
 
-authRouter.post("/auth/reset-password", forgotLimiter, async (req, res) => {
+authRouter.post("/auth/reset-password", resetLimiter, async (req, res) => {
   const { email, code, newPassword } = req.body || {};
   if (!email || !code || !newPassword) return res.status(400).json({ error: "Dados em falta." });
   const parsed = passwordRule.safeParse(newPassword);
@@ -248,18 +249,24 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
   const hash = await hashPassword(password);
   const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + "-" + crypto.randomInt(10000);
 
-  const biz = (await query(
-    `INSERT INTO businesses (name, slug, is_demo, demo_expires_at, demo_representative, demo_contact_email, demo_contact_phone, subscription_status, plan, config)
-     VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', $6, '{}')
-     RETURNING id`,
-    [businessName, slug, representative, email, phone, plan]
-  )).rows[0];
-
-  await query(
-    `INSERT INTO employees (business_id, name, email, password_hash, role, active)
-     VALUES ($1, $2, $3, $4, 'dono', true)`,
-    [biz.id, ownerName, email.toLowerCase(), hash]
-  );
+  try {
+    await withTransaction(async (client) => {
+      const biz = (await client.query(
+        `INSERT INTO businesses (name, slug, is_demo, demo_expires_at, demo_representative, demo_contact_email, demo_contact_phone, subscription_status, plan, config)
+         VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', $6, '{}')
+         RETURNING id`,
+        [businessName, slug, representative, email, phone, plan]
+      )).rows[0];
+      await client.query(
+        `INSERT INTO employees (business_id, name, email, password_hash, role, active)
+         VALUES ($1, $2, $3, $4, 'dono', true)`,
+        [biz.id, ownerName, email.toLowerCase(), hash]
+      );
+    });
+  } catch (e) {
+    if (e.code === "23505") return res.status(409).json({ error: "Já existe uma conta com este email." });
+    throw e;
+  }
 
   sendEmail(email, "Conta demonstração VENDASB2B — Os seus dados de acesso",
     demoBizEmail({ ownerName, businessName, email, password, representative, plan }))
