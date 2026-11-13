@@ -124,6 +124,7 @@ app.use((err, req, res, next) => {
   if (err && (err.code === "22P02" || err.code === "22007")) return res.status(400).json({ error: "Pedido inválido." });
   // Erros de cliente do body-parser/multer (JSON malformado, payload demasiado grande, ficheiro > limite)
   // trazem status 4xx — não devem virar 500.
+  if (err && err.code === "23505") return res.status(409).json({ error: "Já existe um registo com estes dados." });
   const st = err && (err.status || err.statusCode);
   if (st === 413 || err?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "Pedido ou ficheiro demasiado grande." });
   if (Number.isInteger(st) && st >= 400 && st < 500) return res.status(st).json({ error: "Pedido inválido." });

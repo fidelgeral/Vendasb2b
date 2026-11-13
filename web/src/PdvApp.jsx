@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BG, INK, TEAL, MUTED, BORDER, CARD, GREEN, BRICK, SOFTGOLD, GRADIENT, toggleDarkMode, isDarkMode } from "./lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "./lib/theme.js";
 import { BRAND_LOGO } from "./lib/logo.js";
-import { businessApi, getSession, clearSession, ApiError } from "./lib/api.js";
+import { businessApi, auth, getSession, ApiError } from "./lib/api.js";
 import { enqueueSale, listPending, removePending, countPending, localSaleId } from "./lib/offlineQueue.js";
 import { applyOfflineSale } from "./lib/offlineSale.js";
 import { loadCachedStore, saveCachedStore } from "./lib/storeCache.js";
@@ -231,7 +231,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
           <BillingPanel api={api} canSubmit={session?.role === "dono" || isSuperAdmin} />
           <button
             onClick={() => {
-              clearSession();
+              auth.logout();
               onLoggedOut();
             }}
             style={{ borderColor: BORDER, color: MUTED }}
@@ -385,7 +385,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
   };
 
   const logout = () => {
-    clearSession();
+    auth.logout();
     onLoggedOut();
   };
 

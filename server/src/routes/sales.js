@@ -174,6 +174,7 @@ salesRouter.post("/sales/:id/email-receipt", requirePermission("vender"), async 
   const { businessId, id } = req.params;
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: "Email obrigatório." });
+  if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Email inválido." });
   if (!process.env.RESEND_API_KEY) return res.status(501).json({ error: "Serviço de email não configurado." });
 
   const sale = (await query("SELECT * FROM sales WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
