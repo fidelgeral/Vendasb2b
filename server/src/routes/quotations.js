@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
+import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStoreAndCache } from "./store.js";
 import { requirePermission } from "../permissions.js";
@@ -28,11 +28,11 @@ const quotationSchema = z.object({
 });
 
 // Numeração simples não-fiscal: COT<ano>/<sequencial>
-async function nextCotacaoNumber(businessId) {
+async function nextCotacaoNumber(businessId, run = query) {
   const ano = new Date().getFullYear();
   // MAX do sufixo (e não COUNT): apagar uma cotação não pode repetir números já usados.
   const n = (
-    await query(
+    await run(
       "SELECT COALESCE(MAX(substring(numero from '/([0-9]+)$')::int), 0) AS c FROM quotations WHERE business_id = $1 AND numero LIKE $2",
       [businessId, "COT" + ano + "/%"]
     )
@@ -45,11 +45,15 @@ quotationsRouter.post("/quotations", requirePermission("cotacao"), async (req, r
   if (!parsed.success) return res.status(400).json({ error: "Dados da cotação inválidos.", details: parsed.error.flatten() });
   const f = parsed.data;
   const businessId = req.params.businessId;
-  const numero = await nextCotacaoNumber(businessId);
-  await query(
-    "INSERT INTO quotations (business_id, numero, client_id, items, total, discount, iva_taxa) VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7)",
-    [businessId, numero, f.clientId || null, JSON.stringify(f.items), f.total, f.discount, f.ivaTaxa == null ? null : f.ivaTaxa]
-  );
+  // Bloqueia a linha do negócio: duas cotações simultâneas não recebem o mesmo número.
+  await withTransaction(async (client) => {
+    await client.query("SELECT 1 FROM businesses WHERE id = $1 FOR UPDATE", [businessId]);
+    const numero = await nextCotacaoNumber(businessId, (t, p) => client.query(t, p));
+    await client.query(
+      "INSERT INTO quotations (business_id, numero, client_id, items, total, discount, iva_taxa) VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7)",
+      [businessId, numero, f.clientId || null, JSON.stringify(f.items), f.total, f.discount, f.ivaTaxa == null ? null : f.ivaTaxa]
+    );
+  });
   await respond(res, businessId, 201);
 });
 

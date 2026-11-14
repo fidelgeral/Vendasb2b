@@ -205,6 +205,7 @@ export async function decrementStock(client, productId, variantId, qty, depth = 
     for (const b of batches) {
       if (remaining <= 0) break;
       const take = Math.min(Number(b.qty), remaining);
+      if (take <= 0) continue; // lote vazio: não gera movimento nem altera nada
       const saldo = Number(b.qty) - take;
       // eslint-disable-next-line no-await-in-loop
       await client.query("UPDATE product_batches SET qty = qty - $1 WHERE id = $2", [take, b.id]);

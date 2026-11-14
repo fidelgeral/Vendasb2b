@@ -84,12 +84,15 @@ suppliersRouter.post("/purchases", requirePermission("loteNovo"), async (req, re
     return res.status(404).json({ error: "Fornecedor não encontrado." });
   }
 
-  const hasBatches = (await query("SELECT 1 FROM product_batches WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;
-  const hasVariants = (await query("SELECT 1 FROM product_variants WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;
   const finalCost = cost || Number(product.cost);
 
   // Tudo numa transacção: stock, custo e registo da compra ficam consistentes.
   await withTransaction(async (client) => {
+    // Bloqueia o produto e decide o modo (lotes/variações) já dentro da transacção,
+    // para uma criação de lote simultânea não deixar o stock "escondido".
+    await client.query("SELECT 1 FROM products WHERE id = $1 FOR UPDATE", [productId]);
+    const hasBatches = (await client.query("SELECT 1 FROM product_batches WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;
+    const hasVariants = (await client.query("SELECT 1 FROM product_variants WHERE product_id = $1 LIMIT 1", [productId])).rows.length > 0;
     if (hasBatches || (!hasVariants && expiryDate)) {
       // Converte stock simples existente em lote inicial antes de passar a gerir por lotes.
       await ensureLoteMode(client, product, businessId, req.auth.type === "employee" ? req.auth.name : "Super-admin");

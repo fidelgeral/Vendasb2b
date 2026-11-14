@@ -139,7 +139,7 @@ cronRouter.post("/periodic-report", async (req, res) => {
     // eslint-disable-next-line no-await-in-loop
     const dividasRow = (await query("SELECT COALESCE(SUM(amount),0) AS total FROM client_debts d JOIN clients c ON c.id = d.client_id WHERE c.business_id = $1", [biz.id])).rows[0];
     // eslint-disable-next-line no-await-in-loop
-    const stockBaixo = (await query("SELECT COUNT(*)::int AS n FROM products WHERE business_id = $1 AND active = true AND stock <= min_stock AND parent_id IS NULL", [biz.id])).rows[0].n;
+    const stockBaixo = (await query("SELECT COUNT(*)::int AS n FROM products p WHERE p.business_id = $1 AND p.active = true AND p.tipo = 'simples' AND p.stock <= p.min_stock AND p.parent_id IS NULL AND NOT EXISTS (SELECT 1 FROM product_batches b WHERE b.product_id = p.id) AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)", [biz.id])).rows[0].n;
 
     if (vendas.length === 0) continue;
 

@@ -42,6 +42,11 @@ async function getLote(client, loteId, businessId) {
 // converte esse stock num lote inicial para não se perder quantidade quando se
 // passa a gerir por lotes.
 export async function ensureLoteMode(client, product, businessId, employeeName) {
+  // Bloqueia a linha do produto e relê o stock: dois pedidos simultâneos não
+  // convertem o mesmo stock simples em dois lotes iniciais (duplicando a quantidade).
+  const locked = (await client.query("SELECT stock, cost, name FROM products WHERE id = $1 FOR UPDATE", [product.id])).rows[0];
+  if (!locked) return;
+  product = { ...product, stock: locked.stock, cost: locked.cost, name: locked.name };
   const temLote = (await client.query("SELECT 1 FROM product_batches WHERE product_id = $1 LIMIT 1", [product.id])).rows[0];
   if (temLote) return;
   const stock = Number(product.stock) || 0;
