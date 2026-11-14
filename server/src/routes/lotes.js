@@ -220,9 +220,11 @@ lotesRouter.delete(
   requirePermission("loteApagar"),
   wrap(async (req, res) => {
     const businessId = req.params.businessId;
-    const lote = await getLote({ query: (t, p) => query(t, p) }, req.params.id, businessId);
-    if (!lote) return res.status(404).json({ error: "Lote não encontrado." });
-    await query("DELETE FROM product_batches WHERE id = $1", [req.params.id]);
+    await withTransaction(async (client) => {
+      const lote = await getLote(client, req.params.id, businessId);
+      if (!lote) throw Object.assign(new Error("Lote não encontrado."), { http: 404 });
+      await client.query("DELETE FROM product_batches WHERE id = $1", [req.params.id]);
+    });
     return respond(res, businessId);
   })
 );
@@ -232,7 +234,10 @@ lotesRouter.get(
   "/lotes/:id/historico",
   wrap(async (req, res) => {
     const businessId = req.params.businessId;
-    const lote = await getLote({ query: (t, p) => query(t, p) }, req.params.id, businessId);
+    const lote = (await query(
+      "SELECT b.id FROM product_batches b JOIN products p ON p.id = b.product_id WHERE b.id = $1 AND p.business_id = $2",
+      [req.params.id, businessId]
+    )).rows[0];
     if (!lote) return res.status(404).json({ error: "Lote não encontrado." });
     const movimentos = (
       await query(

@@ -5,7 +5,7 @@ const PADRAO_POR_ROLE = {
   dono: () => true,
   gerente: (id) => id !== "gerirEquipa",
   caixa: (id) =>
-    ["vender", "guardarPedido", "cotacao", "caixaAbrirFechar", "caixaEntrada", "caixaSaida", "verMovimentos", "produtoVer", "clienteGerir", "fiadoReceber"].includes(id),
+    ["vender", "guardarPedido", "cotacao", "caixaAbrirFechar", "caixaEntrada", "caixaSaida", "verMovimentos", "produtoVer", "clienteGerir", "fiadoReceber", "armazemTransferir"].includes(id),
   cozinha: (id) => ["verMovimentos", "produtoVer"].includes(id),
 };
 

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
+import { requirePermission } from "../permissions.js";
 import { buildStoreAndCache } from "./store.js";
 
 export const warehousesRouter = Router({ mergeParams: true });
@@ -18,6 +19,7 @@ const whSchema = z.object({
 
 warehousesRouter.post(
   "/warehouses",
+  requirePermission("armazemGerir"),
   wrap(async (req, res) => {
     const parsed = whSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Dados inválidos." });
@@ -33,6 +35,7 @@ warehousesRouter.post(
 
 warehousesRouter.put(
   "/warehouses/:whId",
+  requirePermission("armazemGerir"),
   wrap(async (req, res) => {
     const parsed = whSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Dados inválidos." });
@@ -47,6 +50,7 @@ warehousesRouter.put(
 
 warehousesRouter.delete(
   "/warehouses/:whId",
+  requirePermission("armazemGerir"),
   wrap(async (req, res) => {
     const bid = req.params.businessId;
     await withTransaction(async (client) => {
@@ -59,6 +63,7 @@ warehousesRouter.delete(
 
 warehousesRouter.post(
   "/warehouses/transfer",
+  requirePermission("armazemTransferir"),
   wrap(async (req, res) => {
     const schema = z.object({
       batchId: z.string().uuid(),
