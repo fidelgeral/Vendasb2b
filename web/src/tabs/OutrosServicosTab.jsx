@@ -162,12 +162,13 @@ function RecursosHumanosSection({ store, api, showToast }) {
 
   const employees = (store.employees || []).filter((e) => e.active !== false);
 
-  const load = async () => {
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    try { setRows(await api.getPayroll(ano, mes)); } catch { setRows([]); }
-    setLoading(false);
-  };
-  useEffect(() => { load(); }, [ano, mes]);
+    api.getPayroll(ano, mes).then((d) => { if (!cancelled) setRows(d); }).catch(() => { if (!cancelled) setRows([]); }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [ano, mes]);
+  const load = () => { setLoading(true); api.getPayroll(ano, mes).then(setRows).catch(() => setRows([])).finally(() => setLoading(false)); };
 
   const totalSalarios = rows.reduce((s, r) => s + Number(r.total), 0);
   const totalPago = rows.filter((r) => r.pago).reduce((s, r) => s + Number(r.total), 0);

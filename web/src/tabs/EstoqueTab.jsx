@@ -561,7 +561,9 @@ function WhTransfersModal({ api, store, warehouses, onClose }) {
   const [transfers, setTransfers] = useState(null);
   const [search, setSearch] = useState("");
   useEffect(() => {
-    api.warehouseTransfers().then(setTransfers).catch(() => setTransfers([]));
+    let cancelled = false;
+    api.warehouseTransfers().then((d) => { if (!cancelled) setTransfers(d); }).catch(() => { if (!cancelled) setTransfers([]); });
+    return () => { cancelled = true; };
   }, [api]);
   const filtered = (transfers || []).filter((t) => {
     if (!search.trim()) return true;

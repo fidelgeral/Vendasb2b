@@ -685,7 +685,9 @@ function ProdutoRow({ p, produtos, onRemove, onEdit, onVer, onHistorico, onToggl
 function PriceHistoryModal({ productId, name, api, onClose }) {
   const [rows, setRows] = useState(null);
   useEffect(() => {
-    api.priceHistory(productId).then(setRows).catch(() => setRows([]));
+    let cancelled = false;
+    api.priceHistory(productId).then((d) => { if (!cancelled) setRows(d); }).catch(() => { if (!cancelled) setRows([]); });
+    return () => { cancelled = true; };
   }, [productId]);
 
   return (

@@ -3,6 +3,8 @@ import { BG, CARD, BORDER, INK, TEAL, MUTED, BRICK, GREEN, GRADIENT } from "../l
 import { BRAND_NAME, BRAND_TAGLINE } from "../lib/theme.js";
 import { BRAND_LOGO } from "../lib/logo.js";
 import { superApi, clearSession } from "../lib/api.js";
+
+const esc = (t) => String(t ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]);
 import { StatCard } from "../components/Shared.jsx";
 import { LogOut } from "../lib/icons.jsx";
 
@@ -454,8 +456,8 @@ function InvoiceGenerator({ businesses, type, onChangeType }) {
     const isInvoice = docType === "invoice";
     const itemsHtml = items.map((it) => `
       <tr>
-        <td style="border:1px solid #ddd;padding:8px">${it.description}</td>
-        <td style="border:1px solid #ddd;padding:8px;text-align:center">${it.qty}</td>
+        <td style="border:1px solid #ddd;padding:8px">${esc(it.description)}</td>
+        <td style="border:1px solid #ddd;padding:8px;text-align:center">${Number(it.qty) || 0}</td>
         <td style="border:1px solid #ddd;padding:8px;text-align:right">${Number(it.unitPrice).toFixed(2)} MT</td>
         <td style="border:1px solid #ddd;padding:8px;text-align:right">${(Number(it.qty) * Number(it.unitPrice)).toFixed(2)} MT</td>
       </tr>`).join("");
@@ -478,10 +480,10 @@ function InvoiceGenerator({ businesses, type, onChangeType }) {
         <div style="display:flex;justify-content:space-between;margin-bottom:20px">
           <div>
             <strong>Cliente:</strong><br/>
-            ${clientName || (selectedBiz ? selectedBiz.name : "—")}<br/>
-            ${clientNuit ? "NUIT: " + clientNuit : ""}
+            ${esc(clientName || (selectedBiz ? selectedBiz.name : "—"))}<br/>
+            ${clientNuit ? "NUIT: " + esc(clientNuit) : ""}
           </div>
-          ${period ? `<div><strong>Período:</strong><br/>${period}</div>` : ""}
+          ${period ? `<div><strong>Período:</strong><br/>${esc(period)}</div>` : ""}
         </div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
           <thead>
@@ -497,7 +499,7 @@ function InvoiceGenerator({ businesses, type, onChangeType }) {
         <div style="text-align:right;font-size:22px;font-weight:bold;color:#4F46E5;margin:20px 0">
           TOTAL: ${total.toFixed(2)} MT
         </div>
-        ${notes ? `<div style="background:#f8f9fa;padding:12px;border-radius:8px;margin:20px 0"><strong>Observações:</strong> ${notes}</div>` : ""}
+        ${notes ? `<div style="background:#f8f9fa;padding:12px;border-radius:8px;margin:20px 0"><strong>Observações:</strong> ${esc(notes)}</div>` : ""}
         <hr style="border:none;border-top:1px solid #ddd;margin:30px 0"/>
         <p style="text-align:center;color:#999;font-size:11px">Documento gerado por VENDASB2B · ${hoje}</p>
       </div>`;

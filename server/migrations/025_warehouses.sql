@@ -12,6 +12,7 @@ CREATE INDEX IF NOT EXISTS idx_warehouses_biz ON warehouses(business_id);
 -- Cada lote pertence a um armazém (nullable para retrocompatibilidade).
 ALTER TABLE product_batches
   ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_batches_warehouse ON product_batches(warehouse_id);
 
 -- Transferências entre armazéns (dentro do mesmo negócio).
 CREATE TABLE IF NOT EXISTS warehouse_transfers (
