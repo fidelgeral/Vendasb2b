@@ -544,6 +544,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
             canVoid={canVoid}
             payShortage={payShortage}
             api={api}
+            onGoTab={setTab}
           />
         )}
         {tab === "produtos" && <ProdutosTab store={store} setStore={setStore} api={api} modules={modules} can={can} onGoEstoque={() => setTab("estoque")} />}

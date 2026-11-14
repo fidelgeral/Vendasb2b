@@ -6,7 +6,7 @@ import { Scale, PackageX, ArrowDownCircle, ArrowUpCircle, Banknote, AlertTriangl
 import { imprimirReciboTermico, gerarReciboPDF, enviarReciboPorWhatsApp, gerarRelatorioFechoCaixaPDF } from "../lib/print.js";
 import { VoidModal } from "../components/Shared.jsx";
 
-export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid, payShortage, api }) {
+export default function CaixaTab({ store, shiftOpen, currentShift, openShift, closeShift, registerQuebra, registerMovimento, podeVerEsperado, voidSale, canVoid, payShortage, api, onGoTab }) {
   const [sub, setSub] = useState("resumo");
   const [showShiftModal, setShowShiftModal] = useState(null);
 
@@ -142,6 +142,15 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
               </div>
             </div>
           </div>
+          {onGoTab && (
+            <button
+              onClick={() => onGoTab("clientes")}
+              style={{ background: BRICK, color: "#fff" }}
+              className="w-full rounded-xl px-4 py-3 text-sm font-bold flex items-center justify-center gap-2"
+            >
+              <Banknote size={18} /> Pagamento Dívida
+            </button>
+          )}
           {Object.keys(paymentsByMethod).length > 0 && (
             <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3">
               <div className="text-sm font-semibold mb-2">Distribuição do turno</div>
