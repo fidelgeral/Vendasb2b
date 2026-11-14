@@ -45,3 +45,5 @@ export function Gift(p) { return <Ico {...p}><rect x="3" y="8" width="18" height
 export function Palette(p) { return <Ico {...p}><circle cx="12" cy="12" r="10" /><circle cx="8" cy="10" r="1.2" fill="currentColor" /><circle cx="12" cy="7" r="1.2" fill="currentColor" /><circle cx="16" cy="10" r="1.2" fill="currentColor" /><circle cx="15" cy="15" r="1.2" fill="currentColor" /></Ico>; }
 export function BarChart3(p) { return <Ico {...p}><rect x="3" y="12" width="4" height="8" rx="1" /><rect x="10" y="6" width="4" height="14" rx="1" /><rect x="17" y="2" width="4" height="18" rx="1" /></Ico>; }
 export function ImageOff(p) { return <Ico {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="3" x2="21" y2="21" /><circle cx="9" cy="9" r="1.6" /><path d="M21 15l-5-5-4 4" /></Ico>; }
+export function Warehouse(p) { return <Ico {...p}><path d="M22 8.35V20a2 2 0 01-2 2H4a2 2 0 01-2-2V8.35a2 2 0 01.7-1.52l8-6.65a2 2 0 012.6 0l8 6.65a2 2 0 01.7 1.52z" /><path d="M6 18h12M6 14h12M6 10h12" /></Ico>; }
+export function ArrowLeftRight(p) { return <Ico {...p}><path d="M8 3L4 7l4 4" /><path d="M4 7h16" /><path d="M16 21l4-4-4-4" /><path d="M20 17H4" /></Ico>; }

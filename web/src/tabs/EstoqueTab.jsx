@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, GREEN, BRICK, INK } from "../lib/theme.js";
 import { fmtMT, getStock, daysUntil, todayStr, mapImportRow } from "../lib/utils.js";
 import { imprimirEtiquetas, downloadWorkbook } from "../lib/print.js";
-import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, ArrowDownCircle, PackageX, X } from "../lib/icons.jsx";
+import { Boxes, Package, AlertTriangle, Minus, Plus, Trash2, ArrowDownCircle, PackageX, X, Warehouse, ArrowLeftRight } from "../lib/icons.jsx";
 import { getSession } from "../lib/api.js";
 import { SelectComCriar, AcoesEntidade, DetalhesModal, HistoricoEntidadeModal, PencilIcon, ClockIcon } from "../components/Shared.jsx";
 import { useConfirm } from "../components/ConfirmProvider.jsx";
@@ -51,6 +51,9 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
   const [verProduto, setVerProduto] = useState(null);
   const [editProduto, setEditProduto] = useState(null);
   const [histProduto, setHistProduto] = useState(null);
+  const [warehouseFilter, setWarehouseFilter] = useState(null); // null = todos, uuid = específico
+  const [showNewWarehouse, setShowNewWarehouse] = useState(false);
+  const [showWhTransfers, setShowWhTransfers] = useState(false);
 
   const session = getSession();
   const outrasFiliais = (filiaisProp || session?.filiais || []).filter((f) => f.id !== store.id);
@@ -71,7 +74,7 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
       }
       if (p.batches && p.batches.length) {
         p.batches.forEach((b) =>
-          arr.push({ key: b.id, product: p, tipo: "lote", loteId: b.id, nome: b.name || p.name, qty: Number(b.qty), custoTotal: Number(b.costTotal) || 0, expiry: b.expiryDate, supplierId: b.supplierId, initialQty: Number(b.initialQty) || 0 })
+          arr.push({ key: b.id, product: p, tipo: "lote", loteId: b.id, nome: b.name || p.name, qty: Number(b.qty), custoTotal: Number(b.costTotal) || 0, expiry: b.expiryDate, supplierId: b.supplierId, initialQty: Number(b.initialQty) || 0, warehouseId: b.warehouseId || null })
         );
         return;
       }
@@ -113,7 +116,32 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
 
   const categories = store.categories && store.categories.length ? store.categories : [...new Set(store.products.map((p) => p.category).filter(Boolean))].sort();
 
+  const warehouses = store.warehouses || [];
+
+  const whStats = useMemo(() => {
+    const stats = {};
+    warehouses.forEach((w) => { stats[w.id] = { value: 0, lotes: 0, products: new Set(), expired: 0, expiring: 0 }; });
+    stats._none = { value: 0, lotes: 0, products: new Set(), expired: 0, expiring: 0 };
+    linhas.forEach((l) => {
+      if (l.tipo !== "lote") return;
+      const k = l.warehouseId && stats[l.warehouseId] ? l.warehouseId : "_none";
+      const s = stats[k];
+      s.value += l.custoTotal;
+      s.lotes++;
+      s.products.add(l.product.id);
+      if (l.expiry && daysUntil(l.expiry) < 0) s.expired++;
+      if (l.expiry && daysUntil(l.expiry) >= 0 && daysUntil(l.expiry) <= 30) s.expiring++;
+    });
+    return stats;
+  }, [linhas, warehouses]);
+
+  const totalWhValue = Object.values(whStats).reduce((s, w) => s + w.value, 0);
+
   const linhasFiltradas = linhas.filter((l) => {
+    if (warehouseFilter !== null) {
+      if (l.tipo === "lote" && (l.warehouseId || null) !== warehouseFilter) return false;
+      if (l.tipo !== "lote") return false;
+    }
     const q = query.trim().toLowerCase();
     if (q && !(l.nome.toLowerCase().includes(q) || l.product.name.toLowerCase().includes(q))) return false;
     if (categoryFilter && l.product.category !== categoryFilter) return false;
@@ -223,6 +251,56 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
             Imprimir etiquetas
           </button>
         </div>
+      </div>
+
+      {/* ── Armazéns ── */}
+      <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="text-sm font-semibold flex items-center gap-1.5"><Warehouse size={15} /> Armazéns</div>
+            <div className="text-[11px]" style={{ color: MUTED }}>Escolha onde quer ver o stock. O Principal é o que vai para a venda.</div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowWhTransfers(true)} style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-1 text-xs font-medium flex items-center gap-1"><ArrowLeftRight size={12} /> Transferências</button>
+            <button onClick={() => setShowNewWarehouse(true)} style={{ background: TEAL, color: "#fff" }} className="rounded-lg px-2.5 py-1 text-xs font-medium">+ Novo armazém</button>
+          </div>
+        </div>
+        <div className="flex gap-2.5 overflow-x-auto pb-1">
+          <button onClick={() => setWarehouseFilter(null)} style={{ borderColor: warehouseFilter === null ? TEAL : BORDER, background: warehouseFilter === null ? "#F0FDFA" : CARD }} className="border rounded-xl p-3 min-w-[180px] text-left shrink-0">
+            <div className="flex items-center gap-1.5 text-xs font-semibold"><span style={{ background: TEAL }} className="w-2 h-2 rounded-full inline-block" /> Todos</div>
+            <div className="text-lg font-bold mt-1">{fmtMT(totalWhValue)}</div>
+            <div className="text-[11px]" style={{ color: MUTED }}>{linhas.filter((l) => l.tipo === "lote").length} lotes</div>
+          </button>
+          {warehouses.map((w) => {
+            const s = whStats[w.id] || { value: 0, lotes: 0, products: new Set(), expired: 0, expiring: 0 };
+            const pct = totalWhValue ? Math.round((s.value / totalWhValue) * 100) : 0;
+            const active = warehouseFilter === w.id;
+            const dotColor = w.tipo === "principal" ? GREEN : "#3B82F6";
+            return (
+              <button key={w.id} onClick={() => setWarehouseFilter(active ? null : w.id)} style={{ borderColor: active ? dotColor : BORDER, background: active ? (w.tipo === "principal" ? "#F0FDF4" : "#EFF6FF") : CARD }} className="border rounded-xl p-3 min-w-[200px] text-left shrink-0">
+                <div className="flex items-center gap-1.5 text-xs font-semibold"><span style={{ background: dotColor }} className="w-2 h-2 rounded-full inline-block" /> {w.name}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: MUTED }}>{w.tipo === "principal" ? "Vai para a venda" : "Stock interno"}</div>
+                <div className="text-lg font-bold mt-1">{fmtMT(s.value)}</div>
+                <div className="text-[11px]" style={{ color: MUTED }}>{s.lotes} lotes · {s.products.size} produtos</div>
+                <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: "#E2E8F0" }}>
+                  <div style={{ width: `${pct}%`, background: dotColor }} className="h-full rounded-full" />
+                </div>
+                {(s.expired > 0 || s.expiring > 0) && (
+                  <div className="text-[10px] mt-1" style={{ color: MUTED }}>
+                    {s.expired > 0 && <span style={{ color: BRICK }}>{s.expired} expirados</span>}
+                    {s.expired > 0 && s.expiring > 0 && " · "}
+                    {s.expiring > 0 && <span style={{ color: GOLD }}>{s.expiring} a expirar</span>}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {warehouses.length > 0 && (
+          <div className="text-[11px] text-center" style={{ color: MUTED }}>
+            No total: {fmtMT(totalWhValue)} em {warehouses.length + 1} sítios ({linhas.filter((l) => l.tipo === "lote").length} lotes)
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
@@ -437,7 +515,82 @@ export default function EstoqueTab({ store, setStore, api, showToast, registerQu
           onClose={() => setShowTransfer(false)}
         />
       )}
+      {showNewWarehouse && (
+        <NovoArmazemModal
+          onSave={async (payload) => {
+            try {
+              setStore(await api.createWarehouse(payload));
+              showToast("Armazém criado");
+              setShowNewWarehouse(false);
+            } catch (e) { showToast(e.message, "warn"); }
+          }}
+          onClose={() => setShowNewWarehouse(false)}
+        />
+      )}
+      {showWhTransfers && (
+        <WhTransfersModal api={api} store={store} warehouses={warehouses} onClose={() => setShowWhTransfers(false)} />
+      )}
     </div>
+  );
+}
+
+function NovoArmazemModal({ onSave, onClose }) {
+  const [name, setName] = useState("");
+  const [tipo, setTipo] = useState("interno");
+  return (
+    <ModalShell title="Novo Armazém" onClose={onClose}>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs" style={{ color: MUTED }}>Nome *</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1" placeholder="Ex: Armazém interno" />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: MUTED }}>Tipo</label>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1">
+            <option value="principal">Principal (vai para a venda)</option>
+            <option value="interno">Stock interno</option>
+          </select>
+        </div>
+        <button onClick={() => name.trim() && onSave({ name: name.trim(), tipo })} style={{ background: TEAL, color: "#fff" }} className="w-full rounded-lg py-2 text-sm font-semibold">Criar armazém</button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function WhTransfersModal({ api, store, warehouses, onClose }) {
+  const [transfers, setTransfers] = useState(null);
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    api.warehouseTransfers().then(setTransfers).catch(() => setTransfers([]));
+  }, [api]);
+  const filtered = (transfers || []).filter((t) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (t.product_name || "").toLowerCase().includes(q) || (t.from_name || "").toLowerCase().includes(q) || (t.to_name || "").toLowerCase().includes(q);
+  });
+  return (
+    <ModalShell title="Transferências entre armazéns" onClose={onClose} max="max-w-lg">
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar…" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mb-3" />
+      {transfers === null && <div className="text-xs py-4 text-center" style={{ color: MUTED }}>A carregar…</div>}
+      {filtered.length === 0 && transfers !== null && <div className="text-xs py-4 text-center" style={{ color: MUTED }}>Sem transferências.</div>}
+      <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        {filtered.map((t) => (
+          <div key={t.id} style={{ borderColor: BORDER }} className="border rounded-lg p-2.5 text-xs">
+            <div className="flex justify-between">
+              <span className="font-semibold">{t.product_name}</span>
+              <span style={{ color: MUTED }}>{new Date(t.created_at).toLocaleDateString("pt-PT")}</span>
+            </div>
+            <div className="mt-1 flex items-center gap-1">
+              <span style={{ background: GREEN, color: "#fff" }} className="px-1.5 py-0.5 rounded text-[10px]">{t.from_name || "Sem armazém"}</span>
+              <span>→</span>
+              <span style={{ background: "#3B82F6", color: "#fff" }} className="px-1.5 py-0.5 rounded text-[10px]">{t.to_name || "?"}</span>
+              <span className="ml-auto font-semibold">{Number(t.qty)} un</span>
+            </div>
+            {t.employee_name && <div className="mt-0.5" style={{ color: MUTED }}>por {t.employee_name}</div>}
+          </div>
+        ))}
+      </div>
+    </ModalShell>
   );
 }
 
@@ -1157,34 +1310,78 @@ function SaidaEstoqueModal({ store, onSubmit, onClose }) {
   const [variantId, setVariantId] = useState("");
   const [qty, setQty] = useState("");
   const [motivo, setMotivo] = useState("Danificado");
+  const [searchProd, setSearchProd] = useState("");
   const product = store.products.find((p) => p.id === productId);
+  const currentStock = product ? getStock(product, store.products) : 0;
+  const afterExit = currentStock - (Number(qty) || 0);
+  const quickAmounts = [5, 10, 12, 24];
+
+  const filteredProducts = store.products.filter((p) => {
+    if (!searchProd.trim()) return true;
+    return p.name.toLowerCase().includes(searchProd.toLowerCase());
+  });
 
   const submit = () => {
-    if (!productId || !qty) return;
+    if (!productId || !qty || Number(qty) <= 0) return;
     onSubmit({ productId, variantId: variantId || null, qty: Number(qty), motivo });
     onClose();
   };
 
   return (
     <ModalShell title="Saída de estoque" onClose={onClose}>
-      <div className="space-y-2">
-        <select value={productId} onChange={(e) => { setProductId(e.target.value); setVariantId(""); }} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
-          <option value="">Produto</option>
-          {store.products.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-        {product?.variants && (
-          <select value={variantId} onChange={(e) => setVariantId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm">
-            <option value="">Variante</option>
-            {product.variants.map((v) => (
-              <option key={v.id} value={v.id}>{v.label}</option>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs" style={{ color: MUTED }}>Produto *</label>
+          <input value={searchProd} onChange={(e) => setSearchProd(e.target.value)} placeholder="Buscar produto…" style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1 mb-1" />
+          <select value={productId} onChange={(e) => { setProductId(e.target.value); setVariantId(""); }} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm" size={Math.min(filteredProducts.length + 1, 6)}>
+            <option value="">Seleccionar…</option>
+            {filteredProducts.map((p) => (
+              <option key={p.id} value={p.id}>{p.name} ({getStock(p, store.products)} {p.unit || "un"})</option>
             ))}
           </select>
+        </div>
+        {product?.variants && (
+          <div>
+            <label className="text-xs" style={{ color: MUTED }}>Variante</label>
+            <select value={variantId} onChange={(e) => setVariantId(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1">
+              <option value="">Variante</option>
+              {product.variants.map((v) => (
+                <option key={v.id} value={v.id}>{v.label}</option>
+              ))}
+            </select>
+          </div>
         )}
-        <div className="grid grid-cols-2 gap-2">
-          <input type="number" placeholder="Quantidade" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm" />
-          <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm">
+        <div>
+          <label className="text-xs" style={{ color: MUTED }}>Quantidade a retirar</label>
+          <div className="flex items-center gap-2 mt-1">
+            <button onClick={() => setQty(String(Math.max(0, (Number(qty) || 0) - 1)))} style={{ borderColor: BORDER }} className="border rounded-lg w-8 h-8 flex items-center justify-center text-lg">−</button>
+            <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} style={{ borderColor: BORDER }} className="border rounded-lg px-2 py-1.5 text-sm text-center flex-1" placeholder="0" />
+            <button onClick={() => setQty(String((Number(qty) || 0) + 1))} style={{ borderColor: BORDER }} className="border rounded-lg w-8 h-8 flex items-center justify-center text-lg">+</button>
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            {quickAmounts.map((n) => (
+              <button key={n} onClick={() => setQty(String((Number(qty) || 0) + n))} style={{ borderColor: BORDER }} className="border rounded-full px-2.5 py-0.5 text-xs font-medium hover:bg-gray-50">+{n}</button>
+            ))}
+          </div>
+        </div>
+        {product && Number(qty) > 0 && (
+          <div style={{ background: "#F8FAFC", borderColor: BORDER }} className="border rounded-lg p-2.5 text-xs">
+            <div className="font-semibold mb-1">Previsão após saída</div>
+            <div className="flex justify-between">
+              <span style={{ color: MUTED }}>Stock actual:</span><span className="font-semibold">{currentStock}</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: MUTED }}>A retirar:</span><span className="font-semibold" style={{ color: BRICK }}>−{Number(qty)}</span>
+            </div>
+            <div className="flex justify-between border-t mt-1 pt-1" style={{ borderColor: BORDER }}>
+              <span style={{ color: MUTED }}>Saldo final:</span><span className="font-bold" style={{ color: afterExit < 0 ? BRICK : GREEN }}>{afterExit}</span>
+            </div>
+            {afterExit < 0 && <div className="mt-1 text-[10px]" style={{ color: BRICK }}>Atenção: vai ficar com stock negativo!</div>}
+          </div>
+        )}
+        <div>
+          <label className="text-xs" style={{ color: MUTED }}>Motivo / Justificativa *</label>
+          <select value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ borderColor: BORDER }} className="w-full border rounded-lg px-2 py-1.5 text-sm mt-1">
             <option>Danificado</option>
             <option>Vencido</option>
             <option>Roubo/Perda</option>
@@ -1192,7 +1389,10 @@ function SaidaEstoqueModal({ store, onSubmit, onClose }) {
             <option>Outro</option>
           </select>
         </div>
-        <button onClick={submit} style={{ background: BRICK, color: "#fff" }} className="px-3 py-1.5 rounded-lg text-sm">Registar</button>
+        <div className="flex gap-2">
+          <button onClick={onClose} style={{ background: "#475569", color: "#fff" }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Cancelar</button>
+          <button onClick={submit} disabled={!productId || !qty || Number(qty) <= 0} style={{ background: BRICK, color: "#fff", opacity: !productId || !qty ? 0.5 : 1 }} className="flex-1 rounded-lg py-2 text-sm font-semibold">Confirmar Saída</button>
+        </div>
       </div>
     </ModalShell>
   );

@@ -234,6 +234,13 @@ export function businessApi(businessId) {
     deleteLote: (id) => s(del(`${base}/lotes/${id}`)),
     loteHistorico: (id) => get(`${base}/lotes/${id}/historico`).then((d) => d.movimentos),
 
+    // Armazéns
+    createWarehouse: (payload) => s(post(`${base}/warehouses`, payload)),
+    updateWarehouse: (id, payload) => s(put(`${base}/warehouses/${id}`, payload)),
+    deleteWarehouse: (id) => s(del(`${base}/warehouses/${id}`)),
+    warehouseTransfer: (payload) => s(post(`${base}/warehouses/transfer`, payload)),
+    warehouseTransfers: () => get(`${base}/warehouses/transfers`).then((d) => d.transfers),
+
     addConta: (payload) => s(post(`${base}/contas-pagar`, payload)),
     deleteConta: (id) => s(del(`${base}/contas-pagar/${id}`)),
     pagarConta: (id) => s(post(`${base}/contas-pagar/${id}/pagar`)),

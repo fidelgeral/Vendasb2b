@@ -96,6 +96,7 @@ export async function buildStore(businessId) {
     loyaltyPoints,
     paymentAccounts,
     payroll,
+    warehouses,
   ] = await Promise.all([
     query(
       `SELECT id, tipo, venda_directa AS "vendaDirecta", codigo, name, category, unit, qtd_itens AS "qtdItens",
@@ -112,7 +113,8 @@ export async function buildStore(businessId) {
     query(
       `SELECT b.id, b.product_id, b.qty, b.expiry_date AS "expiryDate",
               b.name, b.cost_total AS "costTotal", b.supplier_id AS "supplierId",
-              b.initial_qty AS "initialQty", b.created_at AS "createdAt"
+              b.initial_qty AS "initialQty", b.created_at AS "createdAt",
+              b.warehouse_id AS "warehouseId"
        FROM product_batches b
        JOIN products p ON p.id = b.product_id WHERE p.business_id = $1`,
       [businessId]
@@ -242,6 +244,7 @@ export async function buildStore(businessId) {
        FROM payroll WHERE business_id = $1 ORDER BY ano DESC, mes DESC, employee_name`,
       [businessId]
     ),
+    query("SELECT id, name, tipo, descricao, created_at AS \"createdAt\" FROM warehouses WHERE business_id = $1 ORDER BY tipo, name", [businessId]),
   ]);
 
   const variantsByProduct = groupBy(variants.rows, "product_id");
@@ -270,6 +273,7 @@ export async function buildStore(businessId) {
       supplierId: b.supplierId,
       initialQty: Number(b.initialQty || 0),
       createdAt: b.createdAt,
+      warehouseId: b.warehouseId || null,
     }));
     if (vs.length) out.variants = vs;
     if (bs.length) out.batches = bs;
@@ -334,6 +338,7 @@ export async function buildStore(businessId) {
     loyaltyPoints: loyaltyPoints.rows.map((lp) => ({ ...lp, points: Number(lp.points), totalEarned: Number(lp.totalEarned), totalRedeemed: Number(lp.totalRedeemed) })),
     paymentAccounts: paymentAccounts.rows,
     payroll: payroll.rows.map((p) => ({ ...p, salario_base: Number(p.salario_base), bonus: Number(p.bonus), descontos: Number(p.descontos), total: Number(p.total) })),
+    warehouses: warehouses.rows,
     loyalty: { enabled: !!biz.loyalty_enabled, pointsPerMt: Number(biz.loyalty_points_per_mt || 1), mtPerPoint: Number(biz.loyalty_mt_per_point || 0.1) },
     themeColor: biz.theme_color || "#2563eb",
     logoUrl: biz.logo_url || "",
