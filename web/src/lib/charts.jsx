@@ -123,6 +123,51 @@ export function StatCardChart({ label, value, sub, points, labels, color, fmt })
   );
 }
 
+export function BarComparisonChart({ data, height = 220 }) {
+  const [hover, setHover] = useState(null);
+  if (!data || data.length === 0) return null;
+  const max = Math.max(...data.flatMap((d) => [d.atual || 0, d.anterior || 0]), 1);
+  const barW = Math.min(32, 200 / data.length);
+  const gap = Math.max(8, barW * 0.6);
+  const totalW = data.length * (barW * 2 + gap) + gap;
+  const chartH = height - 30;
+  const barH = (v) => Math.max(1, (v / max) * (chartH - 10));
+  const CORES = { anterior: "#93C5FD", atual: TEAL };
+  return (
+    <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-semibold">Desempenho financeiro</div>
+        <div className="flex items-center gap-3 text-[10px]" style={{ color: MUTED }}>
+          <span className="flex items-center gap-1"><span style={{ background: CORES.anterior }} className="w-2.5 h-2.5 rounded-sm inline-block" /> Anterior</span>
+          <span className="flex items-center gap-1"><span style={{ background: CORES.atual }} className="w-2.5 h-2.5 rounded-sm inline-block" /> Atual</span>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <svg width={Math.max(totalW, 300)} height={height} onMouseLeave={() => setHover(null)}>
+          {data.map((d, i) => {
+            const x = gap + i * (barW * 2 + gap);
+            const hA = barH(d.anterior || 0);
+            const hC = barH(d.atual || 0);
+            return (
+              <g key={i} onMouseEnter={() => setHover(i)}>
+                <rect x={x} y={chartH - hA} width={barW} height={hA} rx={3} fill={CORES.anterior} opacity={hover === i ? 1 : 0.8} />
+                <rect x={x + barW} y={chartH - hC} width={barW} height={hC} rx={3} fill={CORES.atual} opacity={hover === i ? 1 : 0.8} />
+                <text x={x + barW} y={chartH + 14} textAnchor="middle" style={{ fontSize: 10, fill: MUTED }}>{d.label}</text>
+                {hover === i && (
+                  <text x={x + barW} y={chartH - Math.max(hA, hC) - 4} textAnchor="middle" style={{ fontSize: 10, fontWeight: 600, fill: INK }}>
+                    {fmtMT(d.atual || 0)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+          <line x1={0} y1={chartH} x2={totalW} y2={chartH} stroke={BORDER} strokeWidth={1} />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 // Painel flutuante com a evolução das vendas
 export function FloatingChart({ sales, onClose }) {
   const dias = 14;

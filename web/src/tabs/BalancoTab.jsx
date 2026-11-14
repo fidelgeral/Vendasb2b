@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { CARD, BORDER, MUTED, TEAL, INK, GOLD, BRICK, GREEN, SOFTGOLD } from "../lib/theme.js";
 import { todayStr, fmtMT, getStock, isLowStock, nearExpiry, ROLE_LABELS } from "../lib/utils.js";
-import { DonutChart, StatCardChart } from "../lib/charts.jsx";
+import { DonutChart, StatCardChart, BarComparisonChart } from "../lib/charts.jsx";
 import { exportReportExcel, exportReportPDF } from "../lib/print.js";
 import { computeIva } from "../lib/iva.js";
 import { inPeriod, periodoAnterior, variacao } from "../lib/periods.js";
@@ -636,22 +636,53 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
       { label: "Lucro bruto", value: fmtMT(lucroBruto), color: "green" },
       prev ? { label: "Var. resultado", value: variacao(lucroReal, prev.real) } : { label: "A receber", value: fmtMT(dividas) },
     ];
+    const classificacao = lucroReal > faturamento * 0.15 ? { text: "ÓTIMO (CAIXA FORTE)", color: GREEN }
+      : lucroReal > 0 ? { text: "POSITIVO", color: "#F59E0B" }
+      : lucroReal === 0 ? { text: "NEUTRO", color: MUTED }
+      : { text: "NEGATIVO (ATENÇÃO)", color: BRICK };
+    const varResultado = prev ? variacao(lucroReal, prev.real) : null;
+    const difCaixa = (store.cashShortages || []).filter((s) => inPeriod(s.date || s.created_at, from, to)).reduce((a, s) => a + Number(s.amount || 0), 0);
+    const reposicoes = movs.filter((m) => m.type === "entrada" && (m.descricao || "").toLowerCase().includes("repos")).reduce((a, m) => a + m.amount, 0);
+    const compBarData = prev ? [
+      { label: "Vendas", atual: faturamento, anterior: prev.fat },
+      { label: "L. Bruto", atual: lucroBruto, anterior: prev.lb },
+      { label: "Dívidas", atual: dividas, anterior: 0 },
+      { label: "Despesas", atual: saidas + salarios, anterior: prev.sd },
+      { label: "Lucro Real", atual: Math.max(0, lucroReal), anterior: Math.max(0, prev.real) },
+    ] : null;
     return (
       <div className="space-y-3">
-        <div style={{ background: lucroReal >= 0 ? "#D1FAE5" : "#FEE2E2", borderColor: lucroReal >= 0 ? "#6EE7B7" : "#FCA5A5" }} className="border rounded-lg p-4">
-          <div className="text-xs" style={{ color: MUTED }}>
-            Resultado líquido estimado no período
+        <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-4">
+          <div className="flex items-start justify-between flex-wrap gap-2">
+            <div>
+              <div className="text-xs uppercase tracking-wide font-semibold" style={{ color: MUTED }}>Resultado de caixa (real)</div>
+              {meta.period && <div className="text-[11px]" style={{ color: MUTED }}>Comparando: {meta.period}</div>}
+            </div>
+            <div className="flex items-center gap-2">
+              <ExportButtons title="DRE" columns={dreColumns} rows={rows} meta={{ ...meta, kpis: dreKpis }} />
+              {varResultado && <span className="text-sm font-bold" style={{ color: lucroReal >= (prev?.real || 0) ? GREEN : BRICK }}>{varResultado}</span>}
+            </div>
           </div>
-          <div style={{ color: lucroReal >= 0 ? GREEN : BRICK }} className="text-3xl font-semibold mt-1">
-            {fmtMT(lucroReal)}
+          <div style={{ background: lucroReal >= 0 ? "#D1FAE5" : "#FEE2E2" }} className="rounded-lg p-4 mt-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-semibold">Lucro Real na Gaveta</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: classificacao.color + "22", color: classificacao.color }}>{classificacao.text}</span>
+            </div>
+            <div style={{ color: lucroReal >= 0 ? GREEN : BRICK }} className="text-3xl font-bold">{fmtMT(lucroReal)}</div>
+            {prev && <div className="text-xs mt-1" style={{ color: MUTED }}>Anterior: {fmtMT(prev.real)}</div>}
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <StatCardChart label="Facturação" value={fmtMT(faturamento)} points={serieDre.fat} labels={serieDre.rot} />
-          <StatCardChart label="Lucro bruto" value={fmtMT(lucroBruto)} points={serieDre.luc} labels={serieDre.rot} color={GREEN} />
-          <StatCard label="Perdas" value={fmtMT(perdas)} />
-          <StatCard label="A receber" value={fmtMT(dividas)} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+          <StatCardChart label="Facturação (Total)" value={fmtMT(faturamento)} sub={prev ? "Ant: " + fmtMT(prev.fat) : undefined} points={serieDre.fat} labels={serieDre.rot} />
+          <StatCardChart label="Lucro Bruto" value={fmtMT(lucroBruto)} sub={prev ? "Ant: " + fmtMT(prev.lb) : undefined} points={serieDre.luc} labels={serieDre.rot} color={GREEN} />
+          <StatCard label="Dívidas de Clientes" value={fmtMT(dividas)} sub="a receber" />
+          <StatCard label="Quebras de Stock" value={fmtMT(perdas)} sub={prev ? "Ant: " + fmtMT(prev.pd) : undefined} />
+          <StatCard label="Despesas Op." value={fmtMT(saidas + salarios)} sub={prev ? "Ant: " + fmtMT(prev.sd) : undefined} />
+          <StatCard label="Entradas Extra" value={fmtMT(entradas)} sub={prev ? "Ant: " + fmtMT(prev.en) : undefined} />
+          <StatCard label="Dif. Caixa / Falhas" value={fmtMT(difCaixa)} />
+          <StatCard label="Reposições / Pagas" value={fmtMT(reposicoes)} />
         </div>
+        {compBarData && <BarComparisonChart data={compBarData} />}
         <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
           <div className="text-sm font-semibold mb-2">Composição do resultado</div>
           <DonutChart
