@@ -51,7 +51,7 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   if (!shift) return res.status(409).json({ error: "Abra o caixa antes de vender." });
 
   const fiadoAmount = f.payments.filter((p) => p.method === "fiado").reduce((s, p) => s + p.amount, 0);
-  if (fiadoAmount > 0 && !f.clientId) return res.status(400).json({ error: "Venda a fiado exige um cliente." });
+  if (fiadoAmount > 0 && !f.clientId) return res.status(400).json({ error: "Venda a dívida exige um cliente." });
 
   // Tudo o que a venda referencia (produtos, variantes, cliente, mesa) tem de
   // pertencer a ESTE negócio — senão seria possível mexer no stock/clientes de outro.
