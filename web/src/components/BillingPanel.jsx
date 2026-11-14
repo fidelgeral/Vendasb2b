@@ -16,6 +16,8 @@ export default function BillingPanel({ api, canSubmit = true }) {
   const [payerName, setPayerName] = useState("");
   const [payerPhone, setPayerPhone] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [notes, setNotes] = useState("");
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -64,13 +66,20 @@ export default function BillingPanel({ api, canSubmit = true }) {
     setSending(true);
     setMsg("");
     try {
+      let url = photoUrl.trim();
+      if (photoFile && !url) {
+        setUploading(true);
+        const uploaded = await api.uploadImage(photoFile);
+        url = uploaded.url || "";
+        setUploading(false);
+      }
       await api.submitProof({
         amount: Number(amount),
         paymentMethod: method,
         reference: reference.trim(),
         payerName: payerName.trim(),
         payerPhone: payerPhone.trim(),
-        photoUrl: photoUrl.trim(),
+        photoUrl: url,
         notes: notes.trim(),
       });
       setMsg("Comprovativo enviado com sucesso! Aguarde a confirmação.");
@@ -79,6 +88,7 @@ export default function BillingPanel({ api, canSubmit = true }) {
       setPayerName("");
       setPayerPhone("");
       setPhotoUrl("");
+      setPhotoFile(null);
       setNotes("");
       setShowProofForm(false);
       load();
@@ -171,7 +181,13 @@ export default function BillingPanel({ api, canSubmit = true }) {
                 <input value={payerName} onChange={(e) => setPayerName(e.target.value)} placeholder="Nome de quem pagou *" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
                 <input value={payerPhone} onChange={(e) => setPayerPhone(e.target.value)} placeholder="Telefone de quem pagou" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
                 <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Nº da transacção" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
-                <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="Link da foto do comprovativo" style={{ borderColor: BORDER }} className="border rounded-lg px-2.5 py-2 text-sm" />
+                <div className="flex items-center gap-2">
+                  <label style={{ background: photoFile ? GREEN : TEAL, color: "#fff" }} className="rounded-lg px-3 py-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                    {photoFile ? "✓ " + photoFile.name.slice(0, 20) : "Escolher foto"}
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files[0]) { setPhotoFile(e.target.files[0]); setPhotoUrl(""); } }} />
+                  </label>
+                  {photoFile && <button onClick={() => setPhotoFile(null)} className="text-xs" style={{ color: BRICK }}>Remover</button>}
+                </div>
               </div>
               <textarea
                 value={notes}
@@ -182,7 +198,7 @@ export default function BillingPanel({ api, canSubmit = true }) {
                 className="border rounded-lg px-2.5 py-2 text-sm w-full mt-2"
               />
               <button onClick={submitProof} disabled={sending} style={{ background: TEAL, color: "#fff" }} className="mt-2 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50">
-                {sending ? "A enviar…" : "Enviar comprovativo"}
+                {uploading ? "A enviar foto…" : sending ? "A enviar…" : "Enviar comprovativo"}
               </button>
             </>
           )}

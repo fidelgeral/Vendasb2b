@@ -79,45 +79,75 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
 
       {sub === "resumo" && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {[
-              { label: "Abertura", value: fmtMT(currentShift?.openingCash || 0) },
-              { label: "Vendas em dinheiro", value: fmtMT(paymentsByMethod.dinheiro || 0) },
-              { label: "Entradas / Saídas", value: `+${fmtMT(entradas)} / -${fmtMT(saidas)}` },
-              { label: "Esperado no caixa", value: podeVerEsperado ? fmtMT(expectedNow) : "•••" },
-            ].map((c) => (
-              <div key={c.label} style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
-                <div className="text-xs" style={{ color: MUTED }}>
-                  {c.label}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+            <div className="lg:col-span-3">
+              <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-4">
+                <div className="text-base font-bold mb-3">Resumo de Desempenho Diário</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div style={{ background: "#D1FAE5", borderColor: "#6EE7B7" }} className="border rounded-xl p-4 text-center">
+                    <ArrowDownCircle size={22} style={{ color: GREEN, margin: "0 auto 4px" }} />
+                    <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: GREEN }}>Entradas</div>
+                    <div className="text-lg font-bold mt-1">{fmtMT((paymentsByMethod.dinheiro || 0) + entradas)}</div>
+                    <div className="text-[11px]" style={{ color: MUTED }}>( {shiftSales.length} Transações )</div>
+                  </div>
+                  <div style={{ background: "#F0FDF4", borderColor: "#BBF7D0" }} className="border rounded-xl p-4 text-center">
+                    <CheckCircle2 size={22} style={{ color: "#22C55E", margin: "0 auto 4px" }} />
+                    <div className="text-xs font-semibold">Reembolso</div>
+                    <div className="text-lg font-bold mt-1">{fmtMT(0)}</div>
+                    <div className="text-[11px]" style={{ color: MUTED }}>( 0 Movimentos )</div>
+                  </div>
+                  <div style={{ background: "#FEF2F2", borderColor: "#FCA5A5" }} className="border rounded-xl p-4 text-center">
+                    <ArrowUpCircle size={22} style={{ color: BRICK, margin: "0 auto 4px" }} />
+                    <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: BRICK }}>Saídas</div>
+                    <div className="text-lg font-bold mt-1">{fmtMT(saidas)}</div>
+                    <div className="text-[11px]" style={{ color: MUTED }}>( {movs.filter((m) => m.type === "saida").length} Movimentos )</div>
+                  </div>
                 </div>
-                <div style={{ color: TEAL }} className="text-base font-semibold mt-1">
-                  {c.value}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
+                  <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-2.5">
+                    <div className="text-[11px]" style={{ color: MUTED }}>Abertura</div>
+                    <div className="text-sm font-semibold" style={{ color: TEAL }}>{fmtMT(currentShift?.openingCash || 0)}</div>
+                  </div>
+                  <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-2.5">
+                    <div className="text-[11px]" style={{ color: MUTED }}>Vendas em dinheiro</div>
+                    <div className="text-sm font-semibold" style={{ color: TEAL }}>{fmtMT(paymentsByMethod.dinheiro || 0)}</div>
+                  </div>
+                  <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-2.5">
+                    <div className="text-[11px]" style={{ color: MUTED }}>Entradas / Saídas</div>
+                    <div className="text-sm font-semibold" style={{ color: TEAL }}>+{fmtMT(entradas)} / -{fmtMT(saidas)}</div>
+                  </div>
+                  <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-2.5">
+                    <div className="text-[11px]" style={{ color: MUTED }}>Esperado no caixa</div>
+                    <div className="text-sm font-semibold" style={{ color: TEAL }}>{podeVerEsperado ? fmtMT(expectedNow) : "•••"}</div>
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
+            <div className="lg:col-span-2">
+              <div style={{ background: GREEN, color: "#fff" }} className="rounded-t-xl px-4 py-2.5 text-sm font-bold flex items-center gap-2">
+                <Banknote size={16} /> SALDO DAS CONTAS DE PAGAMENTO
+              </div>
+              <div style={{ background: CARD, borderColor: BORDER }} className="border border-t-0 rounded-b-xl p-3">
+                {Object.keys(paymentsByMethod).length === 0 && <div className="text-xs py-2" style={{ color: MUTED }}>Sem movimentos neste turno.</div>}
+                {Object.entries(paymentsByMethod).map(([m, v]) => (
+                  <div key={m} className="flex justify-between text-sm py-2" style={{ borderBottom: "1px solid " + BORDER }}>
+                    <span>{metodoLabel(m)}</span>
+                    <span className="font-medium">{fmtMT(v)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-sm font-bold pt-2 mt-1">
+                  <span>TOTAL GERAL</span>
+                  <span>{fmtMT(Object.values(paymentsByMethod).reduce((a, b) => a + b, 0))}</span>
+                </div>
+              </div>
+            </div>
           </div>
           {Object.keys(paymentsByMethod).length > 0 && (
-            <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+            <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3">
               <div className="text-sm font-semibold mb-2">Distribuição do turno</div>
-              <DonutChart data={Object.entries(paymentsByMethod).map(([k, v]) => ({ label: k, value: v }))} size={112} />
+              <DonutChart data={Object.entries(paymentsByMethod).map(([k, v]) => ({ label: metodoLabel(k), value: v }))} size={112} />
             </div>
           )}
-          <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
-            <div className="text-sm font-semibold mb-2">Vendas por forma de pagamento (turno actual)</div>
-            {Object.keys(paymentsByMethod).length === 0 && (
-              <div className="text-xs" style={{ color: MUTED }}>
-                Sem vendas neste turno.
-              </div>
-            )}
-            {Object.entries(paymentsByMethod).map(([m, v]) => (
-              <div key={m} className="flex justify-between text-sm py-0.5">
-                <span className="capitalize">{m}</span>
-                <span style={{ color: TEAL }} className="font-medium">
-                  {fmtMT(v)}
-                </span>
-              </div>
-            ))}
-          </div>
           {quebrasCusto > 0 && (
             <div style={{ background: "#FEE2E2", borderColor: "#FCA5A5", color: BRICK }} className="border rounded-lg p-3 text-sm">
               Perdas por quebra neste turno: {fmtMT(quebrasCusto)}
@@ -134,7 +164,7 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
             });
             const sorted = Object.entries(byEmp).sort((a, b) => b[1].total - a[1].total);
             return (
-              <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-lg p-3">
+              <div style={{ background: CARD, borderColor: BORDER }} className="border rounded-xl p-3">
                 <div className="text-sm font-semibold mb-2">Vendas por operador (turno actual)</div>
                 {sorted.map(([name, d]) => (
                   <div key={name} className="flex justify-between text-sm py-1" style={{ borderBottom: "1px solid " + BORDER }}>
