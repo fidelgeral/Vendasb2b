@@ -54,6 +54,8 @@ warehousesRouter.delete(
   wrap(async (req, res) => {
     const bid = req.params.businessId;
     await withTransaction(async (client) => {
+      const wh = (await client.query("SELECT 1 FROM warehouses WHERE id = $1 AND business_id = $2", [req.params.whId, bid])).rows[0];
+      if (!wh) return;
       await client.query("UPDATE product_batches SET warehouse_id = NULL WHERE warehouse_id = $1", [req.params.whId]);
       await client.query("DELETE FROM warehouses WHERE id = $1 AND business_id = $2", [req.params.whId, bid]);
     });
@@ -83,6 +85,9 @@ warehousesRouter.post(
         [batchId, bid]
       )).rows[0];
       if (!batch) throw Object.assign(new Error("Lote não encontrado."), { http: 404 });
+      const whIds = [toWarehouseId, ...(fromWarehouseId ? [fromWarehouseId] : [])];
+      const whOk = (await client.query("SELECT COUNT(DISTINCT id)::int AS n FROM warehouses WHERE business_id = $1 AND id = ANY($2::uuid[])", [bid, whIds])).rows[0].n;
+      if (whOk !== new Set(whIds).size) throw Object.assign(new Error("Armazém inválido para este negócio."), { http: 400 });
       if (Number(batch.qty) < qty) throw Object.assign(new Error("Quantidade insuficiente."), { http: 400 });
 
       const newQty = Number(batch.qty) - qty;
@@ -90,7 +95,7 @@ warehousesRouter.post(
 
       await client.query(
         `INSERT INTO product_batches (product_id, name, qty, initial_qty, cost_total, expiry_date, supplier_id, warehouse_id)
-         SELECT product_id, name || ' (transf)', $2, $2, (cost_total / NULLIF(initial_qty,0)) * $2, expiry_date, supplier_id, $3
+         SELECT product_id, name || ' (transf)', $2, $2, COALESCE((cost_total / NULLIF(initial_qty,0)) * $2, 0), expiry_date, supplier_id, $3
          FROM product_batches WHERE id = $1`,
         [batchId, qty, toWarehouseId]
       );
@@ -121,3 +126,9 @@ warehousesRouter.get(
     res.json({ transfers: rows });
   })
 );
+
+// eslint-disable-next-line no-unused-vars
+warehousesRouter.use((err, req, res, next) => {
+  if (err && err.http) return res.status(err.http).json({ error: err.message });
+  return next(err);
+});
