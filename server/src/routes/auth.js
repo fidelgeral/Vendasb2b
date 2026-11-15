@@ -253,9 +253,9 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
     await withTransaction(async (client) => {
       const biz = (await client.query(
         `INSERT INTO businesses (name, slug, is_demo, demo_expires_at, demo_representative, demo_contact_email, demo_contact_phone, subscription_status, plan, config)
-         VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', $6, '{}')
+         VALUES ($1, $2, true, now() + interval '3 days', $3, $4, $5, 'ativo', $6, $7::jsonb)
          RETURNING id`,
-        [businessName, slug, representative, email, phone, plan]
+        [businessName, slug, representative, email, phone, plan, JSON.stringify({ businessName })]
       )).rows[0];
       await client.query(
         `INSERT INTO employees (business_id, name, email, password_hash, role, active)

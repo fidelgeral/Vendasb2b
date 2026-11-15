@@ -184,7 +184,13 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     if (prevAlertCountRef.current !== null && alertCount > prevAlertCountRef.current) {
       if ("Notification" in window && Notification.permission === "granted") {
         const novos = alertCount - prevAlertCountRef.current;
-        new Notification("VENDASB2B — Alerta", { body: `${novos} novo(s) alerta(s) de stock/validade`, icon: "/icon-192.png" });
+        // No Chrome/Android `new Notification()` lança "Illegal constructor"; dentro
+        // de um useEffect isso derrubava a app inteira (ecrã em branco).
+        try {
+          new Notification("VENDASB2B — Alerta", { body: `${novos} novo(s) alerta(s) de stock/validade`, icon: "/icon-192.png" });
+        } catch {
+          /* notificações indisponíveis neste aparelho: ignora */
+        }
       }
     }
     prevAlertCountRef.current = alertCount;

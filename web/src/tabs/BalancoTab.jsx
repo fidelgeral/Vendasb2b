@@ -641,8 +641,8 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
       : lucroReal === 0 ? { text: "NEUTRO", color: MUTED }
       : { text: "NEGATIVO (ATENÇÃO)", color: BRICK };
     const varResultado = prev ? variacao(lucroReal, prev.real) : null;
-    const difCaixa = (store.cashShortages || []).filter((s) => inPeriod(s.date || s.created_at, from, to)).reduce((a, s) => a + Number(s.amount || 0), 0);
-    const reposicoes = movs.filter((m) => m.type === "entrada" && (m.descricao || "").toLowerCase().includes("repos")).reduce((a, m) => a + m.amount, 0);
+    const difCaixa = (store.cashShortages || []).filter((s) => inPeriod(s.createdAt, from, to)).reduce((a, s) => a + Number(s.shortage || 0), 0);
+    const reposicoes = movs.filter((m) => m.type === "entrada" && (m.motivo || "").toLowerCase().includes("repos")).reduce((a, m) => a + m.amount, 0);
     const compBarData = prev ? [
       { label: "Vendas", atual: faturamento, anterior: prev.fat },
       { label: "L. Bruto", atual: lucroBruto, anterior: prev.lb },
