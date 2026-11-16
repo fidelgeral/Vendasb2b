@@ -88,10 +88,12 @@ warehousesRouter.post(
       const whIds = [toWarehouseId, ...(fromWarehouseId ? [fromWarehouseId] : [])];
       const whOk = (await client.query("SELECT COUNT(DISTINCT id)::int AS n FROM warehouses WHERE business_id = $1 AND id = ANY($2::uuid[])", [bid, whIds])).rows[0].n;
       if (whOk !== new Set(whIds).size) throw Object.assign(new Error("Armazém inválido para este negócio."), { http: 400 });
+      if ((batch.warehouse_id || null) !== (fromWarehouseId || null)) throw Object.assign(new Error("O lote não está no armazém de origem."), { http: 400 });
+      if (fromWarehouseId === toWarehouseId) throw Object.assign(new Error("Origem e destino iguais."), { http: 400 });
       if (Number(batch.qty) < qty) throw Object.assign(new Error("Quantidade insuficiente."), { http: 400 });
 
       const newQty = Number(batch.qty) - qty;
-      await client.query("UPDATE product_batches SET qty = $1, warehouse_id = $2 WHERE id = $3", [newQty, fromWarehouseId, batchId]);
+      await client.query("UPDATE product_batches SET qty = $1 WHERE id = $2", [newQty, batchId]);
 
       await client.query(
         `INSERT INTO product_batches (product_id, name, qty, initial_qty, cost_total, expiry_date, supplier_id, warehouse_id)

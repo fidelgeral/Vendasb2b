@@ -60,10 +60,12 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   if (prodOk !== prodIds.length) return res.status(400).json({ error: "Produto inválido para este negócio." });
   const varIds = [...new Set(f.items.map((i) => i.variantId).filter(Boolean))];
   if (varIds.length) {
-    const varOk = (
-      await query("SELECT v.id FROM product_variants v JOIN products p ON p.id = v.product_id WHERE p.business_id = $1 AND v.id = ANY($2::uuid[])", [businessId, varIds])
-    ).rows.length;
-    if (varOk !== varIds.length) return res.status(400).json({ error: "Variação inválida para este negócio." });
+    const vrows = (
+      await query("SELECT v.id, v.product_id FROM product_variants v JOIN products p ON p.id = v.product_id WHERE p.business_id = $1 AND v.id = ANY($2::uuid[])", [businessId, varIds])
+    ).rows;
+    if (vrows.length !== varIds.length) return res.status(400).json({ error: "Variação inválida para este negócio." });
+    const vmap = new Map(vrows.map((v) => [v.id, v.product_id]));
+    if (f.items.some((i) => i.variantId && vmap.get(i.variantId) !== i.productId)) return res.status(400).json({ error: "Variação inválida para este produto." });
   }
   if (f.clientId && !(await query("SELECT 1 FROM clients WHERE id = $1 AND business_id = $2", [f.clientId, businessId])).rows.length) {
     return res.status(400).json({ error: "Cliente inválido para este negócio." });
