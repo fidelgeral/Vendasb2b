@@ -269,7 +269,7 @@ function DashboardOverview({ store, sales }) {
   const _l = new Date(Date.now() - 7 * 86400000);
   const weekAgo = `${_l.getFullYear()}-${String(_l.getMonth() + 1).padStart(2, "0")}-${String(_l.getDate()).padStart(2, "0")}`;
   const monthStart = today.slice(0, 8) + "01";
-  const filter = (from) => sales.filter((s) => s.date >= from);
+  const filter = (from) => sales.filter((s) => new Date(s.date).getTime() >= new Date(from + "T00:00:00").getTime());
   const todaySales = filter(today);
   const weekSales = filter(weekAgo);
   const monthSales = filter(monthStart);

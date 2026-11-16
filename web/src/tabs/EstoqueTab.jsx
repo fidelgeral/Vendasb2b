@@ -885,7 +885,7 @@ function EditarLoteModal({ lote, store, onSubmit, onClose, onCreateSupplier }) {
 
   const submit = () => {
     if (mudouQty && !motivo.trim()) return;
-    onSubmit({ name, expiryDate: expiryDate || null, costTotal: total, qty: Number(qty), supplierId: supplierId || null, motivo });
+    onSubmit({ name, expiryDate: expiryDate || null, costTotal: (Number(custoUnit) || 0) * baseQtd, qty: Number(qty), supplierId: supplierId || null, motivo });
   };
 
   return (
