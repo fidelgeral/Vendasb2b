@@ -436,14 +436,14 @@ productsRouter.post("/products/bulk-import", requirePermission("produtoAdicionar
         // eslint-disable-next-line no-await-in-loop
         await client.query(
           "UPDATE products SET price = COALESCE(NULLIF($1::numeric,0), price), cost = COALESCE(NULLIF($2::numeric,0), cost), stock = stock + $3::numeric WHERE id = $4",
-          [Number(row.price) || 0, Number(row.cost) || 0, Number(row.stock) || 0, existing.id]
+          [Math.max(0, Number(row.price) || 0), Math.max(0, Number(row.cost) || 0), Math.max(0, Number(row.stock) || 0), existing.id]
         );
         updated++;
       } else {
         // eslint-disable-next-line no-await-in-loop
         await client.query(
           "INSERT INTO products (business_id, name, category, unit, price, cost, stock, min_stock) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-          [businessId, row.name, row.category || "Geral", row.unit || "un", Number(row.price) || 0, Number(row.cost) || 0, Number(row.stock) || 0, Number(row.minStock) || 0]
+          [businessId, row.name, row.category || "Geral", row.unit || "un", Math.max(0, Number(row.price) || 0), Math.max(0, Number(row.cost) || 0), Math.max(0, Number(row.stock) || 0), Math.max(0, Number(row.minStock) || 0)]
         );
         created++;
       }

@@ -34,7 +34,7 @@ tablesRouter.delete("/tables/:id", requirePermission("guardarPedido"), async (re
   await respond(res, businessId);
 });
 
-const comandaItemSchema = z.object({ productId: z.string().uuid(), name: z.string(), price: z.number(), cost: z.number(), qty: z.number() });
+const comandaItemSchema = z.object({ productId: z.string().uuid(), name: z.string(), price: z.number(), cost: z.number(), qty: z.number(), variantId: z.string().uuid().optional().nullable() });
 
 tablesRouter.post("/tables/:tableId/comanda/open", requirePermission("guardarPedido"), async (req, res) => {
   const { businessId, tableId } = req.params;

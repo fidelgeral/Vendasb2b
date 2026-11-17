@@ -122,6 +122,7 @@ employeesRouter.patch("/employees/:id", requirePermission("gerirEquipa"), async 
       f.genero ?? existing.genero, f.foto !== undefined ? f.foto : existing.foto, f.garcom ?? existing.garcom, allowedFiliais || null, id,
     ]
   );
+  if (f.password) await query("UPDATE refresh_tokens SET revoked = true WHERE employee_id = $1", [id]);
   const campos = { name: "name", email: "email", phone: "phone", role: "role", docId: "doc_id" };
   const mudancas = Object.keys(campos)
     .filter((k) => f[k] !== undefined && String(f[k] ?? "") !== String(existing[campos[k]] ?? ""))

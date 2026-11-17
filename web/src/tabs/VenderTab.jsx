@@ -172,9 +172,9 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     const comanda = next.comandas.find((c) => c.tableId === tableId);
     const merged = (comanda?.items || []).map((it) => ({ ...it }));
     for (const l of cart) {
-      const found = merged.find((it) => it.productId === l.productId && it.name === l.name);
+      const found = merged.find((it) => it.productId === l.productId && (it.variantId || null) === (l.variantId || null) && it.name === l.name);
       if (found) found.qty += l.qty;
-      else merged.push({ productId: l.productId, name: l.name, price: l.price, cost: l.cost, qty: l.qty });
+      else merged.push({ productId: l.productId, variantId: l.variantId || null, name: l.name, price: l.price, cost: l.cost, qty: l.qty });
     }
     setStore(await api.setComandaItems(tableId, merged));
     setCart([]);

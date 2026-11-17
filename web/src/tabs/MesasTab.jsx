@@ -23,9 +23,9 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
   const addItem = async (tableId, p) => {
     const comanda = comandaOf(tableId);
     if (!comanda || getStock(p, store.products) <= 0) return;
-    const existing = comanda.items.find((it) => it.productId === p.id);
+    const existing = comanda.items.find((it) => it.productId === p.id && !it.variantId);
     const nextItems = existing
-      ? comanda.items.map((it) => (it.productId === p.id ? { ...it, qty: it.qty + 1 } : it))
+      ? comanda.items.map((it) => (it === existing ? { ...it, qty: it.qty + 1 } : it))
       : [...comanda.items, { productId: p.id, name: p.name, price: p.price, cost: p.cost, qty: 1 }];
     setStore(await api.setComandaItems(tableId, nextItems));
   };
@@ -49,7 +49,7 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
     }
     const comanda = comandaOf(openTableId);
     const sale = await finalizeSale({
-      items: comanda.items.map((it) => ({ productId: it.productId, name: it.name, qty: it.qty, price: it.price, cost: it.cost })),
+      items: comanda.items.map((it) => ({ productId: it.productId, variantId: it.variantId || null, name: it.name, qty: it.qty, price: it.price, cost: it.cost })),
       total,
       discount,
       payments,
