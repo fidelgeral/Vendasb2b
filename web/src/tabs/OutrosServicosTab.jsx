@@ -7,7 +7,7 @@ import { code128SVG } from "../lib/barcode.js";
 
 const escHtml = (t) => String(t ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]);
 
-export default function OutrosServicosTab({ store, setStore, api, showToast }) {
+export default function OutrosServicosTab({ store, setStore, api, showToast, canPay = false }) {
   const [cat, setCat] = useState("assinatura");
 
   const categories = [
@@ -33,7 +33,7 @@ export default function OutrosServicosTab({ store, setStore, api, showToast }) {
           );
         })}
       </div>
-      {cat === "assinatura" && <BillingPanel api={api} canSubmit />}
+      {cat === "assinatura" && <BillingPanel api={api} canSubmit={canPay} />}
       {cat === "etiquetas" && <EtiquetasSection store={store} />}
       {cat === "precos" && <PrecosSection store={store} />}
       {cat === "rh" && <RecursosHumanosSection store={store} api={api} showToast={showToast} />}

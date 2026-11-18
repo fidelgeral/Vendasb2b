@@ -561,7 +561,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
         {tab === "compras" && <ComprasTab store={store} setStore={setStore} api={api} />}
         {ver("equipa") && <EquipaTab store={store} setStore={setStore} api={api} />}
         {ver("balanco") && <BalancoTab store={store} api={api} />}
-        {tab === "servicos" && <OutrosServicosTab store={store} setStore={setStore} api={api} showToast={showToast} />}
+        {tab === "servicos" && <OutrosServicosTab store={store} setStore={setStore} api={api} showToast={showToast} canPay={session?.role === "dono" || isSuperAdmin} />}
         {ver("config") && <ConfigTab store={store} setStore={setStore} api={api} />}
       </div>
 

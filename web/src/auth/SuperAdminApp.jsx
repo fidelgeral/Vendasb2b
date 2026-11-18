@@ -30,7 +30,10 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
         setBusinesses(list);
         setLoaded(true);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => {
+        setError(e.message);
+        setLoaded(true);
+      });
     superApi.pendingSubmissions().then(setPending).catch(() => {});
     superApi.listDemos().then(setDemos).catch(() => {});
     superApi.listProofs().then(setProofs).catch(() => {});
