@@ -69,9 +69,12 @@ export default function BillingPanel({ api, canSubmit = true }) {
       let url = photoUrl.trim();
       if (photoFile && !url) {
         setUploading(true);
-        const uploaded = await api.uploadImage(photoFile);
-        url = uploaded.url || "";
-        setUploading(false);
+        try {
+          const uploaded = await api.uploadImage(photoFile);
+          url = uploaded.url || "";
+        } finally {
+          setUploading(false);
+        }
       }
       await api.submitProof({
         amount: Number(amount),
