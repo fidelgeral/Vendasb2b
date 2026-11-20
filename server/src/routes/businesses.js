@@ -61,8 +61,10 @@ businessesRouter.post("/", async (req, res) => {
   const dup = (await query("SELECT 1 FROM employees WHERE lower(email) = lower($1)", [ownerEmail])).rows.length;
   if (dup) return res.status(409).json({ error: "Já existe uma conta com esse email noutro negócio." });
 
-  if (parentBusinessId && !(await query("SELECT 1 FROM businesses WHERE id = $1", [parentBusinessId])).rows.length) {
-    return res.status(400).json({ error: "Negócio-pai não encontrado." });
+  // O pai tem de ser um negócio raiz: o login só resolve grupos de 1 nível
+  // (raiz + filiais), por isso uma "neta" ficaria fora do grupo de todos.
+  if (parentBusinessId && !(await query("SELECT 1 FROM businesses WHERE id = $1 AND parent_business_id IS NULL", [parentBusinessId])).rows.length) {
+    return res.status(400).json({ error: "Negócio-pai não encontrado (ou já é uma filial)." });
   }
 
   const slug = await uniqueSlug(slugify(name));
