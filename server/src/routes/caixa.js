@@ -33,41 +33,48 @@ caixaRouter.post("/shifts/close", requirePermission("caixaAbrirFechar"), async (
   if (closingCash < 0) return res.status(400).json({ error: "Valor de fecho inválido." });
   const employeeId = req.auth.type === "employee" ? req.auth.employeeId : null;
 
-  const shift = (await query("SELECT * FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
-  if (!shift) return res.status(409).json({ error: "Não há turno aberto." });
+  // Bloqueia a linha do negócio (o mesmo lock que as vendas usam): nenhuma venda/movimento
+  // entra no turno entre o cálculo do esperado e o fecho, senão a quebra sairia errada.
+  const fechou = await withTransaction(async (client) => {
+    await client.query("SELECT 1 FROM businesses WHERE id = $1 FOR UPDATE", [businessId]);
+    const shift = (await client.query("SELECT * FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
+    if (!shift) return false;
 
-  const cashIn = (
-    await query(
-      `SELECT COALESCE(SUM((p->>'amount')::numeric), 0) AS total FROM sales s, jsonb_array_elements(s.payments) p
-       WHERE s.shift_id = $1 AND s.voided = false AND p->>'method' = 'dinheiro'`,
-      [shift.id]
-    )
-  ).rows[0].total;
-  const movs = (
-    await query(
-      `SELECT COALESCE(SUM(amount) FILTER (WHERE tipo = 'entrada'), 0) AS entradas,
-              COALESCE(SUM(amount) FILTER (WHERE tipo = 'saida'), 0) AS saidas
-       FROM movimentos_caixa WHERE shift_id = $1`,
-      [shift.id]
-    )
-  ).rows[0];
+    const cashIn = (
+      await client.query(
+        `SELECT COALESCE(SUM((p->>'amount')::numeric), 0) AS total FROM sales s, jsonb_array_elements(s.payments) p
+         WHERE s.shift_id = $1 AND s.voided = false AND p->>'method' = 'dinheiro'`,
+        [shift.id]
+      )
+    ).rows[0].total;
+    const movs = (
+      await client.query(
+        `SELECT COALESCE(SUM(amount) FILTER (WHERE tipo = 'entrada'), 0) AS entradas,
+                COALESCE(SUM(amount) FILTER (WHERE tipo = 'saida'), 0) AS saidas
+         FROM movimentos_caixa WHERE shift_id = $1`,
+        [shift.id]
+      )
+    ).rows[0];
 
-  const expected = Number(shift.opening_cash) + Number(cashIn) + Number(movs.entradas) - Number(movs.saidas);
-  // Condicional: dois fechos simultâneos não duplicam a quebra de caixa.
-  const fechado = await query("UPDATE shifts SET closed_at = now(), closing_cash = $1, expected_cash = $2, closed_by = $3 WHERE id = $4 AND closed_at IS NULL RETURNING id", [
-    closingCash, expected, employeeId, shift.id,
-  ]);
-  if (!fechado.rows.length) return res.status(409).json({ error: "Não há turno aberto." });
+    const expected = Number(shift.opening_cash) + Number(cashIn) + Number(movs.entradas) - Number(movs.saidas);
+    // Condicional: dois fechos simultâneos não duplicam a quebra de caixa.
+    const fechado = await client.query("UPDATE shifts SET closed_at = now(), closing_cash = $1, expected_cash = $2, closed_by = $3 WHERE id = $4 AND closed_at IS NULL RETURNING id", [
+      closingCash, expected, employeeId, shift.id,
+    ]);
+    if (!fechado.rows.length) return false;
 
-  const shortage = +(expected - closingCash).toFixed(2);
-  if (shortage > 0) {
-    const empName = req.auth.name || "Sistema";
-    await query(
-      `INSERT INTO cash_shortages (business_id, shift_id, employee_id, employee_name, expected, declared, shortage, nota)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [businessId, shift.id, employeeId, empName, expected, closingCash, shortage, "Diferença detectada ao fechar caixa"]
-    );
-  }
+    const shortage = +(expected - closingCash).toFixed(2);
+    if (shortage > 0) {
+      const empName = req.auth.name || "Sistema";
+      await client.query(
+        `INSERT INTO cash_shortages (business_id, shift_id, employee_id, employee_name, expected, declared, shortage, nota)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [businessId, shift.id, employeeId, empName, expected, closingCash, shortage, "Diferença detectada ao fechar caixa"]
+      );
+    }
+    return true;
+  });
+  if (!fechou) return res.status(409).json({ error: "Não há turno aberto." });
 
   await respond(res, businessId);
 });
@@ -160,10 +167,11 @@ caixaRouter.post("/movimentos", (req, res, next) => requirePermission(req.body &
   const businessId = req.params.businessId;
   const employee = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
 
-  const currentShift = (await query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
-  if (!currentShift) return res.status(409).json({ error: "Abra o caixa primeiro." });
-
-  await withTransaction(async (client) => {
+  const registado = await withTransaction(async (client) => {
+    // Mesmo lock do fecho de caixa/vendas: o movimento não cai num turno que está a fechar.
+    await client.query("SELECT 1 FROM businesses WHERE id = $1 FOR UPDATE", [businessId]);
+    const currentShift = (await client.query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
+    if (!currentShift) return false;
     await client.query(
       "INSERT INTO movimentos_caixa (business_id, shift_id, tipo, categoria, amount, descricao, employee_id) VALUES ($1,$2,$3,$4,$5,$6,$7)",
       [businessId, currentShift.id, type, categoria, amount, motivo, employee.id]
@@ -171,7 +179,9 @@ caixaRouter.post("/movimentos", (req, res, next) => requirePermission(req.body &
     await client.query("INSERT INTO audit_log (business_id, employee_id, employee_name, acao, detalhe, valor) VALUES ($1,$2,$3,$4,$5,$6)", [
       businessId, employee.id, employee.name, type === "entrada" ? "ENTRADA CAIXA" : "SAÍDA CAIXA", `${categoria}${motivo ? " — " + motivo : ""}`, amount,
     ]);
+    return true;
   });
+  if (!registado) return res.status(409).json({ error: "Abra o caixa primeiro." });
 
   await respond(res, businessId, 201);
 });

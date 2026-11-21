@@ -92,6 +92,21 @@ app.use("/api/super/billing", superBillingRouter);
 // ainda conseguir ver os dados de pagamento e registar que pagou.
 app.use("/api/businesses/:businessId", billingRouter);
 
+// Salários (store.payroll) só podem sair para dono/gerente/super-admin: o store é devolvido
+// por quase todas as rotas e, sem isto, qualquer operador de caixa veria os salários.
+app.use("/api/businesses/:businessId", (req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    const r = req.auth;
+    const vePayroll = r && (r.type === "super" || (r.type === "employee" && (r.role === "dono" || r.role === "gerente")));
+    if (!vePayroll && body && body.store && Array.isArray(body.store.payroll)) {
+      body = { ...body, store: { ...body.store, payroll: [] } };
+    }
+    return json(body);
+  };
+  next();
+});
+
 // Bloqueio por assinatura suspensa aplica-se a todas as rotas operacionais abaixo.
 app.use("/api/businesses/:businessId", requireActiveSubscription);
 

@@ -75,11 +75,13 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   }
 
   let duplicate = false;
+  let semCaixa = false;
   const sale = await withTransaction(async (client) => {
     // Bloqueia a linha do negócio PRIMEIRO. Isto serializa as vendas do mesmo
     // negócio: a verificação de idempotência e a numeração do documento passam
     // a correr uma de cada vez, sem corridas entre separadores/reenvios.
     const biz = (await client.query("SELECT config, loyalty_enabled FROM businesses WHERE id = $1 FOR UPDATE", [businessId])).rows[0];
+    if (!biz) throw Object.assign(new Error("Negócio não encontrado."), { http: 404 });
 
     // Idempotência: se esta venda já foi registada (mesmo clientSaleId), não
     // cria outra — devolve a que já existe.
@@ -92,6 +94,15 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
         return existing;
       }
     }
+
+    // Relê o turno já com o lock do negócio: o fecho de caixa usa o mesmo lock, por isso
+    // a venda nunca fica associada a um turno que já fechou (nem altera o esperado depois).
+    const shiftAtual = (await client.query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
+    if (!shiftAtual) {
+      semCaixa = true;
+      return null;
+    }
+    shift.id = shiftAtual.id;
 
     const doc = nextDocNumber(biz.config || {});
     const pontosGanhos = f.clientId ? Math.floor(f.total / (biz.config?.pontosPorMT || 50)) : 0;
@@ -150,9 +161,11 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
     return row;
   });
 
+  if (semCaixa) return res.status(409).json({ error: "Abra o caixa antes de vender." });
   const store = await buildStoreAndCache(businessId);
   res.status(duplicate ? 200 : 201).json({ store, sale: store.sales.find((s) => s.id === sale.id) });
   } catch (err) {
+    if (err && err.http) return res.status(err.http).json({ error: err.message });
     // Rede de segurança: se ainda assim duas vendas idênticas colidirem no
     // índice único (23505), devolve a venda que ficou registada — nunca um
     // duplicado nem uma falha para o utilizador.
