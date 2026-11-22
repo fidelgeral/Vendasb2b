@@ -609,7 +609,8 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
           const pd = pQuebras.reduce((a, q) => a + q.custoImpacto, 0);
           const sd = pMovs.filter((m) => m.type === "saida").reduce((a, m) => a + m.amount, 0);
           const en = pMovs.filter((m) => m.type === "entrada").reduce((a, m) => a + m.amount, 0);
-          return { fat, lb, pd, sd, en, real: lb - pd - sd + en };
+          const sal = (store.payroll || []).filter((p) => inPeriod(p.created_at, histPrev.from, histPrev.to)).reduce((a, p) => a + Number(p.total), 0);
+          return { fat, lb, pd, sd, en, sal, real: lb - pd - sd - sal + en };
         })()
       : null;
 
@@ -623,7 +624,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
       linha("Lucro bruto (receita − custo)", lucroBruto, prev && prev.lb),
       linha("Quebras / perdas de stock", perdas, prev && prev.pd, "-"),
       linha("Saídas de caixa (despesas)", saidas, prev && prev.sd, "-"),
-      linha("Salários de funcionários", salarios, null, "-"),
+      linha("Salários de funcionários", salarios, prev && prev.sal, "-"),
       linha("Entradas extra de caixa", entradas, prev && prev.en, "+"),
       linha("Resultado líquido estimado", lucroReal, prev && prev.real),
       prev ? ["Dívidas de clientes (a receber)", fmtMT(dividas), "—", "—"] : ["Dívidas de clientes (a receber)", fmtMT(dividas)],
@@ -647,7 +648,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
       { label: "Vendas", atual: faturamento, anterior: prev.fat },
       { label: "L. Bruto", atual: lucroBruto, anterior: prev.lb },
       { label: "Dívidas", atual: dividas, anterior: 0 },
-      { label: "Despesas", atual: saidas + salarios, anterior: prev.sd },
+      { label: "Despesas", atual: saidas + salarios, anterior: prev.sd + prev.sal },
       { label: "Lucro Real", atual: Math.max(0, lucroReal), anterior: Math.max(0, prev.real) },
     ] : null;
     return (
@@ -677,7 +678,7 @@ function FinanceiroReports({ store, sales, report, meta, from, to, histPrev }) {
           <StatCardChart label="Lucro Bruto" value={fmtMT(lucroBruto)} sub={prev ? "Ant: " + fmtMT(prev.lb) : undefined} points={serieDre.luc} labels={serieDre.rot} color={GREEN} />
           <StatCard label="Dívidas de Clientes" value={fmtMT(dividas)} sub="a receber" />
           <StatCard label="Quebras de Stock" value={fmtMT(perdas)} sub={prev ? "Ant: " + fmtMT(prev.pd) : undefined} />
-          <StatCard label="Despesas Op." value={fmtMT(saidas + salarios)} sub={prev ? "Ant: " + fmtMT(prev.sd) : undefined} />
+          <StatCard label="Despesas Op." value={fmtMT(saidas + salarios)} sub={prev ? "Ant: " + fmtMT(prev.sd + prev.sal) : undefined} />
           <StatCard label="Entradas Extra" value={fmtMT(entradas)} sub={prev ? "Ant: " + fmtMT(prev.en) : undefined} />
           <StatCard label="Dif. Caixa / Falhas" value={fmtMT(difCaixa)} />
           <StatCard label="Reposições / Pagas" value={fmtMT(reposicoes)} />
