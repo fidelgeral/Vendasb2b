@@ -74,7 +74,7 @@ const proofSchema = z.object({
   payerName: z.string().min(1).max(200),
   payerPhone: z.string().max(50).optional().default(""),
   reference: z.string().max(200).optional().default(""),
-  photoUrl: z.string().max(2000).optional().default(""),
+  photoUrl: z.string().max(2000).refine((v) => v === "" || /^https?:\/\//i.test(v), "URL inválido").optional().default(""),
   notes: z.string().max(1000).optional().default(""),
 });
 

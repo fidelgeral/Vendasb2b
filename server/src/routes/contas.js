@@ -45,10 +45,11 @@ contasRouter.post("/contas-pagar/:id/pagar", requirePermission("caixaSaida"), as
   const conta = (await query("SELECT * FROM contas_pagar WHERE id = $1 AND business_id = $2 AND estado = 'aberta'", [id, businessId])).rows[0];
   if (!conta) return res.status(404).json({ error: "Conta não encontrada ou já paga." });
 
-  const currentShift = (await query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
-
   let jaPaga = false;
   await withTransaction(async (client) => {
+    // Mesmo lock do fecho de caixa/vendas/movimentos: a saída não cai num turno que está a fechar.
+    await client.query("SELECT 1 FROM businesses WHERE id = $1 FOR UPDATE", [businessId]);
+    const currentShift = (await client.query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
     // Condicional: dois pedidos simultâneos não registam a saída de caixa duas vezes.
     const paga = await client.query("UPDATE contas_pagar SET estado = 'paga', paga_em = CURRENT_DATE WHERE id = $1 AND estado = 'aberta' RETURNING id", [id]);
     if (!paga.rows.length) { jaPaga = true; return; }
