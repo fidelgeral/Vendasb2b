@@ -359,7 +359,7 @@ export default function PdvApp({ businessId, isSuperAdmin, onExitBusiness, onLog
     try {
       const res = await api.finalizeSale(withId);
       setStore(res.store);
-      showToast("Venda " + res.sale.numero + " registada");
+      showToast("Venda " + (res.sale?.numero ?? "") + " registada");
       if (res.store.config.impressao?.imprimirAoFinalizar && res.sale) {
         imprimirReciboTermico(res.sale, res.store, res.store.clients);
       }

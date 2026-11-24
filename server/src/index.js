@@ -91,6 +91,8 @@ app.use("/api/super/billing", superBillingRouter);
 // Billing da loja: fica FORA do bloqueio de assinatura, para a loja suspensa
 // ainda conseguir ver os dados de pagamento e registar que pagou.
 app.use("/api/businesses/:businessId", billingRouter);
+// Upload de imagens também fica fora do bloqueio: o comprovativo de pagamento é uma foto.
+app.use("/api/businesses/:businessId", uploadRouter);
 
 // Salários (store.payroll) só podem sair para dono/gerente/super-admin: o store é devolvido
 // por quase todas as rotas e, sem isto, qualquer operador de caixa veria os salários.
@@ -127,7 +129,6 @@ app.use("/api/businesses/:businessId", configRouter);
 app.use("/api/businesses/:businessId", contasRouter);
 app.use("/api/businesses/:businessId", quotationsRouter);
 app.use("/api/businesses/:businessId", payrollRouter);
-app.use("/api/businesses/:businessId", uploadRouter);
 app.use("/api/businesses/:businessId", assistantRouter);
 app.use("/api/public", publicRouter);
 app.use("/api/cron", cronRouter);

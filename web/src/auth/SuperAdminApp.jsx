@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BG, CARD, BORDER, INK, TEAL, MUTED, BRICK, GREEN, GRADIENT } from "../lib/theme.js";
 import { BRAND_NAME, BRAND_TAGLINE } from "../lib/theme.js";
 import { BRAND_LOGO } from "../lib/logo.js";
-import { superApi, clearSession } from "../lib/api.js";
+import { superApi, auth } from "../lib/api.js";
 
 const esc = (t) => String(t ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]);
 import { StatCard } from "../components/Shared.jsx";
@@ -89,7 +89,7 @@ export default function SuperAdminApp({ onOpenBusiness, onLoggedOut }) {
           </div>
           <button
             onClick={() => {
-              clearSession();
+              auth.logout();
               onLoggedOut();
             }}
             style={{ background: "rgba(255,255,255,0.2)" }}

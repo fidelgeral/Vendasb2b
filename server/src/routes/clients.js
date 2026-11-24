@@ -78,6 +78,8 @@ clientsRouter.patch("/clients/:id", requirePermission("clienteGerir"), async (re
 clientsRouter.delete("/clients/:id", requirePermission("clienteApagar"), async (req, res) => {
   const { businessId, id } = req.params;
   const antes = (await query("SELECT name FROM clients WHERE id = $1 AND business_id = $2", [id, businessId])).rows[0];
+  const divida = await query("SELECT 1 FROM client_debts WHERE client_id = $1 LIMIT 1", [id]);
+  if (divida.rowCount > 0) return res.status(409).json({ error: "Cliente com dívidas pendentes. Receba o fiado antes de apagar." });
   await query("DELETE FROM clients WHERE id = $1 AND business_id = $2", [id, businessId]);
   if (antes) await logAudit({ businessId, employee: authEmployee(req), acao: "CLIENTE", detalhe: `Apagou o cliente "${antes.name}"`, entityType: "cliente", entityId: id });
   await respond(res, businessId);

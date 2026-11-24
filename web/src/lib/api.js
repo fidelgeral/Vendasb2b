@@ -27,6 +27,9 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith("vendasb2b_store_")).forEach((k) => localStorage.removeItem(k));
+  } catch { /* ignore */ }
 }
 
 class ApiError extends Error {
