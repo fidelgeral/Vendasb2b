@@ -30,9 +30,9 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
     setStore(await api.setComandaItems(tableId, nextItems));
   };
 
-  const changeItemQty = async (tableId, productId, delta) => {
+  const changeItemQty = async (tableId, productId, delta, variantId = null) => {
     const comanda = comandaOf(tableId);
-    const nextItems = comanda.items.map((it) => (it.productId === productId ? { ...it, qty: Math.max(0, it.qty + delta) } : it)).filter((it) => it.qty > 0);
+    const nextItems = comanda.items.map((it) => (it.productId === productId && (it.variantId || null) === (variantId || null) ? { ...it, qty: Math.max(0, it.qty + delta) } : it)).filter((it) => it.qty > 0);
     setStore(await api.setComandaItems(tableId, nextItems));
   };
 
@@ -96,14 +96,14 @@ export default function MesasTab({ store, setStore, api, finalizeSale, shiftOpen
                   </div>
                 )}
                 {openComanda.items.map((it) => (
-                  <div key={it.productId} className="flex items-center justify-between text-sm">
+                  <div key={it.productId + (it.variantId || "")} className="flex items-center justify-between text-sm">
                     <div className="flex-1 min-w-0 truncate">{it.name}</div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => changeItemQty(openTableId, it.productId, -1)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
+                      <button onClick={() => changeItemQty(openTableId, it.productId, -1, it.variantId)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                         <Minus size={12} />
                       </button>
                       <span className="w-5 text-center text-xs">{it.qty}</span>
-                      <button onClick={() => changeItemQty(openTableId, it.productId, 1)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
+                      <button onClick={() => changeItemQty(openTableId, it.productId, 1, it.variantId)} style={{ borderColor: BORDER }} className="border rounded-lg p-1">
                         <Plus size={12} />
                       </button>
                     </div>
