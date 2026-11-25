@@ -29,6 +29,12 @@ async function getProduct(client, productId, businessId) {
   return (await client.query("SELECT * FROM products WHERE id = $1 AND business_id = $2", [productId, businessId])).rows[0];
 }
 
+// O fornecedor (se indicado) tem de pertencer a este negócio.
+async function fornecedorInvalido(client, supplierId, businessId) {
+  if (!supplierId) return false;
+  return !(await client.query("SELECT 1 FROM suppliers WHERE id = $1 AND business_id = $2", [supplierId, businessId])).rows.length;
+}
+
 async function getLote(client, loteId, businessId) {
   return (
     await client.query(
@@ -84,6 +90,7 @@ lotesRouter.post(
     await withTransaction(async (client) => {
       const product = await getProduct(client, f.productId, businessId);
       if (!product) throw httpErr(404, "Produto não encontrado.");
+      if (await fornecedorInvalido(client, f.supplierId, businessId)) throw httpErr(400, "Fornecedor inválido para este negócio.");
       await ensureLoteMode(client, product, businessId, empName(req));
       const nome = (f.name && f.name.trim()) || `${product.name} -L${String(Date.now()).slice(-4)}`;
       const row = (
@@ -117,6 +124,8 @@ lotesRouter.post(
         // eslint-disable-next-line no-await-in-loop
         const product = await getProduct(client, l.productId, businessId);
         if (!product) continue;
+        // eslint-disable-next-line no-await-in-loop
+        if (await fornecedorInvalido(client, l.supplierId || supplierId, businessId)) throw httpErr(400, "Fornecedor inválido para este negócio.");
         // eslint-disable-next-line no-await-in-loop
         await ensureLoteMode(client, product, businessId, empName(req));
         const nome = (l.name && l.name.trim()) || `${product.name} -L${String(Date.now()).slice(-4)}`;
@@ -175,6 +184,7 @@ lotesRouter.patch(
       const supplierId = b.supplierId !== undefined ? b.supplierId || null : lote.supplier_id;
       const novaQty = b.qty != null ? Number(b.qty) : Number(lote.qty);
       if (!Number.isFinite(novaQty) || novaQty < 0 || !Number.isFinite(costTotal) || costTotal < 0) throw httpErr(400, "Quantidade ou custo inválido.");
+      if (supplierId !== lote.supplier_id && (await fornecedorInvalido(client, supplierId, businessId))) throw httpErr(400, "Fornecedor inválido para este negócio.");
       await client.query(
         "UPDATE product_batches SET name = $1, expiry_date = $2, cost_total = $3, supplier_id = $4, qty = $5 WHERE id = $6",
         [name, expiry, costTotal, supplierId, novaQty, lote.id]

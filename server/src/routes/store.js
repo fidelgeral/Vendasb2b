@@ -374,7 +374,7 @@ storeRouter.get("/audit-entidade", async (req, res) => {
       `SELECT id, acao, detalhe, valor, employee_name AS "employeeName", created_at AS date
        FROM audit_log WHERE business_id = $1 AND entity_type = $2 AND entity_id = $3
        ORDER BY created_at DESC LIMIT 200`,
-      [req.params.businessId, type, String(id)]
+      [req.params.businessId, String(type), String(id)]
     )
   ).rows;
   res.json({ movimentos });

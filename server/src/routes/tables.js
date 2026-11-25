@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
+import { query, withTransaction } from "../db.js";
 import { requireAuth, requireBusiness } from "../auth/middleware.js";
 import { buildStoreAndCache } from "./store.js";
 import { requirePermission } from "../permissions.js";
@@ -41,10 +41,15 @@ tablesRouter.post("/tables/:tableId/comanda/open", requirePermission("guardarPed
   if (!(await query("SELECT 1 FROM tables WHERE id = $1 AND business_id = $2", [tableId, businessId])).rows.length) {
     return res.status(404).json({ error: "Mesa não encontrada." });
   }
-  const existing = (await query("SELECT id FROM comandas WHERE table_id = $1", [tableId])).rows[0];
-  if (!existing) {
-    await query("INSERT INTO comandas (business_id, table_id, items, service_charge_pct) VALUES ($1,$2,'[]'::jsonb,10)", [businessId, tableId]);
-  }
+  // Bloqueia a linha da mesa: dois pedidos simultâneos não criam duas comandas para a mesma mesa
+  // (a tabela comandas não tem índice único em table_id).
+  await withTransaction(async (client) => {
+    await client.query("SELECT 1 FROM tables WHERE id = $1 FOR UPDATE", [tableId]);
+    const existing = (await client.query("SELECT id FROM comandas WHERE table_id = $1", [tableId])).rows[0];
+    if (!existing) {
+      await client.query("INSERT INTO comandas (business_id, table_id, items, service_charge_pct) VALUES ($1,$2,'[]'::jsonb,10)", [businessId, tableId]);
+    }
+  });
   await respond(res, businessId, 201);
 });
 

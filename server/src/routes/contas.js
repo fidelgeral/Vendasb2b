@@ -23,6 +23,9 @@ contasRouter.post("/contas-pagar", requirePermission("caixaSaida"), async (req, 
   if (!parsed.success) return res.status(400).json({ error: "Dados da conta inválidos." });
   const f = parsed.data;
   const businessId = req.params.businessId;
+  if (f.supplierId && !(await query("SELECT 1 FROM suppliers WHERE id = $1 AND business_id = $2", [f.supplierId, businessId])).rows.length) {
+    return res.status(400).json({ error: "Fornecedor inválido para este negócio." });
+  }
   await query(
     "INSERT INTO contas_pagar (business_id, descricao, categoria, valor, supplier_id, vencimento) VALUES ($1,$2,$3,$4,$5,$6)",
     [businessId, f.descricao, f.categoria, f.valor, f.supplierId || null, f.vencimento || null]

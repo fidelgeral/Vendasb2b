@@ -45,6 +45,9 @@ quotationsRouter.post("/quotations", requirePermission("cotacao"), async (req, r
   if (!parsed.success) return res.status(400).json({ error: "Dados da cotação inválidos.", details: parsed.error.flatten() });
   const f = parsed.data;
   const businessId = req.params.businessId;
+  if (f.clientId && !(await query("SELECT 1 FROM clients WHERE id = $1 AND business_id = $2", [f.clientId, businessId])).rows.length) {
+    return res.status(400).json({ error: "Cliente inválido para este negócio." });
+  }
   // Bloqueia a linha do negócio: duas cotações simultâneas não recebem o mesmo número.
   await withTransaction(async (client) => {
     await client.query("SELECT 1 FROM businesses WHERE id = $1 FOR UPDATE", [businessId]);
