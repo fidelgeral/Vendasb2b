@@ -204,7 +204,12 @@ export default function CaixaTab({ store, shiftOpen, currentShift, openShift, cl
           }}
           onConfirmClose={async (v) => {
             const result = await closeShift(v);
-            if (result) setShowShiftModal({ closingResult: result, declared: v, expected: expectedNow });
+            // O servidor calcula o esperado sobre TODAS as vendas do turno; o store só traz as
+            // últimas 120 vendas, por isso o valor local pode ficar errado em turnos movimentados.
+            if (!result) return;
+            const fechado = currentShift && (result.shifts || []).find((s) => s.id === currentShift.id);
+            const esperadoServidor = fechado && fechado.expectedCash != null ? fechado.expectedCash : expectedNow;
+            setShowShiftModal({ closingResult: result, declared: v, expected: esperadoServidor });
           }}
           onClose={() => setShowShiftModal(null)}
         />
