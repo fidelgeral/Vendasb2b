@@ -247,7 +247,7 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
 
   const password = generatePassword();
   const hash = await hashPassword(password);
-  const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + "-" + crypto.randomInt(10000);
+  const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + "-" + crypto.randomInt(1000000);
 
   try {
     await withTransaction(async (client) => {
@@ -264,6 +264,8 @@ authRouter.post("/auth/demo", demoLimiter, async (req, res) => {
       );
     });
   } catch (e) {
+    // Colisão no slug (raríssima) não é email duplicado: pede para tentar de novo.
+    if (e.code === "23505" && /slug/.test(e.constraint || "")) return res.status(503).json({ error: "Não foi possível criar a conta agora. Tente novamente." });
     if (e.code === "23505") return res.status(409).json({ error: "Já existe uma conta com este email." });
     throw e;
   }
