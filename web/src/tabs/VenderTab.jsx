@@ -259,6 +259,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
         return;
       }
       if (e.key === "Escape" && !emCampo) {
+        if (variantPicker || showParked || showCotacoes || showScanner) return;
         setCart([]);
         return;
       }
@@ -289,7 +290,7 @@ export default function VenderTab({ store, setStore, api, finalizeSale, voidSale
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [store.products]);
+  }, [store.products, variantPicker, showParked, showCotacoes, showScanner]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">

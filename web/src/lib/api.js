@@ -19,6 +19,7 @@ export function setSession(token, session) {
 }
 export function setRefreshToken(rt) {
   if (rt) localStorage.setItem(REFRESH_KEY, rt);
+  else localStorage.removeItem(REFRESH_KEY);
 }
 export function getRefreshToken() {
   return localStorage.getItem(REFRESH_KEY) || "";
