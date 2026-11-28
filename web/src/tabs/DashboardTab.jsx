@@ -54,7 +54,7 @@ export default function DashboardTab({ store, shiftOpen, currentShift }) {
   }, 0) : 0;
   const entTurno = movsTurno.filter((m) => m.type === "entrada").reduce((s, m) => s + m.amount, 0);
   const saiTurno = movsTurno.filter((m) => m.type === "saida").reduce((s, m) => s + m.amount, 0);
-  const caixaAtual = shiftOpen ? (currentShift.openingCash || 0) + cashIn + entTurno - saiTurno : 0;
+  const caixaAtual = shiftOpen ? (currentShift?.openingCash || 0) + cashIn + entTurno - saiTurno : 0;
 
   // Vendas por hora (pontos para AreaChart)
   const vendasPorHora = useMemo(() => {
