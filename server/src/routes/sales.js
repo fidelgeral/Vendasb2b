@@ -47,6 +47,16 @@ salesRouter.post("/sales", requirePermission("vender"), async (req, res) => {
   const employee = req.auth.type === "employee" ? { id: req.auth.employeeId, name: req.auth.name } : { id: null, name: "Super-admin" };
 
   try {
+  // Idempotência ANTES das outras validações: um reenvio de uma venda já registada tem de devolver
+  // essa venda mesmo que entretanto o turno tenha fechado ou um produto tenha sido apagado
+  // (senão a fila offline do cliente ficava presa a receber 409/400 para uma venda já gravada).
+  if (f.clientSaleId) {
+    const jaExiste = (await query("SELECT id FROM sales WHERE business_id = $1 AND client_sale_id = $2", [businessId, f.clientSaleId])).rows[0];
+    if (jaExiste) {
+      const store = await buildStoreAndCache(businessId);
+      return res.status(200).json({ store, sale: store.sales.find((s) => s.id === jaExiste.id) });
+    }
+  }
   const shift = (await query("SELECT id FROM shifts WHERE business_id = $1 AND closed_at IS NULL", [businessId])).rows[0];
   if (!shift) return res.status(409).json({ error: "Abra o caixa antes de vender." });
 
